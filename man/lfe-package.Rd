@@ -52,12 +52,12 @@ blas-library (which is usually controlled by the \env{OMP_NUM_THREADS}
 environment variable).
 
 The package has been tested on datasets with approx 20,000,000
-observations with approx 2,300,000 and 270,000 group levels (the
-\code{\link{felm}} takes 1-2 hours on 8 cpus, the \code{\link{getfe}} takes a
-couple of days).  It uses the sparse Cholesky solver of package
-\pkg{Matrix}, which relies heavily on the blas-library.
-It's thus strongly recommended to link an optimized blas into R (such as
-'goto', 'atlas', 'acml' or 'mkl').
+observations with 15 covariate and approx 2,300,000 and 270,000 group
+levels (the \code{\link{felm}} takes about 20 minutes on 8 cpus, the
+\code{\link{getfe}} takes a couple of days).  It uses the sparse
+Cholesky solver of package \pkg{Matrix}, which relies heavily on the
+blas-library.  It's thus strongly recommended to link an optimized blas
+into R (such as 'goto', 'atlas', 'acml' or 'mkl').
 
 The package will work with any positive number of grouping factors, but if
 more than two, their interpretation is in general not well understood.

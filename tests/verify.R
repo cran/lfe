@@ -18,9 +18,16 @@ y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 ## make a data frame
 dset <- data.frame(y,x,x2,id,firm)
 
-## estimate and print result
+## estimate
 est <- felm(y ~ x+x2,fl=list(id=id,firm=firm),data=dset)
-summary(est)
 
 ## extract the group fixed effects
-getfe(est)
+fe <- getfe(est)
+
+## merge back into dataset
+
+dset[,'id.eff'] <- fe[paste('id',dset[,'id'],sep='.'),'effect']
+dset[,'firm.eff'] <- fe[paste('firm',dset[,'firm'],sep='.'),'effect']
+
+## verify that id and firm coefficients are 1
+summary(lm(y ~ x + x2 + id.eff + firm.eff-1,data=dset))

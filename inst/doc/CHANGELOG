@@ -1,0 +1,6 @@
+1.1-427
+	Changed the print and summary functions. Class "fe.lm" is now "felm".
+	In particular the coefficients-entry from felm is now a vector, not a matrix.
+
+1.0-418
+	Initial version

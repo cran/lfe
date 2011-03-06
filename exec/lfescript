@@ -203,7 +203,7 @@ print "
 est <- est[c('fe','residuals','refnames')]
 invisible(gc())
 class(est) <- NULL
-fes <- getfe(est,tab)
+fes <- getfe(est)
 rm(est)
 invisible(gc())
 cat(date(),'Fixed effects found; just doing some bookkeeping now...\\n')

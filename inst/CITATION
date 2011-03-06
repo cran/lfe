@@ -5,7 +5,7 @@ year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date)
 vers <- paste("R package version", meta$Version)
 
 citEntry(entry="Manual",
-	title="lfe: Linear Fixed Effecst",
+	title="lfe: Linear Group Fixed Effecst",
 	author=as.person("Simen Gaure"),
 	year=year,
 	note=vers,

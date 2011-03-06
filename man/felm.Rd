@@ -24,10 +24,9 @@ off by using \code{\link{lm}} or package \pkg{lme4}.
 }
 
 \value{
-  \code{felm} return an object of \code{class} \code{"lm.fe"}.  The
-  content of this is currently not documented, but there is a method
-  \code{\link{print.lm.fe}} which may be used to display the content in
-  a similar way as for \code{\link{lm}}.
+  \code{felm} return an object of \code{class} \code{"felm"}.  The
+  content of this is currently not documented, but the generic
+  \code{summary}-method will yield a summary which may be \code{print}'ed.
 }
 
 \seealso{\code{\link{getfe}}}
@@ -49,7 +48,7 @@ y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
 ## estimate and print result
 est <- felm(y ~ x+x2,fl=list(id=id,firm=firm),data=data.frame(y,x,x2))
-print(est)
+summary(est)
 \dontrun{print(getfe(est))}
 }
 \keyword{regression}

@@ -6,19 +6,18 @@
   an estimation with \code{\link{felm}}.
 }
 \usage{
-getfe(obj,data) 
+getfe(obj) 
 }
 
 \arguments{
 \item{obj}{object of class \code{"fe.lm"}, usually, a result of a call to
   \code{\link{felm}}}
-\item{data}{a data frame}
 }
 
 \value{
 The function \code{getfe} computes and returns a data frame containing
-the group fixed effects.
-It has the columns \code{c('effect','obs','comp','fe','idx')}
+the group fixed effects.  It has the columns
+\code{c('effect','obs','comp','fe','idx')}
 
 \itemize{
   \item \code{effect} is the estimated effect.
@@ -51,17 +50,18 @@ dset <- data.frame(y,x,x2,id,firm)
 
 ## estimate and print result
 est <- felm(y ~ x+x2,fl=list(id=id,firm=firm),data=dset)
-print(est)
+summary(est)
 
-## extract the group effects, and print them
-print(getfe(est))
+## extract the group effects
+getfe(est)
 
 ## compare with an ordinary lm
 summary(lm(y ~ x+x2+id+firm-1,data=dset))
 
 ## compare with lmer
-if(require(lme4))
-coef(lmer(y ~ x + x2 + (1|id) + (1|firm),data=dset))
+\dontrun{
+if(require(lme4)) print(coef(lmer(y ~ x + x2 + (1|id) + (1|firm),data=dset)))
+}
 }
 \keyword{regression}
 \keyword{models}

@@ -1,0 +1,85 @@
+
+R version 2.11.1 (2010-05-31)
+Copyright (C) 2010 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(lfe)
+Loading required package: Matrix
+Loading required package: lattice
+
+Attaching package: 'Matrix'
+
+The following object(s) are masked from 'package:base':
+
+    det
+
+LFE using 1 thread, set options(lfe.threads=n) to use more
+> options(lfe.threads=4)
+> set.seed(655318)
+> x <- rnorm(500)
+> x2 <- rnorm(length(x))
+> 
+> ## create individual and firm
+> id <- factor(sample(400,length(x),replace=TRUE))
+> firm <- factor(sample(300,length(x),replace=TRUE,prob=c(2,rep(1,299))))
+Warning message:
+In sample(300, length(x), replace = TRUE, prob = c(2, rep(1, 299))) :
+  Walker's alias method used: results are different from R < 2.2.0
+> 
+> ## effects
+> id.eff <- rnorm(nlevels(id))
+> firm.eff <- rnorm(nlevels(firm))
+> 
+> ## left hand side
+> y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
+> 
+> ## make a data frame
+> dset <- data.frame(y,x,x2,id,firm)
+> 
+> ## estimate
+> est <- felm(y ~ x+x2,fl=list(id=id,firm=firm),data=dset)
+> 
+> ## extract the group fixed effects
+> fe <- getfe(est)
+> 
+> ## merge back into dataset
+> 
+> dset[,'id.eff'] <- fe[paste('id',dset[,'id'],sep='.'),'effect']
+> dset[,'firm.eff'] <- fe[paste('firm',dset[,'firm'],sep='.'),'effect']
+> 
+> ## verify that id and firm coefficients are 1
+> summary(lm(y ~ x + x2 + id.eff + firm.eff-1,data=dset))
+
+Call:
+lm(formula = y ~ x + x2 + id.eff + firm.eff - 1, data = dset)
+
+Residuals:
+       Min         1Q     Median         3Q        Max 
+-7.074e-01 -1.800e-11  1.043e-12  2.123e-11  7.074e-01 
+
+Coefficients:
+         Estimate Std. Error t value Pr(>|t|)    
+x        0.906093   0.006023  150.45   <2e-16 ***
+x2       0.506857   0.006364   79.64   <2e-16 ***
+id.eff   1.000000   0.003536  282.80   <2e-16 ***
+firm.eff 1.000000   0.003518  284.29   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+
+Residual standard error: 0.1419 on 496 degrees of freedom
+Multiple R-squared: 0.9958,	Adjusted R-squared: 0.9957 
+F-statistic: 2.921e+04 on 4 and 496 DF,  p-value: < 2.2e-16 
+
+> 
