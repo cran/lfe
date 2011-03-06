@@ -39,10 +39,10 @@ are used for interpreting the group effects when there are only two
 factors, see the Abowd et al references), they are also returned by
 \code{\link{getfe}}).
 
-The centering on the means is done with a tolerance.  This tolerance is
+The centering on the means is done with a tolerance which is
 set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat
 conservative tolerance, in many cases I'd guess
-\code{options(lfe.eps=1e-4)} may be sufficient.  This will speed up the
+\code{1e-4} may be sufficient.  This will speed up the
 centering.  In the other direction, setting \code{options(lfe.eps=0)}
 will provide maximum accuracy, at the cost of computing time and
 warnings about convergence failure.
@@ -62,9 +62,6 @@ Threading is only done for the centering; the extraction of the group
 effects is not threaded. The default method for extracting the
 group coefficients is the iterative Kaczmarz-method, its tolerance
 is also the \code{lfe.eps} option.
-
-Bootstrapping standard errors is threaded if one installs the suggested
-package \pkg{doMC} (or \pkg{doSMP} on Windows).
 
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
@@ -124,7 +121,8 @@ Statistical Software Components S456942, Boston College Department of Economics.
   id.eff <- rnorm(nlevels(id))
   firm.eff <- rnorm(nlevels(firm))
   year.eff <- rnorm(nlevels(year))
-  y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + year.eff[year] + rnorm(length(x))
+  y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] +
+         year.eff[year] + rnorm(length(x))
   est <- felm(y ~ x+x2+G(id)+G(firm)+G(year))
   summary(est)
 

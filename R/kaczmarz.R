@@ -4,15 +4,18 @@ kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('
   if(is.null(threads)) threads <- 1
   islist <- is.list(R)
   if(!islist) R <- list(R)
+  # Now, each element of the list is either
+  # a matrix or a vector, let's reorder randomly
+  oo <- order(runif(length(fl[[1]])))
+  ofl <- lapply(fl,function(f) f[oo])
+  oR <- lapply(R,function(l) if(is.array(l)) apply(l,2,function(f) f[oo]) else l[oo])
 
-  v <- .Call('kaczmarz',fl,R,eps,as.vector(init),as.integer(threads),PACKAGE='lfe')
+#  v <- .Call('kaczmarz',fl,R,eps,as.vector(init),as.integer(threads),PACKAGE='lfe')
+
+  v <- .Call('kaczmarz',ofl,oR,eps,as.vector(init),as.integer(threads),PACKAGE='lfe')
   
   if(!islist) {
     v <- drop(v[[1]])
-#    if(is.matrix(v))
-#      rownames(v) <- unlist(lapply(names(fl),function(n) paste(n,levels(fl[[n]]),sep='.')))
-#    else
-#      names(v) <- unlist(lapply(names(fl),function(n) paste(n,levels(fl[[n]]),sep='.')))
   }
   v
 }
@@ -20,6 +23,11 @@ kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('
 getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100) {
 
   R <- obj$residuals-obj$full.residuals
+# order randomly
+#  oo <- order(runif(length(R)))
+#  Roo <- R[oo]
+#  fe <- lapply(obj$fe,function(f) f[oo])
+#  v <- kaczmarz(fe,Roo,eps)
   v <- kaczmarz(obj$fe,R,eps)
   nm <- names(v)
   if(is.character(ef)) {
@@ -129,7 +137,7 @@ efactory <- function(obj,opt=NULL,...) {
 
   if(is.null(opt)) opt <- 'ref'
 
-  switch(as.character(opt),
+  ef <- switch(as.character(opt),
          ln={
            local(function(v,addnames) {
              if(addnames) {
@@ -238,6 +246,15 @@ efactory <- function(obj,opt=NULL,...) {
 
          stop(paste('estimable function',opt,'not recognized'))
          )
+
+# try to byte compile the stuff
+  o <- options(warn=-1)
+  require('compiler',quietly=TRUE)
+  options(o)
+  if(exists('cmpfun'))
+    cmpfun(ef,list(optimize=3))
+  else
+    ef
 } 
 
 
@@ -314,6 +331,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   start <- last <- as.integer(Sys.time())
   Rdup <- matrix(rep(R,vpb),length(smpdraw),vpb)
   gc()
+
   for(i in 1:blks) {
     rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
     dim(rsamp) <- c(length(smpdraw),vpb)
@@ -329,6 +347,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
       last <- now
     }
   }
+
   alpha[,'se'] <- sqrt(vsq/newN - (vsum/newN)**2)/(1-0.75/newN-7/32/newN**2-9/128/newN**3)
 
   return(alpha)

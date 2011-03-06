@@ -1,5 +1,5 @@
 
-R version 2.12.2 (2011-02-25)
+R version 2.13.1 (2011-07-08)
 Copyright (C) 2011 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
@@ -28,75 +28,103 @@ The following object(s) are masked from 'package:base':
 
 > options(lfe.threads=2)
 > set.seed(655320)
-> x <- rnorm(20000,mean=2000)
+> x <- rnorm(50000,mean=200)
 > x2 <- rnorm(length(x))
 > x3 <- rexp(length(x))
 > ## create individual and firm
 > id <- factor(sample(15000,length(x),replace=TRUE))
 > firm <- factor(sample(13000,length(x),replace=TRUE))
-> 
+> shoe <- factor(sample(1000,length(x),replace=TRUE))
 > ## effects
 > id.eff <- rnorm(nlevels(id))
 > firm.eff <- rnorm(nlevels(firm))
-> 
+> shoe.eff <- rnorm(nlevels(shoe))
 > ## left hand side
-> y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
+> y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + shoe.eff[shoe] + rnorm(length(x))
 > 
 > ## estimate
-> summary(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm)))
+> summary(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm) + G(shoe)))
 
 Call:
-   felm(formula = y ~ x + x2 + x3 + G(id) + G(firm)) 
+   felm(formula = y ~ x + x2 + x3 + G(id) + G(firm) + G(shoe)) 
 
 Residuals:
        Min         1Q     Median         3Q        Max 
--1.533e+00 -1.267e-09  0.000e+00  2.072e-09  1.409e+00 
+-3.065e+00 -4.110e-01 -2.896e-11  4.128e-01  2.712e+00 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
-x   1.04336    0.03738  27.911  < 2e-16 ***
-x2  0.30186    0.03827   7.887 1.21e-14 ***
-x3  0.42771    0.03692  11.585  < 2e-16 ***
+x  1.006454   0.006747  149.17   <2e-16 ***
+x2 0.255382   0.006716   38.02   <2e-16 ***
+x3 0.509961   0.006730   75.77   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
-Residual standard error: 1.006 on 693 degrees of freedom
+Residual standard error: 0.9979 on 21868 degrees of freedom
 Multiple R-squared:     1   Adjusted R-squared:     1 
-F-statistic: 4.1e+06 on 19307 and 693 DF, p-value: < 2.2e-16 
+F-statistic: 7.174e+04 on 28132 and 21868 DF, p-value: < 2.2e-16 
+*** Standard errors may be slightly too high due to more than 2 groups
 
 
 > cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
-Components: 1972 largest: 15846 
+Components: 47 largest: 49954 
 > ## extract the group fixed effects
-> fe <- getfe(est)
-> ## merge back
-> 
-> ideff <- fe[paste('id',id,sep='.'),'effect']
-> firmeff <- fe[paste('firm',firm,sep='.'),'effect']
-> 
-> ## verify that id and firm coefficients are 1
-> options(scipen=8)
-> summary(lm(y ~ x + x2 + x3 + ideff + firmeff-1),digits=8)
+> for(ef in c('ln','ref')) {
++   fe <- getfe(est,ef=ef)
++   ## merge back
++ 
++   ideff <- fe[paste('id',id,sep='.'),'effect']
++   firmeff <- fe[paste('firm',firm,sep='.'),'effect']
++   shoeeff <- fe[paste('shoe',shoe,sep='.'),'effect']
++ 
++   ## verify that id and firm coefficients are 1
++   options(scipen=8)
++   print(summary(lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff -1),digits=8))
++ }
 
 Call:
-lm(formula = y ~ x + x2 + x3 + ideff + firmeff - 1)
+lm(formula = y ~ x + x2 + x3 + ideff + firmeff + shoeeff - 1)
 
 Residuals:
-   Min     1Q Median     3Q    Max 
--1.533  0.000  0.000  0.000  1.409 
+    Min      1Q  Median      3Q     Max 
+-3.0647 -0.4110  0.0000  0.4128  2.7125 
 
 Coefficients:
-          Estimate Std. Error t value Pr(>|t|)    
-x       1.04335742 0.00003305 31573.5   <2e-16 ***
-x2      0.30185740 0.00132787   227.3   <2e-16 ***
-x3      0.42770781 0.00131966   324.1   <2e-16 ***
-ideff   1.00000000 0.00076300  1310.6   <2e-16 ***
-firmeff 1.00000000 0.00076211  1312.2   <2e-16 ***
+          Estimate Std. Error  t value Pr(>|t|)    
+x       1.00645375 0.00002685 37487.87   <2e-16 ***
+x2      0.25538162 0.00294778    86.64   <2e-16 ***
+x3      0.50996080 0.00292743   174.20   <2e-16 ***
+ideff   1.00000000 0.00244566   408.89   <2e-16 ***
+firmeff 1.00000000 0.00251321   397.90   <2e-16 ***
+shoeeff 1.00000000 0.00291368   343.21   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
-Residual standard error: 0.1872 on 19995 degrees of freedom
+Residual standard error: 0.66 on 49994 degrees of freedom
 Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 4.568e+11 on 5 and 19995 DF,  p-value: < 2.2e-16 
+F-statistic: 7.69e+08 on 6 and 49994 DF,  p-value: < 2.2e-16 
+
+
+Call:
+lm(formula = y ~ x + x2 + x3 + ideff + firmeff + shoeeff - 1)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.0647 -0.4110  0.0000  0.4128  2.7125 
+
+Coefficients:
+          Estimate Std. Error  t value Pr(>|t|)    
+x       1.00645375 0.00006269 16055.57   <2e-16 ***
+x2      0.25538162 0.00294778    86.64   <2e-16 ***
+x3      0.50996080 0.00292743   174.20   <2e-16 ***
+ideff   1.00000000 0.00244179   409.54   <2e-16 ***
+firmeff 1.00000000 0.00250572   399.09   <2e-16 ***
+shoeeff 1.00000000 0.00291357   343.22   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+
+Residual standard error: 0.66 on 49994 degrees of freedom
+Multiple R-squared:     1,	Adjusted R-squared:     1 
+F-statistic: 7.69e+08 on 6 and 49994 DF,  p-value: < 2.2e-16 
 
 > 

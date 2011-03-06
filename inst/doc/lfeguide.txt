@@ -4,7 +4,7 @@ with the R-command install.packages('lfe')
 In the R-package, in the subdirectory exec (e.g. in
 /usr/lib64/R/library/lfe/exec or /usr/local/lib64/R/library/lfe/exec
 or wherever your installation keep the packages, it's displayed during
-installation) there's a perl-script lfescript.  It take as an
+installation) there's a perl-script lfescript.  It takes as an
 input-file a simple specification and creates an R-script which uses
 the lfe-package.  Here's a typical input-file:
 
@@ -20,9 +20,10 @@ merge
 
 Most of this is self-explanatory, there's a file-name, it's supposed to be
 a pure space-separated data-file (without any header with variable names).
+However, if it ends in '.dta' it is assumed to be a Stata-file.
 
 The 'vars' line must list all the variables in the file, even if you don't
-use them.  
+use them.  This line is ignored if the data-file is a Stata-file.
 
 The 'model' line specifies the left-hand side and the right-hand side
 as an R-style model specification.  Note that the fixed effects are
@@ -38,6 +39,8 @@ errors.
 The 'dummy' line specifies which variables should be coded as dummies, a
 reference is automatically removed.  In the example, you'll get variables
 like year1998, year1999, year2000 or whatever time-period you've got.
+If the data-file is a Stata-file, any variable with value-labels will be
+treated this way.
 
 
 The 'nofe' line (commented out above) is used if one does not need to
@@ -63,6 +66,8 @@ created.  In the example, 'fe-id.csv' and 'fe-firm.csv'.  The output-files
 contain a header, like 'id  effect  comp  obs'.  I.e. the id, the
 estimated coefficient, its component number in the connection graph, and
 the number of observations for this effect.  
+
+If the data-file is a Stata-file, the output files will also be State-files.
 
 Note that fixed effects from different components are not directly comparable
 because there's a separate reference value in each component.

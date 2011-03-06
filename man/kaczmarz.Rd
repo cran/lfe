@@ -7,7 +7,8 @@
 }
 
 \usage{
-kaczmarz(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('lfe.threads'))
+kaczmarz(fl,R,eps=getOption('lfe.eps'),
+         init=NULL,threads=getOption('lfe.threads'))
 }
 
 \arguments{

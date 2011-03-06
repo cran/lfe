@@ -7,7 +7,8 @@
   an estimation with \code{\link{felm}}.
 }
 \usage{
-getfe(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100) 
+getfe(obj,references=NULL,se=FALSE,
+      method='kaczmarz',ef='ref',bN=100) 
 }
 
 \arguments{
@@ -15,7 +16,7 @@ getfe(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100)
   \code{\link{felm}}}
 \item{references}{a vector of strings.  If there are more than two
   factors and you have prior knowledge of what the reference levels
-  should be, use this argument, like \code{references='id.23'}.  Not
+  should be like \code{references='id.23'}.  Not
   used with \code{method='kaczmarz'}}
 \item{se}{logical.  Set to TRUE if standard errors for the group
   effects are wanted.  This is \strong{very} time-consuming for large problems, so
@@ -112,7 +113,8 @@ alpha <- getfe(est,se=TRUE)
 idx <- match(c('id.5','id.6','firm.11','firm.12'),rownames(alpha))
 alpha[idx,]
 ef <- function(v,addnames) {
-  w <- c(v[idx[[2]]]-v[idx[[1]]],v[idx[[4]]]+v[idx[[1]]],v[idx[[4]]]-v[idx[[3]]])
+  w <- c(v[idx[[2]]]-v[idx[[1]]],v[idx[[4]]]+v[idx[[1]]],
+         v[idx[[4]]]-v[idx[[3]]])
   if(addnames) names(w) <-c('id6-id5','f12+id5','f12-f11')
   w
 }

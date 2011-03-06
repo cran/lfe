@@ -11,7 +11,7 @@
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
     if(is.na(cr)) cr <- numcores()
     if(is.na(cr)) {
-      message("LFE running with 1 thread, set options(lfe.threads=n) to use more")
+      packageStartupMessage("LFE running with 1 thread, set options(lfe.threads=n) to use more")
       cr <- 1
     }
     options(lfe.threads=cr)
@@ -155,6 +155,7 @@ felm <- function(formula,fl,data) {
   # parallelized together with the columns of x
   # (in a manner which avoids copying of data)
   dm <- demeanlist(list(y=y,x=x),fl,icpt)
+#  cat(date(),'centering finished\n')
   yz <- dm[[1]]
   xz <- dm[[2]]
   rm(dm)
@@ -196,6 +197,7 @@ felm <- function(formula,fl,data) {
   }
   rm(b)
   if(icpt > 0) names(beta) <- colnames(x)[-icpt] else names(beta) <- colnames(x)
+#  cat(date(),'projected system finished\n')
   z <- list(coefficients=beta,badconv=badconv)
   N <- nrow(xz)
   p <- ncol(xz) - length(badvars)

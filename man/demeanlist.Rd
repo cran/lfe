@@ -9,7 +9,8 @@
 }
 
 \usage{
-demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),threads=getOption('lfe.threads'),quiet=FALSE)
+demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
+           threads=getOption('lfe.threads'),quiet=FALSE)
 }
 
 \arguments{

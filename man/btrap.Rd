@@ -7,7 +7,8 @@
   an estimation with \code{\link{felm}}.
 }
 \usage{
-btrap(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOption('lfe.threads'))
+btrap(alpha, obj, N=100, ef=NULL,
+      eps=getOption('lfe.eps'), threads=getOption('lfe.threads'))
 }
 
 

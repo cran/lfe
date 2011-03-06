@@ -259,7 +259,7 @@ static void *demeanlist_coop(void *varg) {
 
   vecend = vecstart + veclen;
   for(i = 0; i < arg->K; i++) {
-    time_t start = time(NULL);
+
     double sd;
     double c;
     double prevdiff;
@@ -372,14 +372,13 @@ static void *demeanlist_single(void *varg) {
     if(maxlev < arg->factors[i]->nlevels) maxlev = arg->factors[i]->nlevels;
   means = (double*) malloc(maxlev*sizeof(double));
   while(1) {
-    time_t start,now;
+    time_t now;
     /* Find next vector */
     LOCK(arg->lock);
     vecnum = (arg->nowdoing)++;
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
 
-    start = time(NULL);
     okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means);
     now = time(NULL);
     LOCK(arg->lock);
@@ -699,8 +698,8 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   KARG arg;
   double **vectors, **target;
   int cnt;
-#ifndef NOTHREADS
   int numthr = 1;
+#ifndef NOTHREADS
   int thr;
 #ifdef WIN
   HANDLE *threads;
@@ -812,6 +811,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   numthr = cores;
   if(numthr > numvec) numthr = numvec;
   if(numthr < 1) numthr = 1;
+#ifndef NOTHREADS
 #ifdef WIN
   lock = CreateMutex(NULL,FALSE,NULL);
   threads = (HANDLE*) R_alloc(numthr,sizeof(HANDLE));
@@ -819,14 +819,14 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #else
   threads = (pthread_t*) R_alloc(numthr,sizeof(pthread_t));
 #endif
-
+  arg.lock = &lock;
+#endif
 
   arg.factors = factors;
   arg.source = vectors;
   arg.target = target;
   arg.nowdoing = 0;
   arg.threadnum = 0;
-  arg.lock = &lock;
   arg.e = numfac;
   arg.eps = eps;
   arg.numvec = numvec;
@@ -835,7 +835,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   arg.indices = (int**) R_alloc(numthr,sizeof(int*));
 
 #ifdef NOTHREADS
-  arg.newR[0] = R_alloc(N,sizeof(double));
+  arg.newR[0] = (double*) R_alloc(N,sizeof(double));
   kaczmarz_thr((void*)&arg);
 #else
   /* Do it in separate threads */

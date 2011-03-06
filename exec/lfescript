@@ -58,6 +58,15 @@ while(<>) {
   }
 }
 
+
+if($datafile =~ m/\.dta$/i) {
+    $format = 'dta';
+} elsif ($datafile =~ m/\.rda|\.rdata/i) {
+    $format = 'rda';
+} else {
+    $format = 'csv';
+}
+
 # either covars and response must be specified
 # or model
 if(defined($model)) {
@@ -80,6 +89,7 @@ print "#switch off echo for non-interactive runs\n";
 print "if(!interactive()) options(echo=FALSE)\n";
 
 print "
+dformat = '$format';
 # show warnings as they occur
 oldopts <- options(warn=1)
 version <- packageDescription('lfe',fields='Version')
@@ -100,52 +110,56 @@ model <- formula($model)
 tm <- terms(model,specials='G')
 fefrm <- paste('~',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse='+'))
 fvars <- all.vars(parse(text=fefrm))
+if(dformat == 'dta') {
+    library(foreign)
+    cat(date(),'Start reading Stata file','$datafile\\n')
+    tab <- read.dta('$datafile',convert.factors=NA)
+    cat(date(),nrow(tab),' records read from','$datafile\\n')
+} else if(dformat == 'rda') {
+    load('$datafile')
+} else {
 
-
-filevars = c('" . join("','",@filevars) . "')
-#What are their types on input?  
-# fe's should be read as character
-# covars and response as numeric
-# unused as character
-# also, those in array @dummies should be textual
-# so that they're coerced to factor
-# we know the fe's, and response, we must figure out the covars
-# used in model.  It should be parsed in R
-";
-print "forcefact=c()\n";
-if($#dummies >=0) {
-  print "forcefact = c('" .join("','",@dummies) . "')\n";
+  filevars = c('" . join("','",@filevars) . "')
+  #What are their types on input?  
+  # fe's should be read as character
+  # covars and response as numeric
+  # unused as character
+  # also, those in array @dummies should be textual
+  # so that they're coerced to factor
+  # we know the fe's, and response, we must figure out the covars
+  # used in model.  It should be parsed in R
+  ";
+  print "forcefact=c()\n";
+  if($#dummies >=0) {
+    print "forcefact = c('" .join("','",@dummies) . "')\n";
+  }
+  print "
+  varnames <- all.vars(model)
+  typelist <- vector('list',length(filevars))
+  names(typelist) <- filevars
+  typelist[names(typelist) %in% varnames]  <- 0
+  typelist[names(typelist) %in% forcefact] <- ''
+  typelist[fvars] <- ''
+  ";
+  print "
+  cat(date(),'Start reading from file','$datafile\\n')
+  # it takes forever to create a data.frame with a large file
+  # we stick to a list() from scan, but we convert the
+  # factors manually
+  #tab <- data.frame(scan('$datafile',what=typelist))
+  tab <- scan('$datafile',what=typelist,multi.line=FALSE)
+  # drop those we don't use, @@@@@ what about merging? @@@@@
+  tab <- tab[unlist(lapply(typelist,function(t) !is.null(t)))];
+  cat(date(),'File read\\n')
+  # convert to factors manually
+  for( f in forcefact) {
+    tab[[f]] <- factor(tab[[f]])
+  }
+  # fake a data.frame
+  #attr(tab,'row.names') <- 1:length(tab[[1]])
+  class(tab) <- 'data.frame'
+  attr(tab,'row.names') <- NULL\n
 }
-print "
-varnames <- all.vars(model)
-typelist <- vector('list',length(filevars))
-names(typelist) <- filevars
-typelist[names(typelist) %in% varnames]  <- 0
-typelist[names(typelist) %in% forcefact] <- ''
-typelist[fvars] <- ''
-";
-print "
-cat(date(),'Start reading from file','$datafile\\n')
-# it takes forever to create a data.frame with a large file
-# we stick to a list() from scan, but we convert the
-# factors manually
-#tab <- data.frame(scan('$datafile',what=typelist))
-tab <- scan('$datafile',what=typelist,multi.line=FALSE)
-# drop those we don't use, @@@@@ what about merging? @@@@@
-tab <- tab[unlist(lapply(typelist,function(t) !is.null(t)))];
-cat(date(),'File read\\n')
-# convert to factors manually
-for( f in forcefact) {
-  tab[[f]] <- factor(tab[[f]])
-}
-";
-
-print "
-# fake a data.frame
-#attr(tab,'row.names') <- 1:length(tab[[1]])
-class(tab) <- 'data.frame'
-attr(tab,'row.names') <- NULL
-
 festr <- paste('list(',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse=','),')')
 factors <- local({G <- as.factor;'*'<-interaction;eval(parse(text=festr),tab,environment())})
 nm <- unlist(eval(parse(text=festr),list(G=function(t) as.character(substitute(t)))))
@@ -228,16 +242,22 @@ for(nm in levels(fes[,'fe'])) {
 
   whch <- which(fes[,'fe'] == nm)
   fr <- fes[whch,]
-  fn <- paste('fe-',nm,'.csv',sep='')  
+  fn <- paste('fe-',nm,'.',dformat,sep='')  
   fr[,nm] <- fr[,'idx']
   rownames(fr) <- fr[,nm]
 ";
 if($bN > 0) {
-    print "write.table(fr[,c(nm,'effect','se','comp','obs')],file=fn,quote=FALSE,row.names=FALSE)\n";
+    print "fr <- fr[,c(nm,'effect','se','comp','obs')]\n";
 } else {
-    print "write.table(fr[,c(nm,'effect','comp','obs')],file=fn,quote=FALSE,row.names=FALSE)\n";
+    print "fr <- fr[,c(nm,'effect','comp','obs')]\n";
 }
+
 print "
+  if(dformat == 'dta') {
+     write.dta(fr,fn)
+  } else {
+    write.table(fr,file=fn,quote=FALSE,row.names=FALSE)
+  }
   frms[[nm]] <- fr
   cat(date(),'FE written to',fn,'\\n')      
 }
@@ -259,9 +279,13 @@ for(f in names(frms)) {
 }
 class(tab) <- 'data.frame'
 
-cat(date(),'Writing merged data set to fe-merged.csv\\n')
+cat(date(),'Writing merged data set to fe-merged.',dformat,'\\n')
 rownames(tab) <- 1:length(tab[[1]])
-write.table(tab,'fe-merged.csv',quote=FALSE,row.names=FALSE)
+if(dformat == 'dta') {
+  write.dta(tab,'fe-merged.dta')
+} else {
+  write.table(tab,'fe-merged.csv',quote=FALSE,row.names=FALSE)
+}
 ";
 }
 
