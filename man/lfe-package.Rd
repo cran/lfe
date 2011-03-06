@@ -77,6 +77,13 @@ retrieved, though at a substantial cost in computing time.
 The package will work with any positive number of grouping factors, but if
 more than two, their interpretation is in general not well understood.
 
+With certain types of data, which the author has not got a clear
+understanding of, the getfe() method with the Kaczmarz method,
+has problems converging.  In this case, the option 
+\code{options(lfe.randkac=TRUE)} may be set in advance.  This
+causes random shuffling of the residual system, which sometimes
+improves the convergence.
+
 \pkg{lfe} is similar in function, though not in method, to the
 Stata modules \code{a2reg} and \code{felsdvreg}.
 }

@@ -33,6 +33,11 @@ will be achieved.
 \note{
 This function is used by \code{\link{getfe}}, it's quite specialized,
 but it might be useful for other purposes too.  
+
+If there are convergence problems, you may try to set 
+\code{options(lfe.randkac=TRUE)} prior to calling kaczmarz().
+This will cause random shuffling of the rows of the system.  This
+sometimes improves the convergence.
 }
 
 \examples{

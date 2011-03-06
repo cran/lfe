@@ -1,4 +1,4 @@
-1.4-641
+1.4-653
 	Try to byte-compile the estimable functions.
 	Fixed a bug which prevented compilation with -DNOTHREADS
 

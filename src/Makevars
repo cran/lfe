@@ -1,2 +1,0 @@
-PKG_LIBS=-pthread 
-PKG_CFLAGS=$(C_VISIBILITY) -pthread
