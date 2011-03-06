@@ -45,23 +45,20 @@ In sample(300, length(x), replace = TRUE, prob = c(2, rep(1, 299))) :
 > ## left hand side
 > y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 > 
-> ## make a data frame
-> dset <- data.frame(y,x,x2,id,firm)
-> 
 > ## estimate and print result
-> est <- felm(y ~ x+x2,fl=list(id=id,firm=firm),data=dset)
+> est <- felm(y ~ x+x2+G(id)+G(firm))
 > summary(est)
 
 Call:
-   felm(model = y ~ x + x2, fl = list(id = id, firm = firm), data = dset) 
+   felm(formula = y ~ x + x2 + G(id) + G(firm)) 
 
        Min         1Q     Median         3Q        Max 
 -7.074e-01 -1.805e-07  0.000e+00  2.054e-07  7.074e-01 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
-x    0.9061     0.2109   4.297 0.000869 ***
-x2   0.5069     0.2534   2.000 0.066822 .  
+x    0.9061     0.2111   4.292 0.000876 ***
+x2   0.5069     0.2537   1.998 0.067062 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 

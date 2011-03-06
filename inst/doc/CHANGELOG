@@ -1,3 +1,14 @@
+1.1-434
+	Changed the argument name 'model' of felm to 'formula', also call model.frame()
+	in the parent context, so one may get away without a data.frame.
+
+	Updated and expanded documentation.
+
+	Added a summary.felm function, and a corresponding print.
+
+	Added syntax of the type y ~ x + G(id) for the grouping factors.
+	The fl argument to felm still works.	
+
 1.1-427
 	Changed the print and summary functions. Class "fe.lm" is now "felm".
 	In particular the coefficients-entry from felm is now a vector, not a matrix.

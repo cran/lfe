@@ -1,12 +1,12 @@
 library(lfe)
 options(lfe.threads=4)
-set.seed(655318)
+set.seed(65318)
 x <- rnorm(500)
 x2 <- rnorm(length(x))
 
 ## create individual and firm
-id <- factor(sample(400,length(x),replace=TRUE))
-firm <- factor(sample(300,length(x),replace=TRUE,prob=c(2,rep(1,299))))
+id <- factor(sample(10,length(x),replace=TRUE))
+firm <- factor(sample(6,length(x),replace=TRUE,prob=c(2,rep(1,5))))
 
 ## effects
 id.eff <- rnorm(nlevels(id))
@@ -15,9 +15,8 @@ firm.eff <- rnorm(nlevels(firm))
 ## left hand side
 y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
-## estimate and print result
-est <- felm(y ~ x+x2+G(id)+G(firm))
+## estimate
+est <- felm(y ~ x+x2 + G(id) + G(firm))
 summary(est)
-
-## extract the group fixed effects
 getfe(est)
+summary(lm(y ~ x + x2 + id + firm -1))

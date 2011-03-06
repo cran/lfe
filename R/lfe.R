@@ -1,3 +1,7 @@
+# Author: Simen Gaure
+# Copyright: 2011, Simen Gaure
+# Licence: Artistic 2.0
+
 .onLoad <- function(libname,pkgname) {
   if(is.null(getOption('lfe.eps')))
     options(lfe.eps=.Machine$double.eps**(1/2))
@@ -10,6 +14,14 @@
     if(cr == 1) cat('LFE using 1 thread, set options(lfe.threads=n) to use more\n')
   }
 }
+
+#   Some things in this file is done in a weird way.
+#   In some cases there are efficiency reasons for this, e.g. because
+#   the "standard" way of doing things may result in a copy which is costly
+#   when the problem is *large*.
+#   In other cases it may simply be due to the author's unfamiliarity with how
+#   things should be done in R
+
 
 demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
                        threads=getOption('lfe.threads')) {
@@ -62,19 +74,7 @@ delete.intercept <- function (mm)
 
 
 
-
-# it seems the foreach-stuff with doMC creates memory problems
-# Even though it forks the process and relies on copy-on-write
-# it appears to consume too much.  It is possible that
-# gc is triggered to move things around, causing copying.
-# If we're on the limit of the machine, this is disastrous
-# We are probably better off by doing all components at once
-# (in most of the cases we've seen, the first one is 90% of the data,
-# followed by a few, up to several thousands, small ones)
-# with a threaded blas (like acml) this is equally fast in
-# the examples we've tried
-
-findfe <- function(dd,Rhs) {
+findfe <- function(dd,Rhs,se=FALSE) {
   # find references
   refnames <- attr(dd,'refnames')
   nm <- c(colnames(dd),refnames)
@@ -84,6 +84,7 @@ findfe <- function(dd,Rhs) {
   dg <- c(diag(dd),refcnt)
   ok <- 1:ncol(dd)
 
+  if(se) sev <- double(length(nm))
   alphacoef <- double(length(nm))
 
   # the super-nodal algorithm
@@ -104,10 +105,15 @@ findfe <- function(dd,Rhs) {
     }
   } 
 
-  
-  alphacoef[ok] <- as.vector(trysolve)
 
-  alpha <- data.frame(effect=alphacoef,obs=dg)
+  alphacoef[ok] <- as.vector(trysolve)
+  if(se) {
+    # is there a faster way to find the diagonal of the inverse?
+    sev[ok] <- sqrt(diag(solve(dd)))*attr(se,'sefactor')
+    alpha <- data.frame(effect=alphacoef,se=sev,obs=dg)
+  } else {
+    alpha <- data.frame(effect=alphacoef,obs=dg)
+  }
   rownames(alpha) <- nm
   alpha
 }
@@ -137,29 +143,35 @@ makedd.full <- function(factors) {
 
 makeddlist <- function(factors) {
   if(length(factors) > 2) {
-    # find references by fiddling with Cholesky
-    message('*** More than two groups, finding refs by Cholesky pivots, interpret at own risk')
-    # first the full matrix, find small pivots
-    dd <- makedd.full(factors)
-    orignm <- attr(dd,'nm')
+    if(is.null(attr(factors,'references'))) {
+      # find references by fiddling with Cholesky
+      message('*** More than two groups, finding refs by Cholesky pivots, interpret at own risk')
+      # first the full matrix, find small pivots
+      dd <- makedd.full(factors)
+      orignm <- attr(dd,'nm')
 
-    # add small amount to diagonal
-    eps <- sqrt(.Machine$double.eps)
-    Ch <- try(Cholesky(dd,super=TRUE,perm=TRUE,Imult=eps))
-    if(inherits(Ch,'try-error') && grepl('problem too large',geterrmessage())) {
-      Ch <- Cholesky(dd,super=FALSE,perm=FALSE,Imult=eps)
+      # add small amount to diagonal
+      eps <- sqrt(.Machine$double.eps)
+      Ch <- try(Cholesky(dd,super=TRUE,perm=TRUE,Imult=eps))
+      if(inherits(Ch,'try-error') && grepl('problem too large',geterrmessage())) {
+        Ch <- Cholesky(dd,super=FALSE,perm=TRUE,Imult=eps)
+      }
+      # strangely enough, coercing to sparseMatrix doesn't take care of
+      # the permutation, we apply it manually.  Let's hope it's never fixed.
+      rm(dd); gc()
+      pivot <- Ch@perm
+      ch <- as(Ch,'sparseMatrix')
+      rm(Ch); gc()
+      dg <- diag(ch)[order(pivot)]**2
+      rm(ch); gc()
+      refs <- (dg < eps**(1/3))
+      refnames <- orignm[refs]
+      message(paste('***',length(refnames),'references found'))
+    } else {
+      refnames <- attr(factors,'references')
+      orignm <- unlist(lapply(names(factors),
+                              function(n) paste(n,levels(factors[[n]]),sep='.')))
     }
-    # strangely enough, coercing to sparseMatrix doesn't take care of
-    # the permutation, we apply it manually.  Let's hope it's never fixed.
-    rm(dd); gc()
-    pivot <- Ch@perm
-    ch <- as(Ch,'sparseMatrix')
-    rm(Ch); gc()
-    dg <- diag(ch)[order(pivot)]**2
-    rm(ch); gc()
-    refs <- (dg < eps**(1/3))
-    refnames <- orignm[refs]
-    message(paste('***',length(refnames),'references found'))
     # there may be references in more than one factor
     # remove all of them
     # create factor list with named levels
@@ -171,11 +183,14 @@ makeddlist <- function(factors) {
     # remove reference levels, and remove the prefix
     # find the levels
     lev <- lapply(nf,function(f) which(levels(f) %in% refnames))
-    nf <- mapply(function(f,l) factor(f,exclude=levels(f)[l]),factors,lev,SIMPLIFY=FALSE)
-    dd <- makedd.full(nf)
-    attr(dd,'keep') <- 1:length(nf[[1]])
+    nnf <- mapply(function(f,l) factor(f,exclude=levels(f)[l]),factors,lev,SIMPLIFY=FALSE)
+    dd <- makedd.full(nnf)
+    attr(dd,'keep') <- 1:length(nnf[[1]])
     attr(dd,'refnames') <- refnames
-    attr(dd,'refcnt') <- rep(1,length(refnames))
+#    attr(dd,'refcnt') <- rep(1,length(refnames))
+# find the number of occurences
+    cntlst <- unlist(lapply(refnames,function(n) lapply(nf,function(f) sum(f == n))))
+    attr(dd,'refcnt') <- cntlst[cntlst > 0]
     attr(dd,'comp') <- 1
     res <- list(dd)
     attr(res,'nm') <- orignm
@@ -247,31 +262,67 @@ cholx <- function(mat,eps=1e-6) {
 }
 
 
+
 # a function for group fixed effect lm, i.e. first complete centering
 # on category variables, then ols
 
-felm <- function(model,fl,data) {
-  # this is content of lm, more or less
-  # but with centering of the data-matrix and response
-  # (don't need to centre response to get coefficients, only
-  # to get residuals)
-  if(!is.list(fl)) stop('need factor list')
-  if(!all(is.factor(unlist(fl,recursive=FALSE)))) stop('need factor list')
+felm <- function(formula,fl,data) {
+  mf <- match.call(expand.dots = FALSE)
+
+  if(missing(fl)) {
+    # we should rather parse the formula tree
+    # find the terms involving G
+    trm <- terms(formula,special='G')
+    feidx <- attr(trm,'specials')$G-1
+    festr <- paste(labels(trm)[feidx],collapse='+')
+    if(festr == '') stop('No factors specified')
+    # remove the G-terms from formula
+    formula <- update(formula,paste('. ~ . -(',festr,')'))
+    mf[['formula']] <- formula
+
+    # then make a list of them, and find their names
+    felist <- parse(text=paste('list(',gsub('+',',',festr,fixed=TRUE),')',sep=''))
+    nm <- eval(felist,list(G=function(t) as.character(substitute(t))))
+    # replace G with identity, eval with this, and the parent frame, or with data
+    if(missing(data)) 
+      fl <- eval(felist,list(G=identity))
+    else {
+      G <- identity
+      fl <- eval(felist,data,environment())
+    }
+    names(fl) <- nm
+  } else {
+#    warning('The fl-argument is obsolete')
+  }
+
+  if(!is.list(fl)) stop('need at least one factor')
+  if(!all(is.factor(unlist(fl,recursive=FALSE)))) {
+    fl <- lapply(fl,as.factor)
+  }
   if(is.null(names(fl))) names(fl) <- paste('fe',1:length(fl),sep='')
 
-  mf <- model.frame(model,data=data,drop.unused.levels=TRUE)
+#  mf <- match.call(expand.dots = FALSE)
+  m <- match(c("formula", "data"), names(mf), 0L)
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]] <- as.name("model.frame")
+  mf <- eval(mf, parent.frame())
+
+#  mf <- model.frame(formula,data=data,drop.unused.levels=TRUE)
   mt <- attr(mf,'terms')
 
   y <- model.response(mf,'numeric')
 
 # try a sparse model matrix to save memory when removing intercept
-# though, demeanlist must be full
+# though, demeanlist must be full.  Ah, no, not much to save because
+# it won't be sparse after centering
 # we should rather let demeanlist remove the intercept, this
-# will save memory.  But we need to remove it below in x %*% beta
+# will save memory by not copying.  But we need to remove it below in x %*% beta
 # (or should we extend beta with a zero at the right place, it's only
-#  a vector)
+#  a vector, eh, is it, do we not allow matrix lhs? No.)
 #  x <- as.matrix(delete.intercept(model.Matrix(mt,mf)))
 #  x <- delete.intercept(model.matrix(mt,mf))
+
   x <- model.matrix(mt,mf)
   icpt <- 0
   icpt <- which(attr(x,'assign') == 0)
@@ -346,17 +397,17 @@ felm <- function(model,fl,data) {
 
   z$cfactor <- compfactor(fl)
   # don't use experimental findrefs
-  if(length(fl) <= 2 || TRUE) {
+  if(length(fl) <= 2) {
     numdum <- sum(unlist(lapply(fl,nlevels))) - nlevels(z$cfactor)
   } else {
-    refnames <- findrefs(fl)
-    numdum <- sum(unlist(lapply(fl,nlevels))) - length(refnames)
-    z$refnames <- refnames
+    numdum <- sum(unlist(lapply(fl,nlevels))) - length(fl) + 1
   }
   z$df <- N - p - numdum
-  s2 <- var(z$full.residuals,na.rm=TRUE)
-  sefactor <- sqrt(s2*(N - p)/z$df)
-  z$se <- sqrt(diag(inv)) * sefactor
+#  s2 <- var(z$full.residuals,na.rm=TRUE)
+#  z$s2 <- var(z$full.residuals,na.rm=TRUE)
+#  sefactor <- sqrt(z$s2*(N - p)/z$df)
+  z$sefactor <- sqrt(sum(z$full.residuals**2)/z$df)
+  z$se <- sqrt(diag(inv)) * z$sefactor
   z$tval <- z$coefficients/z$se
   z$pval <- 2*pt(abs(z$tval),z$df,lower.tail=FALSE)
   z$terms <- mt
@@ -373,8 +424,10 @@ felm <- function(model,fl,data) {
 
 
 # return a data-frame with the group fixed effects, including zeros for references
-getfe <- function(obj) {
+getfe <- function(obj,references=NULL,se=FALSE) {
 
+  attr(se,'sefactor') <- obj$sefactor
+  attr(obj$fe,'references') <- references
   R <- obj$residuals
   # then the remaining.  This is usually sufficient.
   # we could also partition differently, just do the 'comp' adjustment accordingly
@@ -392,7 +445,7 @@ getfe <- function(obj) {
 #    cat(date(),'comp dd',comp,'size',length(keep),'\n')
     Rhs <- as.vector(dummies %*% R[keep])
     names(Rhs) <- colnames(dd)
-    alpha <- findfe(dd,Rhs)
+    alpha <- findfe(dd,Rhs,se)
     alpha[,'comp'] <- comp
     res <- rbind(res,alpha)
 #    alpha
@@ -407,12 +460,12 @@ getfe <- function(obj) {
   return(res)
 }
 
-lfefile <- function(fn) {
-  base <- strsplit(getLoadedDLLs()[['lfe']][['path']],'/')[[1]]
-  scr <- paste(paste(base[1:(length(base)-2)],collapse='/'),'/exec/lfescript',sep='')
-  cmd <- paste('perl',scr,fn)
-  source(pipe(cmd,open='r'))
-}
+# lfefile <- function(fn) {
+#  base <- strsplit(getLoadedDLLs()[['lfe']][['path']],'/')[[1]]
+#  scr <- paste(paste(base[1:(length(base)-2)],collapse='/'),'/exec/lfescript',sep='')
+#  cmd <- paste('perl',scr,fn)
+#  source(pipe(cmd,open='r'))
+# }
 
 # An idea I had to multi-fe's. Could we start out by picking two factors, find
 # references there (assuming there are no more fe's.  We must at least have these
@@ -433,42 +486,42 @@ lfefile <- function(fn) {
 # Only tested with individual,firm, year fixed effects.
 # and individual,firm,shoe,year effects (some people change their shoes...)
 
-findrefs <- function(fl) {
-  stop("not working yet")
-  if(length(fl) == 1) {
-    return(levels(fl[[1]])[[which.max(rowSums(as(fl[[1]],'sparseMatrix')))]])
-  }
-  # order by decreasing number of levels
-  oo <- order(unlist(lapply(fl,nlevels)),decreasing=TRUE)
-  fl <- fl[oo]
-  refnames <- c()
-  first <- fl[[1]]
-  nextf <- 2
-  while(nextf <= length(fl)) {
-    f2 <- fl[[nextf]]
-    n2 <- names(fl)[[nextf]]
-    levels(f2) <- paste(n2,levels(f2),sep='.')
-    ft <- list(first=first)
-    ft[[n2]] <- f2
-    cf <- compfactor(ft)
-    # Now, within each component, find the f2 with most occurrences, this is a reference
-    # is there an easier way to do this?
-    ref <- unlist(tapply(f2,cf,
-                 function(fc) {
-                   fc <- factor(fc)
-                   levels(fc)[[which.max(rowSums(as(fc,'sparseMatrix')))]]
-                 }))
-    refnames <- c(refnames,ref)
-    if(nextf < length(fl)) {
-      # collapse the reference levels in f2 and drop unused levels
-      f2[f2 %in% ref] <- ref[[1]]
-      f2 <- factor(f2)
-      first <- factor(paste(first,f2,sep='.'))
-    }
-    nextf <- nextf+1
-  }
-# this may be too many references, how should we go about
-# removing unnecessary ones?
+## findrefs <- function(fl) {
+##   stop("not working yet")
+##   if(length(fl) == 1) {
+##     return(levels(fl[[1]])[[which.max(rowSums(as(fl[[1]],'sparseMatrix')))]])
+##   }
+##   # order by decreasing number of levels
+##   oo <- order(unlist(lapply(fl,nlevels)),decreasing=TRUE)
+##   fl <- fl[oo]
+##   refnames <- c()
+##   first <- fl[[1]]
+##   nextf <- 2
+##   while(nextf <= length(fl)) {
+##     f2 <- fl[[nextf]]
+##     n2 <- names(fl)[[nextf]]
+##     levels(f2) <- paste(n2,levels(f2),sep='.')
+##     ft <- list(first=first)
+##     ft[[n2]] <- f2
+##     cf <- compfactor(ft)
+##     # Now, within each component, find the f2 with most occurrences, this is a reference
+##     # is there an easier way to do this?
+##     ref <- unlist(tapply(f2,cf,
+##                  function(fc) {
+##                    fc <- factor(fc)
+##                    levels(fc)[[which.max(rowSums(as(fc,'sparseMatrix')))]]
+##                  }))
+##     refnames <- c(refnames,ref)
+##     if(nextf < length(fl)) {
+##       # collapse the reference levels in f2 and drop unused levels
+##       f2[f2 %in% ref] <- ref[[1]]
+##       f2 <- factor(f2)
+##       first <- factor(paste(first,f2,sep='.'))
+##     }
+##     nextf <- nextf+1
+##   }
+## # this may be too many references, how should we go about
+## # removing unnecessary ones?
  
-  refnames
-}
+##   refnames
+## }

@@ -6,12 +6,18 @@
   an estimation with \code{\link{felm}}.
 }
 \usage{
-getfe(obj) 
+getfe(obj,references=NULL,se=FALSE) 
 }
 
 \arguments{
-\item{obj}{object of class \code{"fe.lm"}, usually, a result of a call to
+\item{obj}{object of class \code{"felm"}, usually, a result of a call to
   \code{\link{felm}}}
+\item{references}{a vector of strings.  If there are more than two
+  factors and you have prior knowledge of what the reference levels
+  should be, use this argument, like \code{references='id.23'}.}
+\item{se}{logical.  Set to TRUE if standard errors for the group
+  effects are wanted.  This is *very* time-consuming for large problems, so
+  leave it as FALSE unless absolutely needed.}
 }
 
 \value{
@@ -29,14 +35,22 @@ the group fixed effects.  It has the columns
 }
 }
 
+\details{
+  For the case with two factors (the \code{fl}-argument to
+  \code{\link{felm}}), one reference in each connection component is
+  chosen automatically.  For three or more factors, no such easy method is known,
+  reference levels are found by analyzing the pivoted
+  Cholesky-decomposition of a slightly perturbed system.
+}
+
 \examples{
 ## create covariates
 x <- rnorm(100000)
 x2 <- rnorm(length(x))
 
 ## create individual and firm
-id <- factor(sample(20,length(x),replace=TRUE))
-firm <- factor(sample(8,length(x),replace=TRUE,prob=c(2,rep(1,7))))
+id <- factor(sample(3000,length(x),replace=TRUE))
+firm <- factor(sample(1500,length(x),replace=TRUE,prob=c(2,rep(1,1499))))
 
 ## effects
 id.eff <- rlnorm(nlevels(id))
@@ -45,22 +59,17 @@ firm.eff <- rexp(nlevels(firm))
 ## left hand side
 y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
-## make a data frame
-dset <- data.frame(y,x,x2,id,firm)
-
 ## estimate and print result
-est <- felm(y ~ x+x2,fl=list(id=id,firm=firm),data=dset)
+cat(date(),'Start lfe estimation\n')
+est <- felm(y ~ x+x2 + G(id)+G(firm))
 summary(est)
-
 ## extract the group effects
-getfe(est)
-
-## compare with an ordinary lm
-summary(lm(y ~ x+x2+id+firm-1,data=dset))
-
-## compare with lmer
+alpha <- getfe(est)
+cat(date(),'Done\n')
 \dontrun{
-if(require(lme4)) print(coef(lmer(y ~ x + x2 + (1|id) + (1|firm),data=dset)))
+cat(date(),'Compare with lm estimation\n')
+lmsum <- summary(lm(y ~ x+x2+id+firm-1))
+cat(date(),'Done\n')
 }
 }
 \keyword{regression}

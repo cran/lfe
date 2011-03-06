@@ -1,3 +1,8 @@
+# Author: Simen Gaure
+# Copyright: 2011, Simen Gaure
+# Licence: Artistic 2.0
+
+
 summary.felm <- function(object,...) {
   z <- object
   res <- list()
@@ -67,7 +72,7 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
       formatC(x$r2adj,digits=digits),'\n')
   cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
   if(length(x$fe) > 2)
-    cat('*** Standard errors are slightly too high due to more than 2 groups\n')
+    cat('*** Standard errors may be slightly wrong due to more than 2 groups\n')
   cat('\n\n')
   
 }

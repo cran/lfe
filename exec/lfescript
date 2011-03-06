@@ -65,6 +65,8 @@ if(defined($model)) {
 	    print STDERR "WARNING: model line fixed() specification overrides 'fe' line\n";
 	}
         @fe = split(/[, \+]+/,$2);
+    } else {
+        @fe = ($model =~ m/G\s*\(([^)]+)\s*\)/g);
     }
 } elsif(!defined(@covars) || !defined($resp)) {
     die "Either both covars and response must be defined, or model\n";
@@ -156,10 +158,9 @@ cf <- compfactor(factors)
 cat(date(),'There are',nlevels(cf),'connection components\\n')
 cat(date(),'Centering variables and doing OLS on centered system\\n')
 cat(date(),'Centering tolerance is',getOption('lfe.eps'),'\\n\\n')
-est <- felm($model,factors,data=tab)
-print(est)
+est <- felm($model,data=tab)
 
-#print(summary(est))
+print(summary(est))
 
 sink('coef.csv')
 print(data.frame(value=est\$coefficients, se=est\$se, row.names=names(est\$coefficients)))

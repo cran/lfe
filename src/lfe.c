@@ -1,3 +1,9 @@
+/*
+ Author: Simen Gaure
+ Copyright: 2011, Simen Gaure
+ Licence: Artistic 2.0
+*/
+
 #if defined(_WIN32) || defined(_WIN64) || defined(WIN64)
 #define WIN
 #endif
@@ -581,6 +587,7 @@ static SEXP R_conncomp(SEXP flist) {
     nlev = 0;
     for(j = 0; j < N; j++) {
       /* find the number of levels */
+      if(f->group[j] < 0) error("NAs in factor");
       if(f->group[j] > nlev)
 	nlev = f->group[j];
     }
@@ -596,6 +603,7 @@ static SEXP R_conncomp(SEXP flist) {
     /* Assign no component to them*/
     memset(vertices[i],0,sizeof(int)*factors[i]->nlevels);
   }
+
   /* Do the stuff */
   comps = Components(vertices,factors,numfac);
 
