@@ -1,0 +1,187 @@
+
+R version 2.12.2 (2011-02-25)
+Copyright (C) 2011 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(lfe)
+Loading required package: Matrix
+Loading required package: lattice
+
+Attaching package: 'Matrix'
+
+The following object(s) are masked from 'package:base':
+
+    det
+
+Loading required package: foreach
+Loading required package: iterators
+Loading required package: codetools
+Loading required package: doMC
+Loading required package: multicore
+
+Attaching package: 'multicore'
+
+The following object(s) are masked from 'package:lattice':
+
+    parallel
+
+LFE using 1 thread, set options(lfe.threads=n) to use more
+> set.seed(127)
+> x <- rnorm(2000,mean=2000)
+> x2 <- rnorm(length(x))
+> x3 <- 1.2*x + 0.9*x2 
+> x4 <- 0.8*x2 + 0.3*x3
+> ## create individual and firm
+> id <- factor(sample(12,length(x),replace=TRUE))
+> firm <- factor(sample(7,length(x),replace=TRUE))
+> 
+> # these are constant on the levels
+> x5 <- rnorm(nlevels(id))[id]
+> x6 <- rnorm(nlevels(firm))[firm]
+> ## effects
+> id.eff <- rnorm(nlevels(id))
+> firm.eff <- rnorm(nlevels(firm))
+> 
+> ## left hand side
+> y <- x + 0.25*x2 + 0.5*x3 + 0.17*x4 + 0.8*x5 -0.3*x6 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
+> 
+> ## estimate
+> summary(est <- felm(y ~ x+x2 + x3 + x4 + x5 + x6 + G(id) + G(firm)))
+
+Call:
+   felm(formula = y ~ x + x2 + x3 + x4 + x5 + x6 + G(id) + G(firm)) 
+
+Residuals:
+      Min        1Q    Median        3Q       Max 
+-3.324823 -0.679207 -0.004597  0.657543  3.178216 
+
+Coefficients:
+   Estimate Std. Error t value Pr(>|t|)    
+x        NA         NA      NA       NA    
+x2 -0.37028    0.02868  -12.91   <2e-16 ***
+x3  1.38187    0.01915   72.16   <2e-16 ***
+x4       NA         NA      NA       NA    
+x5       NA         NA      NA       NA    
+x6       NA         NA      NA       NA    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+
+Residual standard error: 1.006 on 1980 degrees of freedom
+Multiple R-squared:     1   Adjusted R-squared:     1 
+F-statistic: 1.091e+09 on 20 and 1980 DF, p-value: < 2.2e-16 
+
+
+Warning message:
+In chol.default(mat, pivot = TRUE) : matrix not positive definite
+> ## extract the group fixed effects
+> alpha <- getfe(est)
+> alpha
+           effect obs comp   fe idx
+id.1    8.2973804 173    1   id   1
+id.2   10.3512830 156    1   id   2
+id.3    8.4755936 173    1   id   3
+id.4    7.6102346 180    1   id   4
+id.5    9.1846848 151    1   id   5
+id.6    8.6583439 180    1   id   6
+id.7    9.7235674 155    1   id   7
+id.8    6.8584286 190    1   id   8
+id.9    7.4151818 166    1   id   9
+id.10   6.5671255 174    1   id  10
+id.11   7.8905231 149    1   id  11
+id.12   8.9601901 153    1   id  12
+firm.1 -2.1083142 283    1 firm   1
+firm.2 -0.7847117 283    1 firm   2
+firm.3 -1.4387535 275    1 firm   3
+firm.4 -0.6109064 289    1 firm   4
+firm.5 -3.8973480 290    1 firm   5
+firm.6  0.0000000 297    1 firm   6
+firm.7 -3.8878789 283    1 firm   7
+> summary(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + id + firm-1))
+
+Call:
+lm(formula = y ~ x + x2 + x3 + x4 + x5 + x6 + id + firm - 1)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.3248 -0.6792 -0.0046  0.6575  3.1782 
+
+Coefficients: (4 not defined because of singularities)
+      Estimate Std. Error t value Pr(>|t|)    
+x      1.65824    0.02298  72.162   <2e-16 ***
+x2     0.87340    0.02250  38.811   <2e-16 ***
+x3          NA         NA      NA       NA    
+x4          NA         NA      NA       NA    
+x5     3.02806   26.22155   0.115    0.908    
+x6     1.85698    0.08838  21.011   <2e-16 ***
+id1    6.39818   61.14432   0.105    0.917    
+id2    6.03934   40.25620   0.150    0.881    
+id3    3.47589   34.30044   0.101    0.919    
+id4    3.44953   41.56147   0.083    0.934    
+id5    5.83078   48.54909   0.120    0.904    
+id6    5.29189   48.43998   0.109    0.913    
+id7    2.45311   14.63440   0.168    0.867    
+id8    1.13886   28.06376   0.041    0.968    
+id9    5.25824   58.91058   0.089    0.929    
+id10   6.69104   78.66192   0.085    0.932    
+id11   7.71195   76.04364   0.101    0.919    
+id12        NA         NA      NA       NA    
+firm2  2.01665    0.07425  27.161   <2e-16 ***
+firm3  2.86155    0.09659  29.626   <2e-16 ***
+firm4  5.26097    0.15499  33.943   <2e-16 ***
+firm5  1.28553    0.12684  10.135   <2e-16 ***
+firm6  4.58096    0.10439  43.883   <2e-16 ***
+firm7       NA         NA      NA       NA    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+
+Residual standard error: 1.006 on 1980 degrees of freedom
+Multiple R-squared:     1,	Adjusted R-squared:     1 
+F-statistic: 1.091e+09 on 20 and 1980 DF,  p-value: < 2.2e-16 
+
+> 
+> # merge back
+> ideff <- alpha[paste('id',id,sep='.'),'effect']
+> firmeff <- alpha[paste('firm',firm,sep='.'),'effect']
+> 
+> ## verify that id and firm coefficients are 1
+> summary(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + ideff + firmeff-1),digits=8)
+
+Call:
+lm(formula = y ~ x + x2 + x3 + x4 + x5 + x6 + ideff + firmeff - 
+    1)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.3248 -0.6792 -0.0046  0.6575  3.1782 
+
+Coefficients: (2 not defined because of singularities)
+          Estimate Std. Error  t value Pr(>|t|)    
+x        1.658e+00  9.802e-05 16917.12   <2e-16 ***
+x2       8.734e-01  2.234e-02    39.10   <2e-16 ***
+x3              NA         NA       NA       NA    
+x4              NA         NA       NA       NA    
+x5      -6.738e-07  3.022e-02     0.00        1    
+x6       2.618e-08  3.439e-02     0.00        1    
+ideff    1.000e+00  2.327e-02    42.98   <2e-16 ***
+firmeff  1.000e+00  1.543e-02    64.80   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+
+Residual standard error: 1.002 on 1994 degrees of freedom
+Multiple R-squared:     1,	Adjusted R-squared:     1 
+F-statistic: 3.664e+09 on 6 and 1994 DF,  p-value: < 2.2e-16 
+
+> 

@@ -4,7 +4,8 @@
 \description{
 'felm' is used to fit linear models with multiple group fixed effects,
 similarly to lm.  It uses the Method of Alternating projections to
-sweep out multiple group effects from the normal equations.
+sweep out multiple group effects from the normal equations before
+estimating the remaining coefficients with OLS.
 
 This function is intended for use with large datasets with multiple group
 effects of large cardinality.  If dummy-encoding the group effects
@@ -65,8 +66,9 @@ summary(est)
 ## compare with lm
 summary(lm(y ~ x + x2 + id + firm-1))
 ## alternatively
-\dontrun{felm(y ~ x + x2,fl=list(id=id,firm=firm))}
-\dontrun{print(getfe(est))}
+\dontrun{felm(y ~ x + x2,fl=list(id=id,firm=firm))
+  getfe(est)
+}
 }
 \keyword{regression}
 \keyword{models}

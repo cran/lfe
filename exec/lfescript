@@ -29,7 +29,6 @@ while(<>) {
       $model = join(' ',@line);
   } elsif($cmd eq 'fe') {
     @fe = @line;
-    $useG = 0;
   } elsif($cmd eq 'out') {
     @outlist = @line;
   } elsif($cmd eq 'nofe') {
@@ -61,29 +60,16 @@ if(defined($model)) {
     if(defined(@covars) || defined($resp)) {
 	print STDERR "WARNING: model line overrides covars and response \n";
     }
-    if($model =~ s/(\s*\+\s*fixed\(\s*([^\)]+)\s*\))//) {
-	if(defined(@fe)) {
-	    print STDERR "WARNING: model line fixed() specification overrides 'fe' line\n";
-	}
-        @fe = split(/[, \+]+/,$2);
-    } elsif(!defined(@fe)) {
-        @fe = ($model =~ m/G\s*\(([^)]+)\s*\)/g);
-	$useG = 1;
-    }
 } elsif(!defined(@covars) || !defined($resp)) {
     die "Either both covars and response must be defined, or model\n";
 } else {
     $model = $resp . "~" . join('+',@covars);
 }
 
-die "ERROR: No fixed effects specified\n" if(!defined(@fe));
-
-foreach(@fe) {
-  $fe{$_} = 1;
-  push(@fespec,"$_=$_");
+if(defined(@fe)) {
+  $model .= '+G('.join(')+G(',@fe).')'
 }
 
-$factors = "list(".join(',',@fespec).")";
 
 # That's it, now, generate R-code
 print "#switch off echo for non-interactive runs\n";
@@ -107,6 +93,11 @@ require('lfe')
 # character for categories
 
 model <- formula($model)
+tm <- terms(model,specials='G')
+fefrm <- paste('~',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse='+'))
+fvars <- all.vars(parse(text=fefrm))
+
+
 filevars = c('" . join("','",@filevars) . "')
 #What are their types on input?  
 # fe's should be read as character
@@ -123,12 +114,12 @@ if($#dummies >=0) {
 }
 print "
 varnames <- all.vars(model)
-typelist <- as.list(rep('',length(filevars)))
+typelist <- vector('list',length(filevars))
 names(typelist) <- filevars
 typelist[names(typelist) %in% varnames]  <- 0
 typelist[names(typelist) %in% forcefact] <- ''
+typelist[fvars] <- ''
 ";
-
 print "
 cat(date(),'Start reading from file','$datafile\\n')
 # it takes forever to create a data.frame with a large file
@@ -136,25 +127,26 @@ cat(date(),'Start reading from file','$datafile\\n')
 # factors manually
 #tab <- data.frame(scan('$datafile',what=typelist))
 tab <- scan('$datafile',what=typelist,multi.line=FALSE)
+# drop those we don't use, @@@@@ what about merging? @@@@@
+tab <- tab[unlist(lapply(typelist,function(t) !is.null(t)))];
 cat(date(),'File read\\n')
 # convert to factors manually
 for( f in forcefact) {
   tab[[f]] <- factor(tab[[f]])
 }
-
-#As a shorthand, create variables for the categories (factors in R)
 ";
-foreach(@fe) {
-  print "$_ <- factor(tab[['$_']])\n";
-  print "tab[['$_']] <- $_\n";
-}
 
 print "
 # fake a data.frame
 #attr(tab,'row.names') <- 1:length(tab[[1]])
 class(tab) <- 'data.frame'
 attr(tab,'row.names') <- NULL
-factors <- $factors
+
+festr <- paste('list(',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse=','),')')
+factors <- local({G <- as.factor;'*'<-interaction;eval(parse(text=festr),tab,environment())})
+nm <- unlist(eval(parse(text=festr),list(G=function(t) as.character(substitute(t)))))
+names(factors) <- nm
+
 for(i in seq_along(factors)) {
   cat(date(),'There are',nlevels(factors[[i]]),names(factors)[[i]],'effects\\n')
 }
@@ -164,11 +156,7 @@ cat(date(),'There are',nlevels(cf),'connection components\\n')
 cat(date(),'Centering tolerance is',getOption('lfe.eps'),'\\n')
 cat(date(),'Centering variables and doing OLS on centered system...\\n\\n')
 ";
-if($useG) {
-    print "est <- felm($model,data=tab)\n";
-} else {
-    print "est <- felm($model,fl=factors,data=tab)\n";
-}
+print "est <- felm($model,data=tab)\n";
 
 print "
 print(summary(est))

@@ -7,7 +7,7 @@ x2 <- rnorm(length(x))
 x3 <- rexp(length(x))
 ## create individual and firm
 id <- factor(sample(15000,length(x),replace=TRUE))
-
+nlevels(id)
 ## effects
 id.eff <- rnorm(nlevels(id))
 

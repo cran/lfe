@@ -14,9 +14,10 @@ demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),threads=getOption('lfe.threads
 
 \arguments{
 \item{mtx}{matrix whose columns form vectors to be group-centred. mtx
-  may also be a list of vectors.}
+  may also be a list of vectors or matrices.}
 \item{fl}{list of factors defining the grouping structure}
-\item{icpt}{the position of the intercept, this column is removed from the result}
+\item{icpt}{the position of the intercept, this column is removed from
+  the result matrix}
 \item{eps}{a tolerance for the centering}
 \item{threads}{an integer specifying the number of threads to use}
 }
@@ -35,9 +36,17 @@ while(sqrt(sum((cy-oldy)**2)) >= eps) {
 
 
 \value{
-If \code{mtx} is a matrix, a matrix of the same shape, possibly with the
+If \code{mtx} is a matrix, a matrix of the same shape, possibly with 
 column \code{icpt} deleted.
-If \code{mtx} is a list of vectors, a list of the same length is returned.
+If \code{mtx} is a list of vectors and matrices, a list of the same
+length is returned, with the same vector and matrix-pattern, but the
+matrices have the column \code{icpt} deleted.
+}
+\note{
+In the case that the design-matrix is too large for R, i.e. with more
+than 2 billion entries, it is possible to create a list of
+column-vectors instead (provided the vector-length is smaller than 2
+billion).  \code{demeanlist} will be able to centre these vectors.
 }
 
 \examples{

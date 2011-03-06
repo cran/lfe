@@ -7,20 +7,21 @@ summary.felm <- function(object,...) {
   z <- object
   res <- list()
   res$p <- z$p
-  if(res$p == 0) {
-    return()
-  }
+#  if(res$p == 0) {
+#    return()
+#  }
   res$terms <- z$terms
   res$call <- z$call
 
   coefficients <- cbind(z$coefficients,z$se,z$tval,z$pval)
-  dimnames(coefficients) <- list(names(z$coefficients),
+  if(!is.null(coefficients))
+    dimnames(coefficients) <- list(names(z$coefficients),
                                      c('Estimate','Std. Error','t value','Pr(>|t|)'))
 
   res$coefficients <- coefficients
-  res$residuals <- z$full.residuals
+  res$residuals <- as.vector(z$full.residuals)
 
-  qres <- quantile(res$residuals)
+  qres <- quantile(res$residuals,na.rm=TRUE)
   names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
   res$qres <- qres
 
@@ -42,6 +43,7 @@ summary.felm <- function(object,...) {
   fstat <- (mss/p)/resvar
 
   pval <- pf(fstat,p,rdf,lower.tail=FALSE)
+  res$df <- c(rdf,rdf)
   res$rse <- sigma
   res$rdf <- rdf
   res$r2 <- r2
@@ -54,25 +56,29 @@ summary.felm <- function(object,...) {
 }
 
 print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
-  if(x$p == 0) {
-    cat('(No coefficients)')
-    return()
-  }
+#  if(x$p == 0) {
+#    cat('(No coefficients)')
+#    return()
+#  }
 
   cat('\nCall:\n  ',deparse(x$call),'\n\n')
   qres <- quantile(x$residuals)
+  cat('Residuals:\n')
   names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
   print(qres,digits=digits)
 
   cat('\nCoefficients:\n')
-  printCoefmat(x$coefficients,digits=digits)
-
-  cat('\nResidual standard error:',format(signif(x$rse,digits)),'on',x$rdf,'degrees of freedom\n')
-  cat('Multiple R-squared:',formatC(x$r2,digits=digits),'  Adjusted R-squared:',
-      formatC(x$r2adj,digits=digits),'\n')
-  cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
-  if(length(x$fe) > 2)
-    cat('*** Standard errors may be slightly too high due to more than 2 groups\n')
+  if(x$p == 0)
+    cat("(No coefficients)\n")
+  else {
+    printCoefmat(x$coefficients,digits=digits)
+    cat('\nResidual standard error:',format(signif(x$rse,digits)),'on',x$rdf,'degrees of freedom\n')
+    cat('Multiple R-squared:',formatC(x$r2,digits=digits),'  Adjusted R-squared:',
+        formatC(x$r2adj,digits=digits),'\n')
+    cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
+    if(length(x$fe) > 2)
+      cat('*** Standard errors may be slightly too high due to more than 2 groups\n')
+  }
   cat('\n\n')
   
 }

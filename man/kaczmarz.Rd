@@ -3,7 +3,7 @@
 \title{Solve a linear system defined by factors}
 \description{
   Uses the Kaczmarz method to solve a system of the type Dx = R, where
-  D is the matrix of dummies created from a list of factors.
+  D is the matrix of dummies created from a list of factors.  
 }
 
 \usage{
@@ -11,7 +11,7 @@ kaczmarz(fl,R,eps=getOption('lfe.eps'))
 }
 
 \arguments{
-\item{fl}{A list of arbitrary factors}
+\item{fl}{A list of arbitrary factors of the same length}
 \item{R}{numeric.  A vector of the same length as the factors}
 \item{eps}{a tolerance for the method}
 }
@@ -26,6 +26,11 @@ will be achieved.
 
 The returned value has a numeric attribute \code{"tolerance"} containing
 a measure of the accuracy of the solution.
+}
+
+\note{
+This function is used by \code{\link{getfe}}, it's quite specialized,
+but it might be useful for other purposes too.  
 }
 
 \examples{
@@ -52,7 +57,3 @@ as(f3,'sparseMatrix'), as(f4,'sparseMatrix')))
   sqrt(sum((sol - truex)^2))
 }
 
-\note{
-This function is used by \code{\link{getfe}}, it's quite specialized,
-but it might be useful for other purposes.
-}

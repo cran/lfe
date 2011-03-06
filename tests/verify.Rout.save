@@ -26,8 +26,18 @@ The following object(s) are masked from 'package:base':
 
     det
 
+Loading required package: foreach
+Loading required package: iterators
+Loading required package: codetools
+
+Attaching package: 'multicore'
+
+The following object(s) are masked from 'package:lattice':
+
+    parallel
+
 LFE using 1 thread, set options(lfe.threads=n) to use more
-> options(lfe.threads=4)
+> options(lfe.threads=2)
 > set.seed(655320)
 > x <- rnorm(20000,mean=2000)
 > x2 <- rnorm(length(x))
@@ -44,12 +54,12 @@ LFE using 1 thread, set options(lfe.threads=n) to use more
 > y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 > 
 > ## estimate
-> est <- felm(y ~ x+x2 + x3 + G(id) + G(firm))
-> summary(est)
+> summary(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm)))
 
 Call:
    felm(formula = y ~ x + x2 + x3 + G(id) + G(firm)) 
 
+Residuals:
        Min         1Q     Median         3Q        Max 
 -1.533e+00 -1.267e-09  0.000e+00  2.072e-09  1.409e+00 
 
@@ -88,11 +98,11 @@ Residuals:
 
 Coefficients:
           Estimate Std. Error t value Pr(>|t|)    
-x       1.04335742 0.00003304 31582.2   <2e-16 ***
-x2      0.30185740 0.00132788   227.3   <2e-16 ***
-x3      0.42770781 0.00131965   324.1   <2e-16 ***
-ideff   1.00000000 0.00077635  1288.1   <2e-16 ***
-firmeff 1.00000000 0.00077586  1288.9   <2e-16 ***
+x       1.04335742 0.00003305 31573.5   <2e-16 ***
+x2      0.30185740 0.00132787   227.3   <2e-16 ***
+x3      0.42770781 0.00131966   324.1   <2e-16 ***
+ideff   1.00000000 0.00076300  1310.6   <2e-16 ***
+firmeff 1.00000000 0.00076211  1312.2   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 

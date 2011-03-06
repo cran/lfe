@@ -1,5 +1,6 @@
-export(felm,getfe,demeanlist,compfactor,kaczmarz)
+export(felm,getfe,demeanlist,compfactor,kaczmarz,btrap)
 import(Matrix)
+import(foreach)
 S3method(print,felm)
 S3method(print,summary.felm)
 S3method(summary,felm)

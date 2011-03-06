@@ -1,10 +1,19 @@
-1.2-452 
+1.3-512 
+	Bootstrap standard errors with Kaczmarz, user defined estimable function
+	which defaults to something similar to what lm does.
+	Give progress report every 5 minutes.
+	Allow group interactions of the type G(id*firm).
+	Demean y together with x, improves parallelism.
+	Handle multi-collinearities in the ordinary covariates.
+
+1.2-452
 	Remove duplicate rows in the Kaczmarz method.  Different
 	convergence check, both in demeaning and Kaczmarz, using
 	convergence rate summed up to infinity.
 	
 1.2-444
 	Implemented the Kaczmarz method for solving the factor-system, made it default.	
+
 1.1-434
 	Changed the argument name 'model' of felm to 'formula', also call model.frame()
 	in the parent context, so one may get away without a data.frame.

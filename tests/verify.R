@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=4)
+options(lfe.threads=2)
 set.seed(655320)
 x <- rnorm(20000,mean=2000)
 x2 <- rnorm(length(x))
@@ -16,8 +16,7 @@ firm.eff <- rnorm(nlevels(firm))
 y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
 ## estimate
-est <- felm(y ~ x+x2 + x3 + G(id) + G(firm))
-summary(est)
+summary(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm)))
 cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
 ## extract the group fixed effects
 fe <- getfe(est)

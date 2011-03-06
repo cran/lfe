@@ -19,6 +19,9 @@ E.g. \code{nlevels(compfactor(fl))} will yield the number of
 connection components.
 }
 
+\details{
+If there are more than two factors, only the first two will be used.
+}
 \examples{
 ## create two factors
 f1 <- factor(sample(300,400,replace=TRUE))

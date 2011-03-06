@@ -51,7 +51,12 @@ The package is threaded, that is, it may use more than one cpu.  The
 number of threads is fetched upon loading the package, from the
 environment variable \env{LFE_THREADS} (or \env{OMP_NUM_THREADS}) and
 stored by \code{options(lfe.threads=n)}.  This option may be changed prior to
-calling \code{\link{felm}}, if so desired.
+calling \code{\link{felm}}, if so desired.  Note that, typically,
+\pkg{lfe} is limited by memory-bandwidth, not cpu-speed, thus fast
+memory and large cache is more important than clock-frequency. It's
+therefore also not always true that running on all available cores is
+much better than running on half of them.
+
 
 Threading is only done for the centering; the extraction of the group
 effects is not threaded. The default method for extracting the
@@ -107,7 +112,7 @@ Statistical Software Components S456942, Boston College Department of Economics.
 }
 
 \examples{
-  x <- rnorm(100)
+  x <- rnorm(1000)
   x2 <- rnorm(length(x))
   id <- factor(sample(10,length(x),replace=TRUE))
   firm <- factor(sample(3,length(x),replace=TRUE,prob=c(2,1,1)))
@@ -119,7 +124,7 @@ Statistical Software Components S456942, Boston College Department of Economics.
   est <- felm(y ~ x+x2+G(id)+G(firm)+G(year))
   summary(est)
 ## specify references manually to compare directly with lm
-  getfe(est,references=c('year.1','firm.1'),se=TRUE,method='cholesky')
+  getfe(est,se=TRUE)
 # compare with an ordinary lm
   summary(lm(y ~ x+x2+id+firm+year-1))
 }

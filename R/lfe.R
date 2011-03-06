@@ -3,6 +3,14 @@
 # Licence: Artistic 2.0
 
 .onLoad <- function(libname,pkgname) {
+  registerDoSEQ()
+  o <- options(warn=-1)
+  require('doMC',quietly=TRUE,warn.conflicts=FALSE)
+  if(!exists('registerDoMC')) {
+    require('doSMP',quietly=TRUE,warn.conflicts=FALSE)
+  }
+  options(o)
+  usePAR <- exists('registerDoMC') || exists('registerDoSMP')
   if(is.null(getOption('lfe.eps')))
     options(lfe.eps=1e-8)
   if(is.null(getOption('lfe.threads'))) {
@@ -10,9 +18,12 @@
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
     if(is.na(cr)) cr <- 1
     options(lfe.threads=cr)
-#    registerDoMC(cr)
     if(cr == 1) cat('LFE using 1 thread, set options(lfe.threads=n) to use more\n')
   }
+
+  if(!usePAR)
+    message('on multicore machines, bootstrapping will run faster if package "doMC" or "doSMP" is installed')
+
 }
 
 #   Some things in this file is done in a weird way.
@@ -26,28 +37,23 @@
 demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
                        threads=getOption('lfe.threads')) {
   if(is.null(threads)) threads <- 1
-  if(isTRUE(attr(fl,'orthogonal'))) {
-    tmp <- mtx
-    for(i in seq_along(fl)) {
-      tmp <- .Call('demeanlist',tmp,fl[[i]],as.integer(icpt),
-                   as.double(eps),as.integer(threads),PACKAGE='lfe')
-    }
-    res <- tmp
-  } else {
+  islist <- is.list(mtx)
+  if(!islist) mtx <- list(mtx)
   res <- .Call('demeanlist',
      mtx,
      as.list(fl),
      as.integer(icpt),               
      as.double(eps),
      as.integer(threads),PACKAGE='lfe')
-  }
+
+  if(!islist) res <- res[[1]]
   names(res) <- names(mtx)
   return(res)
 }
 
 compfactor <- function(fl) {
   if(length(fl) == 1) return(factor(rep(1,length(fl[[1]]))))
-  factor(.Call('conncomp',fl))
+  factor(.Call('conncomp',fl[1:2]))
 }
 
 kaczmarz <- function(fl,R,eps=getOption('lfe.eps')) {
@@ -248,22 +254,21 @@ makeddlist <- function(factors) {
 }
 
 # Do a pivoted cholesky to detect multi-collinearities
-cholx <- function(mat,eps=1e-6) {
+cholx <- function(mat,eps=1e-4) {
   N <- dim(mat)[1]
   nm <- colnames(mat)
   o <- options(warn=-1)
-  ch <- try(chol(mat))
-  if(!inherits(ch,'try-error')) return(ch)
+  ch <- try(chol(mat),silent=TRUE)
+  options(o)
+  if(!inherits(ch,'try-error') && all(diag(ch) > eps*sqrt(diag(mat)))) return(ch)
 
   ch <- try(chol(mat,pivot=TRUE))
   pivot <- attr(ch,'pivot')
-  options(o)
-  rank <- min(which(c(diag(ch),-Inf) <= eps*c(sqrt(diag(mat)[pivot]),1)))-1
-  if(rank == N) return(ch)
 
+  rank <- min(which(c(diag(ch),-Inf) <= eps*c(sqrt(diag(mat)[pivot]),1)))-1
   okcol=1:rank
-  badvars <- pivot[-okcol]
-  ok <- pivot[okcol]
+  badvars <- sort(pivot[-okcol])
+  ok <- sort(pivot[okcol])
   return(structure(chol(mat[ok,ok]),badvars=badvars))
 }
 
@@ -281,6 +286,7 @@ felm <- function(formula,fl,data) {
     trm <- terms(formula,special='G')
     feidx <- attr(trm,'specials')$G-1
     festr <- paste(labels(trm)[feidx],collapse='+')
+
     if(festr == '') stop('No factors specified')
     # remove the G-terms from formula
     formula <- update(formula,paste('. ~ . -(',festr,')'))
@@ -289,13 +295,19 @@ felm <- function(formula,fl,data) {
     # then make a list of them, and find their names
     felist <- parse(text=paste('list(',gsub('+',',',festr,fixed=TRUE),')',sep=''))
     nm <- eval(felist,list(G=function(t) as.character(substitute(t))))
-    # replace G with identity, eval with this, and the parent frame, or with data
+    # collapse them in case there's an interaction with a funny name
+    nm <- lapply(nm,paste,collapse='.')
+    
+    # replace G with as.factor, eval with this, and the parent frame, or with data
+    # allow interaction factors with '*'
+    iact <- function(a,b) interaction(a,b,drop=TRUE)
     if(missing(data)) 
-      fl <- eval(felist,list(G=identity))
+      fl <- eval(felist,list(G=as.factor,'*'=iact))
     else {
-      G <- identity
-      fl <- eval(felist,data,environment())
+      G <- as.factor
+      fl <- local({'*'<-iact;eval(felist,data,environment())})
     }
+
     names(fl) <- nm
   } else {
 #    warning('The fl-argument is obsolete')
@@ -326,24 +338,29 @@ felm <- function(formula,fl,data) {
 # will save memory by not copying.  But we need to remove it below in x %*% beta
 # (or should we extend beta with a zero at the right place, it's only
 #  a vector, eh, is it, do we not allow matrix lhs? No.)
-#  x <- as.matrix(delete.intercept(model.Matrix(mt,mf)))
-#  x <- delete.intercept(model.matrix(mt,mf))
 
   x <- model.matrix(mt,mf)
+  rm(mf)
   icpt <- 0
   icpt <- which(attr(x,'assign') == 0)
   if(length(icpt) == 0) icpt <- 0
   ncov <- ncol(x) - (icpt > 0)
   if(ncov == 0) {
     # No covariates
-    z <- list(residuals=y,fe=fl,p=0,cfactor=compfactor(fl))
+    fr <- demeanlist(y,fl)
+    z <- list(residuals=y,fe=fl,p=0,cfactor=compfactor(fl),full.residuals=fr,call=match.call())
     class(z) <- 'felm'
     return(z)
   }
   # here we need to demean things
-
-  yz <- demeanlist(y,fl)
-  xz <- demeanlist(x,fl,icpt)
+  # in due time we should write demeanlist so that
+  # it's sufficient with one call, so that y may be
+  # parallelized together with the columns of x
+  # (in a manner which avoids copying of data)
+  dm <- demeanlist(list(y=y,x=x),fl,icpt)
+  yz <- dm[[1]]
+  xz <- dm[[2]]
+  rm(dm)
   badconv <- attr(xz,'badconv') + attr(yz,'badconv')
 #  attributes(xz) <- attributes(x)
   dim(xz) <- c(nrow(x),ncov)
@@ -364,6 +381,7 @@ felm <- function(formula,fl,data) {
 
   cp <- crossprod(xz)
   ch <- cholx(cp)
+
 #  ch <- chol(cp)
 #  beta <- drop(inv %*% (t(xz) %*% yz))
   # remove multicollinearities
@@ -383,13 +401,13 @@ felm <- function(formula,fl,data) {
   if(icpt > 0) names(beta) <- colnames(x)[-icpt] else names(beta) <- colnames(x)
   z <- list(coefficients=beta,badconv=badconv)
   N <- nrow(xz)
-  p <- ncol(xz)
+  p <- ncol(xz) - length(badvars)
 
 # how well would we fit with all the dummies?
 # the residuals of the centered model equals the residuals
 # of the full model, thus we may compute the fitted values
 # resulting from the full model.
-  zfit <- xz %*% beta
+  zfit <- xz %*% ifelse(is.na(beta),0,beta)
   rm(xz)
   zresid <- yz - zfit
   rm(yz)
@@ -397,22 +415,22 @@ felm <- function(formula,fl,data) {
   z$full.residuals <- zresid
   # insert a zero at the intercept position
   if(icpt > 0) ibeta <- append(beta,0,after=icpt-1) else ibeta <- beta
-  z$residuals <- y - x %*% ibeta
+  z$residuals <- y - x %*% ifelse(is.na(ibeta),0,ibeta)
   rm(x)
   rm(y)
   gc()
 
   z$cfactor <- compfactor(fl)
 
-  if(length(fl) <= 2) {
-    numdum <- sum(unlist(lapply(fl,nlevels))) - nlevels(z$cfactor)
-  } else {
-    numdum <- sum(unlist(lapply(fl,nlevels))) - length(fl) + 1
-  }
+  numrefs <- nlevels(z$cfactor) + max(length(fl)-2,0)
+  numdum <- sum(unlist(lapply(fl,nlevels))) - numrefs
+  z$numrefs <- numrefs
+#  if(length(fl) <= 2) {
+#    numdum <- sum(unlist(lapply(fl,nlevels))) - nlevels(z$cfactor)
+#  } else {
+#    numdum <- sum(unlist(lapply(fl,nlevels))) - length(fl) + 1
+#  }
   z$df <- N - p - numdum
-#  s2 <- var(z$full.residuals,na.rm=TRUE)
-#  z$s2 <- var(z$full.residuals,na.rm=TRUE)
-#  sefactor <- sqrt(z$s2*(N - p)/z$df)
   vcvfactor <- sum(z$full.residuals**2)/z$df
   z$vcv <- inv * vcvfactor
   z$se <- sqrt(diag(z$vcv))
@@ -420,45 +438,227 @@ felm <- function(formula,fl,data) {
   z$tval <- z$coefficients/z$se
   z$pval <- 2*pt(abs(z$tval),z$df,lower.tail=FALSE)
   z$terms <- mt
-  z$model <- mf
   z$fe <- fl
   z$N <- N
   z$p <- p + numdum
+  z$xp <- p
   z$call <- match.call()
   class(z) <- 'felm'
 
   return(z)
 }
 
+# A common estimable function on the fe-coefficients
+# return an estimable function, the matrix which
+# pins a reference in each component, the one with the
+# most observations
+# if there are more than two factors, assume they don't
+# ruin identification beyond one extra reference for each such factor
+defaultef <- function(est) {
 
-getfe.kaczmarz <- function(obj,eps=getOption('lfe.eps')) {
-  v <- kaczmarz(obj$fe,obj$residuals-obj$full.residuals,eps)
-  res <- data.frame(effect=v)
-  rownames(res) <- names(v)
-  # add columns obs, comp,fe and idx
-  res[,'obs'] <- unlist(lapply(obj$fe,table))
-  # compfactor returns a factor of length N, the number
-  # of observations.  We only need parts of it
-  if(length(obj$fe) == 2) {
-    cf <- obj$cfactor
-    # find an index for each level, use its component
-    res[,'comp'] <- unlist(lapply(obj$fe, function(f) cf[match(levels(f),f)]))
+# the names of the dummies, e.g. id.4 firm.23
+  nm <- unlist(lapply(names(est$fe),function(n) paste(n,levels(est$fe[[n]]),sep='.')))
+
+# how many obervations for each level
+  obs <- unlist(lapply(est$fe,table))  
+
+  if(length(est$fe) == 2) {
+    comp <- unlist(lapply(est$fe, function(f) est$cfactor[match(levels(f),f)]))
+  } else if(length(est$fe) > 2) {
+    # we should formally assign unique component numbers for factors beyond the second
+    comp <- factor(unlist(lapply(est$fe[1:2], function(f) est$cfactor[match(levels(f),f)])))
+    exlvls <- (nlevels(comp)+1):(nlevels(comp)+1 + length(est$fe)-3)
+    comp <- c(comp,mapply(rep,exlvls,unlist(lapply(est$fe[3:length(est$fe)],nlevels))))
   } else {
-    res[,'comp'] <- 1
+    comp <- rep(1,length(obs))
   }
-  fefact <- strsplit(rownames(res),'.',fixed=TRUE)
-  res[,'fe'] <- factor(unlist(lapply(fefact,function(l) l[[1]])))
-  res[,'idx'] <- factor(unlist(lapply(fefact,function(l) paste(l[-1],collapse='.'))))
+
+  refnames <- unlist(tapply(obs,comp,function(l) names(which.max(l))))
+  refno <- match(refnames,nm)
+  refsub <- refno[comp]
+  # now v[refnames] will be the reference values
+  # we should do a v <-  v - v[refsub]
+  # but for the main components we should only do this for the
+  # factor in which the references is
+  # for the other factor we should add the reference
+  # thus we need two versions of refsub, one with NA's in the
+  # reference factor, one with NA's in the other, then we must
+  # replace NA's with zero before subtracting
+  # so which ones belong to which factor?
+  # make a factor to decide
+  # we're now only interested in the two first factors, those which define the
+  # components
+  fef <- factor(unlist(lapply(names(est$fe),function(n) rep(n,nlevels(est$fe[[n]])))))
+  # then figure out in which factor the reference is
+  rf <- sub('(^.*)\\.[^.]*$','\\1',refnames)
+  # now, create a refsubs which is the ones to be subtracted
+  # each refsub belonging to somthing else than the reference factor
+  # should be NA'ed.
+  if(length(est$fe) > 2) {
+    extra <- (length(refno)-length(est$fe)+3):length(refno)
+    sw <- c(names(est$fe)[c(2,1)],rep('.NA',length(est$fe)-2))
+  } else {
+    swap <- if(length(est$fe) == 2) c(2,1) else 1
+    sw <- names(est$fe)[swap]
+    extra <- integer(0)
+  }
+  names(sw) <- names(est$fe)
+  otherf <- sw[rf]
+  # which should we keep subtracting?  Those which are different from the
+  # the other factor, hmm, fix this test, rf is not a singleton
+  # force these components to NA, which components?
+  nosub <- fef != rf[comp]
+  refsubs <- refsub
+  refsubs[nosub] <- NA
+  # which should we add, those which are different from the reference factor
+
+  noadd <- fef != otherf[comp]
+  refsuba <- refsub
+  refsuba[noadd] <- NA
+  extrarefs <- refno[extra]
+
+  # now, what if we want zero-means on the other-factor?
+
+  # return a function doing the stuff
+  # set up a minimal environment for it
+
+  local(function(v) {
+    esum <- sum(v[extrarefs])
+    df <- v[refsubs]
+    sub <- ifelse(is.na(df),0,df)
+    df <- v[refsuba]
+    add <- ifelse(is.na(df),0,df+esum)
+    v - sub + add
+  },list(extrarefs=extrarefs,refsubs=refsubs,refsuba=refsuba))
+}
+
+btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOption('lfe.threads')) {
+  # bootstrap the stuff
+  # bootstrapping is really to draw residuals over again, i.e. to change
+  # the outcome.  Predictions of the estimated system are adjusted by
+  # drawing from the residuals. We do have PY-PXbeta, we resample it,
+  # call it nres, then let newR = (I-P)*nres, will this do the trick?
+  # it ought to do, but it's the variation conditional on the least norm
+  # solution, it's not directly relevant to effects.
+
+  if(is.null(ef)) 
+    ef <- attr(alpha,'ef')
+  else {
+    v <- ef(alpha[,'effect'])
+    if(length(v) != nrow(alpha) || isTRUE(attr(ef,'noP'))) {
+      alpha <- data.frame(effect=v)
+      rownames(alpha) <- names(v)
+    } else {
+      alpha[,'effect'] <- v
+    }
+  }
+  R <- obj$residuals-obj$full.residuals
+  j <- 0 #avoid warning from check
+  gc()
+  if(threads > 1) {
+    if(exists('registerDoMC')) {
+      registerDoMC(threads)
+    } else if(exists('registerDoSMP')) {
+      workers <- startWorkers(threads)
+      on.exit(stopWorkers(workers))
+      registerDoSMP(workers)
+      # load the dll for kaczmarz in the workers
+      dll <- getNativeSymbolInfo('kaczmarz','lfe')[['package']][['name']]
+      foreach(j=1:threads) %dopar% {
+        library.dynam(dll,package='lfe')
+      }
+    } else {
+      warning('No parallel backend available, try loading package "doMC" or "doSMP" to speed up bootstrapping')
+    }
+  } else {
+    registerDoSEQ()
+  }
+  # get somewhat larger chunks
+  thr <- 2*threads-1
+  blk <- N %/% thr
+  nsamp <- blk * thr
+  rsamp <- matrix(0,length(R),thr)
+  # do we really need Rthr?  Don't we get the statistically same result without?
+  Rthr <- rep(R,thr)
+  # we should really compute new residuals for new betas, now we assume
+  # the beta's will be unchanged.  Is there some way we may incorporate
+  # their variation without doing the estimation?
+  sefact <- sqrt(var(obj$residuals)/var(obj$residuals-obj$full.residuals) * obj$df/obj$N)
+  sm <- mean(obj$full.residuals) # ought to be zero
+  smpdraw <- sefact*(as.vector(obj$full.residuals)-sm)#+sm
+
+  vsum <- vector('double',nrow(alpha))
+  vsq <-  vector('double',nrow(alpha))
+
+  for(i in 1:blk) {
+    rsamp[,] <- sample(smpdraw,length(R)*thr,replace=TRUE)
+    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rthr
+    # we should have a parallel kaczmarz, we don't yet
+    # so use foreach
+    ke <- foreach::foreach(j=1:thr,.combine=cbind,.export=c('kaczmarz','ef')) %dopar% {
+      ke <- kaczmarz(obj$fe,newR[,j],eps)
+      # here we may contrast the coefficients, but how?
+      # zero-mean, pinning to zero?
+      # let user decide with an estimable function ef
+      if(!is.null(ef)) ke <- ef(ke)
+      ke
+    }
+    # in case thr==1:
+    dim(ke) <- c(nrow(alpha),thr)
+    vsum <- vsum + rowSums(ke)
+    vsq <- vsq + rowSums(ke**2)
+  }
+  alpha[,'se'] <- sqrt(vsq/nsamp - (vsum/nsamp)**2)
+  alpha
+}
+
+getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef=defaultef(obj),bN=100) {
+
+  R <- obj$residuals-obj$full.residuals
+  v <- kaczmarz(obj$fe,R,eps)
+  nm <- names(v)
+  if(!is.null(ef)) v <- ef(v)
+  if(isTRUE(attr(ef,'noP')) || length(v) != length(nm)) {
+    res <- data.frame(effect=v)
+    rownames(res) <- names(v)
+  } else {
+    fegrp <- factor(unlist(lapply(names(obj$fe),function(n) rep(n,nlevels(obj$fe[[n]])))))
+    feidx <- factor(unlist(lapply(names(obj$fe),function(n) levels(obj$fe[[n]]))))
+    nm <- paste(fegrp,feidx,sep='.')
+    obs <- unlist(lapply(obj$fe,table))
+    if(length(obj$fe) == 2) {
+      comp <- unlist(lapply(obj$fe, function(f) obj$cfactor[match(levels(f),f)]))
+    } else if(length(obj$fe) > 2) {
+      # we should formally assign unique component numbers for factors beyond the second
+      comp <- factor(unlist(lapply(obj$fe[1:2], function(f) obj$cfactor[match(levels(f),f)])))
+      exlvls <- (nlevels(comp)+1):(nlevels(comp)+1 + length(obj$fe)-3)
+      comp <- c(comp,mapply(rep,exlvls,unlist(lapply(obj$fe[3:length(obj$fe)],nlevels))))
+    } else {
+      comp <- rep(1,length(obs))
+    }
+    res <- data.frame(effect=NA,se=NA,obs=obs,comp=factor(comp),fe=fegrp,idx=feidx)
+    if(!se) res[,'se'] <- NULL
+
+    res[,'effect'] <- v
+    rownames(res) <- nm
+  }
+
+  attr(res,'ef') <- ef
+  if(se) {
+    res <- btrap(res,obj,bN,ef=ef,eps=eps)
+  }
   res
 }
 
 # return a data-frame with the group fixed effects, including zeros for references
-getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz') {
+getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef=defaultef(obj),bN=100) {
 
   if(method == 'kaczmarz') {
-    if(se) warning('The Kaczmarz method does not yield standard errors')
-    if(!is.null(references)) warning('specified references are ignored with the Kaczmarz method')
-    return(getfe.kaczmarz(obj))
+    if(!is.null(references))
+       warning('use estimable function (ef) instead of references in the Kaczmarz method')
+    if(!is.null(ef) && !is.function(ef))
+      stop('ef must be a function when using the Kaczmarz method')
+    return(getfe.kaczmarz(obj,se,ef=ef,bN=bN))
   }
   if(method != 'cholesky') stop('method must be either kaczmarz or cholesky')
   attr(se,'sefactor') <- obj$sefactor
