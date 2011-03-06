@@ -61,13 +61,17 @@ head(alpha)
 ## bootstrap standard errors
 head(btrap(alpha,est))
 
-## bootstrap som differences
-ef <- function(v) {
+## bootstrap some differences
+ef <- function(v,addnames) {
   w <- c(v[2]-v[1],v[3]-v[2],v[3]-v[1])
-  names(w) <-c('id2-id1','id3-id2','id3-id1')
+  if(addnames) {
+     names(w) <-c('id2-id1','id3-id2','id3-id1')
+     attr(w,'extra') <- list(note=c('line1','line2','line3'))
+  }
   w
 }
-attr(ef,'noP') <- TRUE
-head(btrap(alpha,est,ef=ef))
+# check that it's estimable
+lfe:::is.estimable(ef,est$fe)
 
+head(btrap(alpha,est,ef=ef))
 }

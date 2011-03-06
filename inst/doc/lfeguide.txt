@@ -1,11 +1,5 @@
-The lfe R-package is installed as any R-package.  It depends on the
-package 'Matrix'.
-
-
-R CMD INSTALL lfe_1.0.tar.gz
-(possibly with R CMD INSTALL -l [install dir] lfe_...
- if there's no default, or you want to install elsewhere).
-It may also be installed from CRAN with the R-command install.packages('lfe')
+The lfe R-package is installed as any R-package from 'cran' 
+with the R-command install.packages('lfe')
 
 In the R-package, in the subdirectory exec (e.g. in
 /usr/lib64/R/library/lfe/exec or /usr/local/lib64/R/library/lfe/exec
@@ -20,6 +14,7 @@ vars x x2 year id firm y ife ffe yfe
 model y ~ x + x2 + year + G(id)+G(firm)
 dummy year
 #nofe
+#se
 merge
 ----cut----
 
@@ -31,7 +26,7 @@ use them.
 
 The 'model' line specifies the left-hand side and the right-hand side
 as an R-style model specification.  Note that the fixed effects are
-included here within the fixed() operator.  Any number of fixed
+included here within the G() operator.  Any number of fixed
 effects may be used, but currently identification in the case of more
 than two fixed effects are not very well understood. In the example,
 the 'year' variable could in principle be included as a fixed effect,
@@ -41,7 +36,7 @@ errors.
 
 
 The 'dummy' line specifies which variables should be coded as dummies, a
-reference is automatically removed.  In the example you'll get variables
+reference is automatically removed.  In the example, you'll get variables
 like year1998, year1999, year2000 or whatever time-period you've got.
 
 
@@ -53,6 +48,10 @@ fixed effects are implicitly present, even though there should be an
 unknown number of references, so the degrees of freedom aren't entirely
 correct).
 
+The 'se' line (commented out above) is included if you want standard errors
+on the fixed effects.  These are bootstrapped, and as such very time-consuming
+to compute.  Avoid if you don't need.
+
 The line 'merge' will cause the fixed effects to be merged into the original
 data-set and output as a file 'fe-merged.csv' for further analysis.
 
@@ -63,8 +62,7 @@ In case fixed effects are requested, one file for each fixed effect is
 created.  In the example, 'fe-id.csv' and 'fe-firm.csv'.  The output-files
 contain a header, like 'id  effect  comp  obs'.  I.e. the id, the
 estimated coefficient, its component number in the connection graph, and
-the number of observations for this effect.  Standard errors for the
-fixed effects are not computed.
+the number of observations for this effect.  
 
 Note that fixed effects from different components are not directly comparable
 because there's a separate reference value in each component.
@@ -86,25 +84,24 @@ R CMD BATCH test.R
 
 Standard output is redirected to the file 'test.Rout'.
 
+At the Frisch-centre (with mostly Windows/stata-users) we have set up
+a server with home-directories for the users.  They may drop their
+data-file in a 'data'-folder and their specification file in a
+'submit'-folder, and then the computation is automatically forwarded
+to our compute-cluster batch-system.
+
 Notes:
 The centering on the means is done separately for each covariate.  When you've
 set the OMP_NUM_THREADS environment variable, the lfe-package picks this up
 and sends each covariate to a separate cpu.  Thus the centering is speeded up.
 
 If you request estimation of fixed effects, there's nothing in lfe as
-such which uses more than one cpu for this task.  However, lfe uses a
-sparse-solver in package Matrix which uses the BLAS-library shipped
-with R.  It is possible to install R with a parallell
-BLAS/LAPACK-library (such as AMD's ACML, or other high-performance
-libraries).  With such a BLAS, even the estimation of fixed effects
-will run parts of its computations in parallel.
+such which uses more than one cpu for this task.   On the other hand,
+this is done with the Kaczmarz-method which is very fast when the
+system is as sparse as is typical for such data.
 
 Even though the paper prescribes a method in which each component of
 the fixed-effects may be estimated separately, lfe does not currently
-implement this scheme.  I.e. the huge block-diagonal matrix is not
-split into blocks.  The reason for this is twofold.  In practice
-there's a main block with 95% or more of the data, thus it's usually
-not very much to gain.  The other reason is that R is quite
-inefficient for very large objects, so it turned out that the
-splitting of the matrix (a thorougly trivial operation) required *far*
-more time than the actual computation.  Life is weird.
+implement this scheme.  However, it has a reference in each component,
+so the resulting coefficients will be estimable.
+

@@ -7,7 +7,7 @@
   an estimation with \code{\link{felm}}.
 }
 \usage{
-getfe(obj,references=NULL,se=FALSE,method='kaczmarz',ef=defaultef(obj),bN=100) 
+getfe(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100) 
 }
 
 \arguments{
@@ -24,15 +24,25 @@ getfe(obj,references=NULL,se=FALSE,method='kaczmarz',ef=defaultef(obj),bN=100)
   'kaczmarz'.  The latter is often very fast and consumes little memory, it will yield the smallest norm
   solution.
   }
-\item{ef}{function. A function of one variable, a vector of group fixed
-  effects. This function should be estimable and is used to transform
-  the raw-coefficients from the kaczmarz-method.  The default value is
-  one which picks one reference in each component.  Can be set to NULL
-  to yield the minimal-norm solution from the kaczmarz-method.  Other
-  functions may be added later, upon request.}
+
+\item{ef}{function. A function of two variables, a vector of group fixed
+  effects and a logical, i.e. \code{function(v,addnames)}.
+  This function should be estimable and is used to transform
+  the raw-coefficients \code{v} from the kaczmarz-method.  The second variable
+  indicates whether the function must return a named vector (if this is
+  FALSE, one may skip the names, saving memory allocations and time).
+
+  The default function is one which picks one reference in each
+  component.
+
+  Can be set to \code{ef="ln"} to yield the minimal-norm solution from the
+  kaczmarz-method.
+  
+  It can also be set to \code{ef="zm"} to get zero means (and intercept)
+  in one of the factors, and a reference in the other.}
+
 \item{bN}{integer.  The number of bootstrap runs when standard errors
-  are requested}
-}
+  are requested} }
 
 \value{
 The function \code{getfe} computes and returns a data frame containing
@@ -50,9 +60,7 @@ the group fixed effects.  It has the columns
 }
 
 With the Kaczmarz-method it's possible to specify a different estimable
-function. If the function returns a vector of a different length, or the
-function has the attribute 'noP' set to TRUE, only the first two columns
-are returned.
+function. 
 }
 
 \details{
@@ -99,14 +107,15 @@ summary(est)
 ## extract the group effects
 alpha <- getfe(est,se=TRUE)
 
-## find some differences, with standard errors
-head(alpha,3)
-ef <- function(v) {
-  w <- c(v[2]-v[1],v[3]-v[2],v[3]-v[1])
-  names(w) <-c('id2-id1','id3-id2','id3-id1')
+## find some estimable functions, with standard errors, we don't get
+## names so we must precompute some numerical indices in ef
+idx <- match(c('id.5','id.6','firm.11','firm.12'),rownames(alpha))
+alpha[idx,]
+ef <- function(v,addnames) {
+  w <- c(v[idx[[2]]]-v[idx[[1]]],v[idx[[4]]]+v[idx[[1]]],v[idx[[4]]]-v[idx[[3]]])
+  if(addnames) names(w) <-c('id6-id5','f12+id5','f12-f11')
   w
 }
-attr(ef,'noP') <- TRUE
 getfe(est,ef=ef,se=TRUE)
 
 \dontrun{

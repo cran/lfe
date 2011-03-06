@@ -26,17 +26,6 @@ The following object(s) are masked from 'package:base':
 
     det
 
-Loading required package: foreach
-Loading required package: iterators
-Loading required package: codetools
-
-Attaching package: 'multicore'
-
-The following object(s) are masked from 'package:lattice':
-
-    parallel
-
-LFE using 1 thread, set options(lfe.threads=n) to use more
 > options(lfe.threads=4)
 > set.seed(6553)
 > # single fixed effect, special case which we risk destroying when we optimize, so check it

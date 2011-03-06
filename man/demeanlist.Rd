@@ -9,7 +9,7 @@
 }
 
 \usage{
-demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),threads=getOption('lfe.threads'))
+demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),threads=getOption('lfe.threads'),quiet=FALSE)
 }
 
 \arguments{
@@ -20,6 +20,8 @@ demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),threads=getOption('lfe.threads
   the result matrix}
 \item{eps}{a tolerance for the centering}
 \item{threads}{an integer specifying the number of threads to use}
+\item{quiet}{logical. If \code{FALSE}, make progress reports (whenever a
+  vector is centered, but not more often than every 5 minutes)}
 }
 
 \details{
@@ -59,10 +61,10 @@ fl <- list(g1=factor(sample(2,nrow(mtx),replace=TRUE)),
 
 ## centre on both means and print result
 mtx0 <- demeanlist(mtx,fl)
-print(cbind(mtx0,g1=fl[[1]],g2=fl[[2]],comp=compfactor(fl)))
+cbind(mtx0,g1=fl[[1]],g2=fl[[2]],comp=compfactor(fl))
 
-\dontrun{for(i in 1:ncol(mtx0))
+for(i in 1:ncol(mtx0))
    for(n in names(fl))
     cat('col',i,'group',n,'level sums:',tapply(mtx0[,i],fl[[n]],mean),'\n')
-}
+
 }

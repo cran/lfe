@@ -8,6 +8,7 @@ $merge = 0;
 $collect = 1;
 $tol = 0;
 $itsbig = 0;
+$bN = 0;
 while(<>) {
   chomp($_);
   # strip comments
@@ -29,6 +30,9 @@ while(<>) {
       $model = join(' ',@line);
   } elsif($cmd eq 'fe') {
     @fe = @line;
+  } elsif($cmd eq 'se') {
+      $bN = 0 + shift(@line);
+      if($bN == 0) {$bN = 100;}
   } elsif($cmd eq 'out') {
     @outlist = @line;
   } elsif($cmd eq 'nofe') {
@@ -203,7 +207,13 @@ print "
 est <- est[c('fe','residuals','refnames','full.residuals','cfactor')]
 invisible(gc())
 class(est) <- NULL
-fes <- getfe(est)
+";
+if($bN > 0) {
+    print "fes <- getfe(est,se=TRUE,bN=$bN)\n";
+} else {
+    print "fes <- getfe(est)\n";
+}
+print "
 rm(est)
 invisible(gc())
 cat(date(),'Fixed effects found; just doing some bookkeeping now...\\n')
@@ -221,7 +231,13 @@ for(nm in levels(fes[,'fe'])) {
   fn <- paste('fe-',nm,'.csv',sep='')  
   fr[,nm] <- fr[,'idx']
   rownames(fr) <- fr[,nm]
-  write.table(fr[,c(nm,'effect','comp','obs')],file=fn,quote=FALSE,row.names=FALSE)
+";
+if($bN > 0) {
+    print "write.table(fr[,c(nm,'effect','se','comp','obs')],file=fn,quote=FALSE,row.names=FALSE)\n";
+} else {
+    print "write.table(fr[,c(nm,'effect','comp','obs')],file=fn,quote=FALSE,row.names=FALSE)\n";
+}
+print "
   frms[[nm]] <- fr
   cat(date(),'FE written to',fn,'\\n')      
 }

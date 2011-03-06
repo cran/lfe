@@ -1,15 +1,29 @@
+1.3-572
+	Fixed a memory allocation bug in the C-code, use malloc(), not Calloc() in threads.
+	Detect number of cores at load (for unix'es that is, don't know how to do on windows).
+        Made kaczmarz parallel, much better than the silly foreach-stuff.  Needs cleanup of C-code.
+	Tried various methods for getting the right variance for the bootstrap.  Seems to work now
+	Implemented a zero-mean estimable function in efactory(obj,opt='zm') and a 'zm2'.
+	Added an is.estimable() function to check user-written functions (and my own) for estimability.
+	
 1.3-512 
-	Bootstrap standard errors with Kaczmarz, user defined estimable function
-	which defaults to something similar to what lm does.
+	Bootstrap standard errors with Kaczmarz, user defined
+	estimable function which defaults to something similar to what
+	lm does.
+
 	Give progress report every 5 minutes.
+
 	Allow group interactions of the type G(id*firm).
+
 	Demean y together with x, improves parallelism.
+
 	Handle multi-collinearities in the ordinary covariates.
 
 1.2-452
-	Remove duplicate rows in the Kaczmarz method.  Different
-	convergence check, both in demeaning and Kaczmarz, using
-	convergence rate summed up to infinity.
+	Remove duplicate rows in the Kaczmarz method.  
+
+	Different convergence check, both in demeaning and Kaczmarz,
+	using convergence rate summed up to infinity.
 	
 1.2-444
 	Implemented the Kaczmarz method for solving the factor-system, made it default.	

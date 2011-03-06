@@ -63,15 +63,19 @@ effects is not threaded. The default method for extracting the
 group coefficients is the iterative Kaczmarz-method, its tolerance
 is also the \code{lfe.eps} option.
 
+Bootstrapping standard errors is threaded if one installs the suggested
+package \pkg{doMC} (or \pkg{doSMP} on Windows).
+
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
 levels (the \code{\link{felm}} takes about 50 minutes on 8 cpus, the
-\code{\link{getfe}} takes 5 minutes).  It's also possible
-to use the sparse Cholesky solver of package \pkg{Matrix}, which relies heavily on the
-blas-library.  It's thus strongly recommended to link an optimized blas
-into R (such as 'goto', 'atlas', 'acml' or 'mkl'). With this method,
-standard errors may also be retrieved, though at a substantial cost in
-computing time.
+\code{\link{getfe}} takes 5 minutes).
+
+It's also possible to use the sparse Cholesky solver of package
+\pkg{Matrix}, which relies heavily on the blas-library.  It's then
+strongly recommended to link an optimized blas into R (such as 'goto',
+'atlas', 'acml' or 'mkl'). With this method, standard errors may also be
+retrieved, though at a substantial cost in computing time.
 
 The package will work with any positive number of grouping factors, but if
 more than two, their interpretation is in general not well understood.
@@ -115,15 +119,15 @@ Statistical Software Components S456942, Boston College Department of Economics.
   x <- rnorm(1000)
   x2 <- rnorm(length(x))
   id <- factor(sample(10,length(x),replace=TRUE))
-  firm <- factor(sample(3,length(x),replace=TRUE,prob=c(2,1,1)))
-  year <- factor(sample(10,length(x),replace=TRUE,prob=c(2,rep(1,9))))
+  firm <- factor(sample(3,length(x),replace=TRUE,prob=c(2,1.5,1)))
+  year <- factor(sample(10,length(x),replace=TRUE,prob=c(2,1.5,rep(1,8))))
   id.eff <- rnorm(nlevels(id))
   firm.eff <- rnorm(nlevels(firm))
   year.eff <- rnorm(nlevels(year))
   y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + year.eff[year] + rnorm(length(x))
   est <- felm(y ~ x+x2+G(id)+G(firm)+G(year))
   summary(est)
-## specify references manually to compare directly with lm
+
   getfe(est,se=TRUE)
 # compare with an ordinary lm
   summary(lm(y ~ x+x2+id+firm+year-1))

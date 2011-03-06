@@ -26,19 +26,6 @@ The following object(s) are masked from 'package:base':
 
     det
 
-Loading required package: foreach
-Loading required package: iterators
-Loading required package: codetools
-Loading required package: doMC
-Loading required package: multicore
-
-Attaching package: 'multicore'
-
-The following object(s) are masked from 'package:lattice':
-
-    parallel
-
-LFE using 1 thread, set options(lfe.threads=n) to use more
 > options(lfe.threads=4)
 > set.seed(655318)
 > x <- rnorm(500)
