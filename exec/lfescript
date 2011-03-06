@@ -1,0 +1,254 @@
+#!/usr/bin/perl
+$wantse = 0;
+$nofe = 0;
+$savecomp = 0;
+$analyze = 0;
+$complim = 0;
+$merge = 0;
+$collect = 1;
+$tol = 0;
+$itsbig = 0;
+while(<>) {
+  chomp($_);
+  # strip comments
+  s/#.*$//;
+  @line = split;
+  next if($#line == -1);
+  $cmd = shift @line;
+  if($cmd eq 'file') {
+    $datafile = shift @line;
+  } elsif($cmd eq 'vars') {
+    @filevars = @line;
+  } elsif($cmd eq 'dummy') {
+      @dummies = @line;
+  } elsif($cmd eq 'response') {
+    $resp = shift @line;
+  } elsif($cmd eq 'covars') {
+    @covars = @line;
+  } elsif ($cmd eq 'model') {
+      $model = join(' ',@line);
+  } elsif($cmd eq 'fe') {
+    @fe = @line;
+  } elsif($cmd eq 'out') {
+    @outlist = @line;
+  } elsif($cmd eq 'nofe') {
+      $nofe = 1;
+  } elsif($cmd eq 'savecomp') {
+      $savecomp = 1;
+  } elsif($cmd eq 'analyze') {
+      $analyze = 1;
+  } elsif($cmd eq 'merge') {
+      $merge = 1;
+  } elsif($cmd eq 'complim') {
+      $complim = 0+shift(@line);
+  } elsif($cmd eq 'splitcomp') {
+      $collect = 0;
+  } elsif($cmd eq 'se') {
+      $wantse = 0; # disabled due to lack of good algorithms
+  } elsif($cmd eq 'itsbig') {
+      $itsbig = 1;
+  } elsif($cmd eq 'tol') {
+      $tol = shift(@line);
+  } else {
+    die "Unknown line starting with $cmd";
+  }
+}
+
+# either covars and response must be specified
+# or model
+if(defined($model)) {
+    if(defined(@covars) || defined($resp)) {
+	print STDERR "WARNING: model line overrides covars and response \n";
+    }
+    if($model =~ s/(\s*\+\s*fixed\(\s*([^\)]+)\s*\))//) {
+	if(defined(@fe)) {
+	    print STDERR "WARNING: model line fixed() specification overrides 'fe' line\n";
+	}
+        @fe = split(/[, \+]+/,$2);
+    }
+} elsif(!defined(@covars) || !defined($resp)) {
+    die "Either both covars and response must be defined, or model\n";
+} else {
+    $model = $resp . "~" . join('+',@covars);
+}
+
+die "ERROR: No fixed effects specified\n" if(!defined(@fe));
+
+foreach(@fe) {
+  $fe{$_} = 1;
+  push(@fespec,"$_=$_");
+}
+
+$factors = "list(".join(',',@fespec).")";
+
+# That's it, now, generate R-code
+print "#switch off echo for non-interactive runs\n";
+print "if(!interactive()) options(echo=FALSE)\n";
+
+print "
+# show warnings as they occur
+oldopts <- options(warn=1)
+cat('******* This is the LFE software at the Frisch Centre
+******* estimating linear models with multiple fixed effects.
+******* By courtesy of Simen Gaure, 2010.  Have a nice day!\\n\\n')
+";
+if($tol > 0) {print "options(lfe.eps=$tol)\n";}
+print "
+require('lfe')
+
+
+# read the datafile, with correct types, numeric for covariates,
+# character for categories
+
+model <- formula($model)
+filevars = c('" . join("','",@filevars) . "')
+#What are their types on input?  
+# fe's should be read as character
+# covars and response as numeric
+# unused as character
+# also, those in array @dummies should be textual
+# so that they're coerced to factor
+# we know the fe's, and response, we must figure out the covars
+# used in model.  It should be parsed in R
+";
+print "forcefact=c()\n";
+if($#dummies >=0) {
+  print "forcefact = c('" .join("','",@dummies) . "')\n";
+}
+print "
+varnames <- all.vars(model)
+typelist <- as.list(rep('',length(filevars)))
+names(typelist) <- filevars
+typelist[names(typelist) %in% varnames]  <- 0
+typelist[names(typelist) %in% forcefact] <- ''
+";
+
+print "
+cat(date(),'Start reading from file','$datafile\\n')
+# it takes forever to create a data.frame with a large file
+# we stick to a list() from scan, but we convert the
+# factors manually
+#tab <- data.frame(scan('$datafile',what=typelist))
+tab <- scan('$datafile',what=typelist,multi.line=FALSE)
+# convert to factors manually
+for( f in forcefact) {
+  tab[[f]] <- factor(tab[[f]])
+}
+# fake a data.frame
+attr(tab,'row.names') <- 1:length(tab[[1]])
+class(tab) <- 'data.frame'
+cat(date(),'File read\\n')
+#As a shorthand, create variables for the categories (factors in R)
+";
+foreach(@fe) {
+  print "$_ <- factor(tab[,'$_'])\n";
+  print "tab[,'$_'] <- $_\n";
+}
+
+
+print "
+factors <- $factors
+for(i in seq_along(factors)) {
+  cat(date(),'There are',nlevels(factors[[i]]),names(factors)[[i]],'effects\\n')
+}
+
+cf <- compfactor(factors)
+cat(date(),'There are',nlevels(cf),'connection components\\n')
+cat(date(),'Centering variables and doing OLS on centered system\\n')
+cat(date(),'Centering tolerance is',getOption('lfe.eps'),'\\n\\n')
+est <- felm($model,factors,data=tab)
+print(est)
+
+#print(summary(est))
+
+sink('coef.csv')
+print(data.frame(value=est\$coefficients, se=est\$se, row.names=names(est\$coefficients)))
+sink(NULL)
+cat(date(),'Coefficients written to coef.csv\\n')
+";
+if($savecomp) {
+  print "
+  fr <- data.frame(comp=cf,factors)
+  for(i in seq_along(factors)) {
+    tfr <- unique(fr[,c(1,i+1)])
+    fn <- paste('comp-',names(factors)[[i]],'.csv',sep='')
+    write.table(tfr,file=fn,row.names=FALSE,quote=FALSE)    
+    cat(date(),'Components written to file',fn,'\\n')
+  }
+
+  ";
+}
+
+if($nofe) {
+  print "cat(date(),'Fixed effects not requested, finishing\\n')
+  options(oldopts)
+  if(!interactive()) quit('no')";
+  exit;
+}
+
+print "cat(date(),'Continuing with finding fixed effects\\n')";
+
+print "
+
+# So, that's it, if we're not interested in finding the
+# fixed effects.  But if we are, we must pick up the
+# residuals for the full model, i.e. use est to predict
+# non-centered Y from non-centered X and find the residuals.
+
+# We can't use predict directly since we've messed around
+# with the intercept.  We do it manually
+
+# We need to save some memory by ditching the large parts of est
+# (the qr and stuff, keep only what's needed)
+est <- est[c('fe','residuals','refnames')]
+invisible(gc())
+class(est) <- NULL
+fes <- getfe(est,tab)
+rm(est)
+invisible(gc())
+cat(date(),'Fixed effects found; just doing some bookkeeping now...\\n')
+
+";
+
+print "
+
+# split the frame into categories
+frms <- list()
+for(nm in levels(fes[,'fe'])) {
+
+  whch <- which(fes[,'fe'] == nm)
+  fr <- fes[whch,]
+  fn <- paste('fe-',nm,'.csv',sep='')  
+  fr[,nm] <- fr[,'idx']
+  rownames(fr) <- fr[,nm]
+  write.table(fr[,c(nm,'effect','comp','obs')],file=fn,quote=FALSE,row.names=FALSE)
+  frms[[nm]] <- fr
+  cat(date(),'FE written to',fn,'\\n')      
+}
+";
+
+
+
+if($merge) {
+ print "
+# stuff it back into the dataset
+
+cat(date(),'Doing some more bookkeeping, i.e. merging...\\n')
+
+tab[,'comp'] <- cf
+for(f in names(frms)) {
+   fr <- frms[[f]]
+   effnam <- paste(f,'.eff',sep='')
+   tab[,effnam] <- fr[tab[,f],'effect']
+}
+
+write.table(tab,'fe-merged.csv',quote=FALSE,row.names=FALSE)
+cat(date(),'Merged dataset written to fe-merged.csv\\n')
+";
+}
+
+print "
+cat(date(),'Computation done\\n')
+options(oldopts)
+if(!interactive()) quit('no')
+";

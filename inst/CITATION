@@ -1,0 +1,12 @@
+citHeader("To cite package 'lfe' in publications use:")
+if(!exists("meta") || is.null(meta)) meta <- packageDescription("lfe")
+year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date)
+
+vers <- paste("R package version", meta$Version)
+
+citEntry(entry="Manual",
+	title="lfe: Linear Fixed Effecst",
+	author=as.person("Simen Gaure"),
+	year=year,
+	note=vers,
+	textVersion=paste("Simen Gaure (",year,") lfe: Linear Fixed Effects. ",vers,".",sep=""))

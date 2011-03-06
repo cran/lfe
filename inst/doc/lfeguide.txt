@@ -1,0 +1,109 @@
+The lfe R-package is installed as any R-package.  It depends on the
+package 'Matrix'.
+
+
+R CMD INSTALL lfe_1.0.tar.gz
+(possibly with R CMD INSTALL -l [install dir] lfe_...
+ if there's no default, or you want to install elsewhere).
+
+In the R-package, in the subdirectory exec (e.g. in
+/usr/lib64/R/library/lfe/exec or /usr/local/lib64/R/library/lfe/exec
+or wherever your installation keep the packages, it's displayed during
+installation) there's a perl-script lfescript.  It take as an
+input-file a simple specification and creates an R-script which uses
+the lfe-package.  Here's a typical input-file:
+
+----cut test.lfe ----
+file smalldata.csv
+vars x x2 year id firm y ife ffe yfe
+model y ~ x + x2 + year + fixed(id+firm)
+dummy year
+#nofe
+merge
+----cut----
+
+Most of this is self-explanatory, there's a file-name, it's supposed to be
+a pure space-separated data-file (without any header with variable names).
+
+The 'vars' line must list all the variables in the file, even if you don't
+use them.  
+
+The 'model' line specifies the left-hand side and the right-hand side
+as an R-style model specification.  Note that the fixed effects are
+included here within the fixed() operator.  Any number of fixed
+effects may be used, but currently identification in the case of more
+than two fixed effects are not very well understood. In the example,
+the 'year' variable could in principle be included as a fixed effect,
+but for variables with few values it's usually wiser to include them
+as dummies among the ordinary covariates, then you also get standard
+errors.
+
+
+The 'dummy' line specifies which variables should be coded as dummies, a
+reference is automatically removed.  In the example you'll get variables
+like year1998, year1999, year2000 or whatever time-period you've got.
+
+
+The 'nofe' line (commented out above) is used if one does not need to
+compute the fixed effects, only compensate for them in the other
+covariates.  In case of 3 or more fixed effects, the standard errors
+provided will be slightly wrong (because it is assumed that all the
+fixed effects are implicitly present, even though there should be an
+unknown number of references, so the degrees of freedom aren't entirely
+correct).
+
+The line 'merge' will cause the fixed effects to be merged into the original
+data-set and output as a file 'fe-merged.csv' for further analysis.
+
+Output from the program is both on standard-output (the covariate estimates)
+as well as to a file 'coef.csv'.
+
+In case fixed effects are requested, one file for each fixed effect is
+created.  In the example, 'fe-id.csv' and 'fe-firm.csv'.  The output-files
+contain a header, like 'id  effect  comp  obs'.  I.e. the id, the
+estimated coefficient, its component number in the connection graph, and
+the number of observations for this effect.  Standard errors for the
+fixed effects are not computed.
+
+Note that fixed effects from different components are not directly comparable
+because there's a separate reference value in each component.
+
+
+----------
+Usage:  
+Run the lfescript on your specification file to create an R-script:
+path-to-script/lfescript test.lfe > test.R
+
+In case you have more than one cpu (e.g. 8), you should tell it on the
+mountain with the command 
+
+export OMP_NUM_THREADS=8
+
+Then you run the script:
+
+R CMD BATCH test.R
+
+Standard output is redirected to the file 'test.Rout'.
+
+Notes:
+The centering on the means is done separately for each covariate.  When you've
+set the OMP_NUM_THREADS environment variable, the lfe-package picks this up
+and sends each covariate to a separate cpu.  Thus the centering is speeded up.
+
+If you request estimation of fixed effects, there's nothing in lfe as
+such which uses more than one cpu for this task.  However, lfe uses a
+sparse-solver in package Matrix which uses the BLAS-library shipped
+with R.  It is possible to install R with a parallell
+BLAS/LAPACK-library (such as AMD's ACML, or other high-performance
+libraries).  With such a BLAS, even the estimation of fixed effects
+will run parts of its computations in parallel.
+
+Even though the paper prescribes a method in which each component of
+the fixed-effects may be estimated separately, lfe does not currently
+implement this scheme.  I.e. the huge block-diagonal matrix is not
+split into blocks.  The reason for this is twofold.  In practice
+there's a main block with 95% or more of the data, thus it's usually
+not very much to gain.  The other reason is that R is quite
+inefficient for very large objects, so it turned out that the
+splitting of the matrix (a thorougly trivial operation) required *far*
+more time than the actual computation.  Life is weird.

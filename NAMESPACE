@@ -1,0 +1,5 @@
+#export(felm,getfe,demeanlist,summary.felm,compfactor,grComp,print.lm.fe)
+export(felm,getfe,demeanlist,compfactor)
+import(Matrix)
+S3method(print,lm.fe)
+useDynLib('lfe')
