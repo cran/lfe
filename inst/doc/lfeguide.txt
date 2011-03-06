@@ -5,6 +5,7 @@ package 'Matrix'.
 R CMD INSTALL lfe_1.0.tar.gz
 (possibly with R CMD INSTALL -l [install dir] lfe_...
  if there's no default, or you want to install elsewhere).
+It may also be installed from CRAN with the R-command install.packages('lfe')
 
 In the R-package, in the subdirectory exec (e.g. in
 /usr/lib64/R/library/lfe/exec or /usr/local/lib64/R/library/lfe/exec
@@ -16,7 +17,7 @@ the lfe-package.  Here's a typical input-file:
 ----cut test.lfe ----
 file smalldata.csv
 vars x x2 year id firm y ife ffe yfe
-model y ~ x + x2 + year + fixed(id+firm)
+model y ~ x + x2 + year + G(id)+G(firm)
 dummy year
 #nofe
 merge

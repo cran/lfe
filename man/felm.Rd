@@ -9,7 +9,7 @@ sweep out multiple group effects from the normal equations.
 This function is intended for use with large datasets with multiple group
 effects of large cardinality.  If dummy-encoding the group effects
 results in a manageable number of coefficients, you are probably better
-off by using \code{\link{lm}} or package \pkg{lme4}.
+off by using \code{\link{lm}} or package \pkg{nlme}.
 }
 
 \usage{ felm(formula,fl,data) }
@@ -36,8 +36,9 @@ off by using \code{\link{lm}} or package \pkg{lme4}.
 \note{
 The standard errors are adjusted for the reduced degrees of freedom
 coming from the dummies which are implicitly present.  In the case of
-two factors, the exact number of dummies is fast to compute.  If there
-are more factors, the number of dummies may be slightly over-estimated,
+two factors, the exact number of implicit dummies is easy to compute.  If there
+are more factors, the number of dummies is estimated by assuming there's
+one reference-level for each factor, this may be a slight over-estimation,
 leading to slightly too large standard errors.
 }
 

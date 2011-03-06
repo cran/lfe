@@ -9,4 +9,4 @@ citEntry(entry="Manual",
 	author=as.person("Simen Gaure"),
 	year=year,
 	note=vers,
-	textVersion=paste("Simen Gaure (",year,") lfe: Linear Fixed Effects. ",vers,".",sep=""))
+	textVersion=paste("Simen Gaure (",year,") lfe: Linear Group Fixed Effects. ",vers,".",sep=""))

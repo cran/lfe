@@ -6,7 +6,7 @@
   an estimation with \code{\link{felm}}.
 }
 \usage{
-getfe(obj,references=NULL,se=FALSE) 
+getfe(obj,references=NULL,se=FALSE,method='kaczmarz') 
 }
 
 \arguments{
@@ -14,14 +14,19 @@ getfe(obj,references=NULL,se=FALSE)
   \code{\link{felm}}}
 \item{references}{a vector of strings.  If there are more than two
   factors and you have prior knowledge of what the reference levels
-  should be, use this argument, like \code{references='id.23'}.}
+  should be, use this argument, like \code{references='id.23'}.  Not
+  used with \code{method='kaczmarz'}}
 \item{se}{logical.  Set to TRUE if standard errors for the group
-  effects are wanted.  This is *very* time-consuming for large problems, so
-  leave it as FALSE unless absolutely needed.}
+  effects are wanted.  This is \strong{very} time-consuming for large problems, so
+  leave it as FALSE unless absolutely needed. Not used with \code{method='kaczmarz'}}
+\item{method}{character string.  Either 'cholesky', the default, or
+  'kaczmarz'.  The latter is often very fast and consumes little memory, it will yield the smallest norm
+  solution.
+  }
 }
 
 \value{
-The function \code{getfe} computes and returns a data frame containing
+With method 'cholesky', the function \code{getfe} computes and returns a data frame containing
 the group fixed effects.  It has the columns
 \code{c('effect','obs','comp','fe','idx')}
 
@@ -33,6 +38,14 @@ the group fixed effects.  It has the columns
   \item \code{fe} is the name of factor.
   \item \code{idx} is the level of the factor.
 }
+
+The 'effect' column is set to 'zero' for the levels which have been used
+as reference levels.
+
+For method 'kaczmarz', references are not set to 0, but the smallest
+norm solution is returned.
+
+
 }
 
 \details{

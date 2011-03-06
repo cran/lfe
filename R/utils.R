@@ -72,7 +72,7 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
       formatC(x$r2adj,digits=digits),'\n')
   cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
   if(length(x$fe) > 2)
-    cat('*** Standard errors may be slightly wrong due to more than 2 groups\n')
+    cat('*** Standard errors may be slightly too high due to more than 2 groups\n')
   cat('\n\n')
   
 }
@@ -128,3 +128,13 @@ print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   cat('\n\n')
 
 }
+
+fixef.felm <- function(object,...) {
+  fe <- getfe(object,...)
+  f <- fe[,'fe']
+  l <- lapply(levels(f),function(n) {v <- fe[f == n,'effect']; names(v) <- as.character(fe[f==n,'idx']); v})
+  names(l) <- levels(f)
+  l
+}
+
+# if(!exists('fixef')) fixef <- function(object,...) UseMethod('fixef')

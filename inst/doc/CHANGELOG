@@ -1,3 +1,5 @@
+1.2-444
+	Implemented the Kaczmarz method for solving the factor-system, made it default.	
 1.1-434
 	Changed the argument name 'model' of felm to 'formula', also call model.frame()
 	in the parent context, so one may get away without a data.frame.

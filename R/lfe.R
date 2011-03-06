@@ -4,7 +4,7 @@
 
 .onLoad <- function(libname,pkgname) {
   if(is.null(getOption('lfe.eps')))
-    options(lfe.eps=.Machine$double.eps**(1/2))
+    options(lfe.eps=sqrt(.Machine$double.eps))
   if(is.null(getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
@@ -48,6 +48,12 @@ demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
 compfactor <- function(fl) {
   if(length(fl) == 1) return(factor(rep(1,length(fl[[1]]))))
   factor(.Call('conncomp',fl))
+}
+
+kaczmarz <- function(fl,R,eps=getOption('lfe.eps')) {
+  v <- as.vector(.Call('kaczmarz',fl,R,eps))
+  names(v) <- unlist(lapply(names(fl),function(n) paste(n,levels(fl[[n]]),sep='.')))
+  v
 }
 
 # a function for removing the intercept from a model matrix
@@ -374,7 +380,7 @@ felm <- function(formula,fl,data) {
   }
   rm(b)
   if(icpt > 0) names(beta) <- colnames(x)[-icpt] else names(beta) <- colnames(x)
-  z <- list(coefficients=beta,vcv=inv)
+  z <- list(coefficients=beta)
   N <- nrow(xz)
   p <- ncol(xz)
 
@@ -396,7 +402,7 @@ felm <- function(formula,fl,data) {
   gc()
 
   z$cfactor <- compfactor(fl)
-  # don't use experimental findrefs
+
   if(length(fl) <= 2) {
     numdum <- sum(unlist(lapply(fl,nlevels))) - nlevels(z$cfactor)
   } else {
@@ -406,8 +412,10 @@ felm <- function(formula,fl,data) {
 #  s2 <- var(z$full.residuals,na.rm=TRUE)
 #  z$s2 <- var(z$full.residuals,na.rm=TRUE)
 #  sefactor <- sqrt(z$s2*(N - p)/z$df)
-  z$sefactor <- sqrt(sum(z$full.residuals**2)/z$df)
-  z$se <- sqrt(diag(inv)) * z$sefactor
+  vcvfactor <- sum(z$full.residuals**2)/z$df
+  z$vcv <- inv * vcvfactor
+  z$se <- sqrt(diag(z$vcv))
+  z$sefactor <- sqrt(vcvfactor)
   z$tval <- z$coefficients/z$se
   z$pval <- 2*pt(abs(z$tval),z$df,lower.tail=FALSE)
   z$terms <- mt
@@ -422,10 +430,36 @@ felm <- function(formula,fl,data) {
 }
 
 
+getfe.kaczmarz <- function(obj,eps=getOption('lfe.eps')) {
+  v <- kaczmarz(obj$fe,obj$residuals-obj$full.residuals,eps)
+  res <- data.frame(effect=v)
+  rownames(res) <- names(v)
+  # add columns obs, comp,fe and idx
+  res[,'obs'] <- unlist(lapply(obj$fe,table))
+  # compfactor returns a factor of length N, the number
+  # of observations.  We only need parts of it
+  if(length(obj$fe) == 2) {
+    cf <- obj$cfactor
+    # find an index for each level, use its component
+    res[,'comp'] <- unlist(lapply(obj$fe, function(f) cf[match(levels(f),f)]))
+  } else {
+    res[,'comp'] <- 1
+  }
+  fefact <- strsplit(rownames(res),'.',fixed=TRUE)
+  res[,'fe'] <- factor(unlist(lapply(fefact,function(l) l[[1]])))
+  res[,'idx'] <- factor(unlist(lapply(fefact,function(l) paste(l[-1],collapse='.'))))
+  res
+}
 
 # return a data-frame with the group fixed effects, including zeros for references
-getfe <- function(obj,references=NULL,se=FALSE) {
+getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz') {
 
+  if(method == 'kaczmarz') {
+    if(se) warning('The Kaczmarz method does not yield standard errors')
+    if(!is.null(references)) warning('specified references are ignored with the Kaczmarz method')
+    return(getfe.kaczmarz(obj))
+  }
+  if(method != 'cholesky') stop('method must be either kaczmarz or cholesky')
   attr(se,'sefactor') <- obj$sefactor
   attr(obj$fe,'references') <- references
   R <- obj$residuals

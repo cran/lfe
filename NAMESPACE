@@ -3,5 +3,5 @@ import(Matrix)
 S3method(print,felm)
 S3method(print,summary.felm)
 S3method(summary,felm)
-
+# S3method(fixef,felm)
 useDynLib('lfe')

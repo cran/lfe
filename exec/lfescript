@@ -29,6 +29,7 @@ while(<>) {
       $model = join(' ',@line);
   } elsif($cmd eq 'fe') {
     @fe = @line;
+    $useG = 0;
   } elsif($cmd eq 'out') {
     @outlist = @line;
   } elsif($cmd eq 'nofe') {
@@ -65,8 +66,9 @@ if(defined($model)) {
 	    print STDERR "WARNING: model line fixed() specification overrides 'fe' line\n";
 	}
         @fe = split(/[, \+]+/,$2);
-    } else {
+    } elsif(!defined(@fe)) {
         @fe = ($model =~ m/G\s*\(([^)]+)\s*\)/g);
+	$useG = 1;
     }
 } elsif(!defined(@covars) || !defined($resp)) {
     die "Either both covars and response must be defined, or model\n";
@@ -158,8 +160,14 @@ cf <- compfactor(factors)
 cat(date(),'There are',nlevels(cf),'connection components\\n')
 cat(date(),'Centering variables and doing OLS on centered system\\n')
 cat(date(),'Centering tolerance is',getOption('lfe.eps'),'\\n\\n')
-est <- felm($model,data=tab)
+";
+if($useG) {
+    print "est <- felm($model,data=tab)\n";
+} else {
+    print "est <- felm($model,fl=factors,data=tab)\n";
+}
 
+print "
 print(summary(est))
 
 sink('coef.csv')
@@ -201,7 +209,7 @@ print "
 
 # We need to save some memory by ditching the large parts of est
 # (the qr and stuff, keep only what's needed)
-est <- est[c('fe','residuals','refnames')]
+est <- est[c('fe','residuals','refnames','full.residuals','cfactor')]
 invisible(gc())
 class(est) <- NULL
 fes <- getfe(est)
