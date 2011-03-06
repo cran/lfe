@@ -246,9 +246,9 @@ efactory <- function(obj,opt=NULL,...) {
   require('compiler',quietly=TRUE)
   options(o)
   if(exists('cmpfun'))
-    cmpfun(ef,list(optimize=3))
-  else
-    ef
+    ef <- cmpfun(ef,list(optimize=3))
+  if(length(obj$fe) <= 2 && as.character(opt) != 'ln') attr(ef,'verified') <- TRUE
+  ef
 } 
 
 
@@ -335,7 +335,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   for(i in 1:blks) {
     rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
     dim(rsamp) <- c(length(smpdraw),vpb)
-    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads,quiet=TRUE) + Rdup
+    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rdup
     if(isTRUE(getOption('lfe.randkac'))) {
       oR <- apply(newR,2,function(l) l[oo])
       v <- kaczmarz(ofl,oR,eps,threads=threads)*sefact

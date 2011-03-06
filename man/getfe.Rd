@@ -3,7 +3,8 @@
 \title{Retrieve the group fixed effects}
 \concept{Kaczmarz Method}
 \description{
-  Compute the group fixed effects which were swept out during
+  Compute the group fixed effects, i.e. the dummy parameters,
+  which were swept out during
   an estimation with \code{\link{felm}}.
 }
 \usage{
@@ -21,9 +22,10 @@ getfe(obj,references=NULL,se=FALSE,
 \item{se}{logical.  Set to TRUE if standard errors for the group
   effects are wanted.  This is \strong{very} time-consuming for large problems, so
   leave it as FALSE unless absolutely needed.}
-\item{method}{character string.  Either 'cholesky', the default, or
-  'kaczmarz'.  The latter is often very fast and consumes little memory, it will yield the smallest norm
-  solution.
+\item{method}{character string.  Either 'cholesky', or the default
+  'kaczmarz'.  The latter is often very fast and consumes little memory, 
+  it requires an estimable function to be specified, see \code{\link{efactory}}.
+  The 'cholesky' method is no longer maintained as the author sees no use for it.
   }
 
 \item{ef}{function. A function of two variables, a vector of group fixed
@@ -33,6 +35,7 @@ getfe(obj,references=NULL,se=FALSE,
   indicates whether the function must return a named vector (if this is
   FALSE, one may skip the names, saving memory allocations and time).
 
+  If a string is specified, it is fed to the \code{\link{efactory}}-function.
   The default function is one which picks one reference in each
   component.
 
@@ -66,14 +69,14 @@ function.
 
 \note{
 If there are convergence problems, you may try to set 
-\code{options(lfe.randkac=TRUE)} prior to calling kaczmarz().
+\code{options(lfe.randkac=TRUE)} prior to calling \code{getfe}.
 This will cause random shuffling of the rows of the system.  This
 sometimes improves the convergence.
 }
 
 \details{
   For the case with two factors (the \code{fl}-argument to
-  \code{\link{felm}}), one reference in each connection component is
+  \code{\link{felm}}), one reference in each connected component is
   adequate when interpreting the results.
 
   For three or more factors, no such easy method is known;
@@ -84,7 +87,7 @@ sometimes improves the convergence.
   the rank-deficiency, so one reference in each is used.
 
   If there are more than two factors, only the first two will be used
-  to report connection components.  In this case, it is not known
+  to report connected components.  In this case, it is not known
   which graph theoretic concept may be used to analyze the rank-deficiency.
 
   The standard errors returned by the Kaczmarz-method are bootstrapped,

@@ -5,20 +5,24 @@
 \title{Linear Group Fixed Effects}
 \concept{Method of Alternating Projections}
 \concept{Kaczmarz Method}
+\concept{Fixed Effect Estimator}
+\concept{Wihtin Estimator}
 \concept{Multiple Fixed Effects}
 \description{
 The package uses the Method of Alternating Projections to estimate
-linear models with multiple group fixed effects.  It is
+linear models with multiple group fixed effects.  A generalization
+of the within esitmator. It is
 thread-parallelized and intended for large problems.
 }
 
 \details{
 
-This package is intended for linear models with multiple group fixed effects.
+This package is intended for linear models with multiple group fixed effects,
+i.e. with 2 or more factors with a large number of levels.
 It performs no other functions than \code{\link[stats]{lm}},
 but it uses a special method for projecting out multiple group fixed
 effects from the normal equations, hence it is faster. It is a
-generalization of the within-groups estimator.  This may be required if
+generalization of the within estimator.  This may be required if
 the groups have high cardinality (many levels), resulting in tens
 or hundreds of thousands of dummy-variables.  It is also useful if one
 only wants to control for the group effects, without actually computing
@@ -34,7 +38,7 @@ method is described in Gaure (2011).
 
 There's also a function \code{\link{demeanlist}} which just does the
 centering on an arbitrary matrix, and there's a function
-\code{\link{compfactor}} which computes the connection components (which
+\code{\link{compfactor}} which computes the connected components (which
 are used for interpreting the group effects when there are only two
 factors, see the Abowd et al references), they are also returned by
 \code{\link{getfe}}).
@@ -42,9 +46,9 @@ factors, see the Abowd et al references), they are also returned by
 The centering on the means is done with a tolerance which is
 set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat
 conservative tolerance, in many cases I'd guess
-\code{1e-4} may be sufficient.  This will speed up the
+\code{1e-6} may be sufficient.  This may speed up the
 centering.  In the other direction, setting \code{options(lfe.eps=0)}
-will provide maximum accuracy, at the cost of computing time and
+will provide maximum accuracy at the cost of computing time and
 warnings about convergence failure.
 
 The package is threaded, that is, it may use more than one cpu.  The
@@ -57,7 +61,6 @@ memory and large cache is more important than clock-frequency. It's
 therefore also not always true that running on all available cores is
 much better than running on half of them.
 
-
 Threading is only done for the centering; the extraction of the group
 effects is not threaded. The default method for extracting the
 group coefficients is the iterative Kaczmarz-method, its tolerance
@@ -65,24 +68,20 @@ is also the \code{lfe.eps} option.
 
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
-levels (the \code{\link{felm}} takes about 50 minutes on 8 cpus, the
-\code{\link{getfe}} takes 5 minutes).
-
-It's also possible to use the sparse Cholesky solver of package
-\pkg{Matrix}, which relies heavily on the blas-library.  It's then
-strongly recommended to link an optimized blas into R (such as 'goto',
-'atlas', 'acml' or 'mkl'). With this method, standard errors may also be
-retrieved, though at a substantial cost in computing time.
+levels (the \code{\link{felm}} took about 50 minutes on 8 cpus, the
+\code{\link{getfe}} takes 5 minutes).  Though, beware that not
+only the size of the dataset matters, but also its structure.
 
 The package will work with any positive number of grouping factors, but if
-more than two, their interpretation is in general not well understood.
+more than two, their interpretation is in general not well understood,
+i.e. one should make sure that the coefficients are estimable.
 
 With certain types of data, which the author has not got a clear
-understanding of, the getfe() method with the Kaczmarz method,
-has problems converging.  In this case, the option 
-\code{options(lfe.randkac=TRUE)} may be set in advance.  This
-causes random shuffling of the residual system, which sometimes
-improves the convergence.
+understanding of, the \code{getfe} function with the Kaczmarz method
+has convergence problems.  In this case, the option
+\code{options(lfe.randkac=TRUE)} may be set prior to calling
+\code{getfe}.  This causes random shuffling of the residual system,
+which sometimes improves the convergence.
 
 \pkg{lfe} is similar in function, though not in method, to the
 Stata modules \code{a2reg} and \code{felsdvreg}.
@@ -110,7 +109,7 @@ Cornelissen, T. (2008)
 Stata Journal, 8(2):170--189, 2008.
 \url{http://econpapers.repec.org/RePEc:tsj:stataj:v:8:y:2008:i:2:p:170-189}
 
-Gaure, S. (2011) \cite{OLS with Multiple High Dimensional Category Dummies} (to appear)
+Gaure, S. (2011) \cite{OLS with Multiple High Dimensional Category Variables} (to appear)
 
 Ouazad, A. (2008)
 \cite{A2REG: Stata module to estimate models with two fixed effects.}

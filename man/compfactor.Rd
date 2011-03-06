@@ -1,22 +1,22 @@
 \name{compfactor}
 \alias{compfactor}
-\title{Finding the connection components}
+\title{Find the connected components}
 \description{
-'compfactor' computes the connection components of the dummy-part of the
-model with multiple fixed effects.
+'compfactor' computes the connected components of the dummy-part of the
+model.
 }
 \usage{
   compfactor(fl)
 }
 
 \arguments{
-  \item{fl}{a list of factors defining the fixed effects}
+  \item{fl}{a list of factors defining the dummies}
 }
 \value{
 A factor of the same length as the factors in the input argument.  It
-defines the connection components.
+defines the connected components.
 E.g. \code{nlevels(compfactor(fl))} will yield the number of
-connection components.
+connected components.
 }
 
 \details{

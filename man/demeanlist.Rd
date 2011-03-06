@@ -10,7 +10,7 @@
 
 \usage{
 demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
-           threads=getOption('lfe.threads'),quiet=FALSE)
+           threads=getOption('lfe.threads'),progress=getOption('lfe.pint'))
 }
 
 \arguments{
@@ -21,8 +21,8 @@ demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
   the result matrix}
 \item{eps}{a tolerance for the centering}
 \item{threads}{an integer specifying the number of threads to use}
-\item{quiet}{logical. If \code{FALSE}, make progress reports (whenever a
-  vector is centered, but not more often than every 5 minutes)}
+\item{progress}{integer. If positive, make progress reports (whenever a
+  vector is centered, but not more often than every \code{progress} minutes)}
 }
 
 \details{

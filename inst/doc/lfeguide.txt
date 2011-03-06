@@ -105,8 +105,4 @@ such which uses more than one cpu for this task.   On the other hand,
 this is done with the Kaczmarz-method which is very fast when the
 system is as sparse as is typical for such data.
 
-Even though the paper prescribes a method in which each component of
-the fixed-effects may be estimated separately, lfe does not currently
-implement this scheme.  However, it has a reference in each component,
-so the resulting coefficients will be estimable.
 

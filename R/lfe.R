@@ -5,7 +5,8 @@
 .onLoad <- function(libname,pkgname) {
   if(is.null(getOption('lfe.eps')))
     options(lfe.eps=1e-8)
-
+  if(is.null(getOption('lfe.pint')))
+    options(lfe.pint=300)
   if(is.null(getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
@@ -47,7 +48,8 @@ numcores <- function() {
 
 
 demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
-                       threads=getOption('lfe.threads'), quiet=FALSE) {
+                       threads=getOption('lfe.threads'),
+		       progress=getOption('lfe.pint')) {
   if(is.null(threads)) threads <- 1
   islist <- is.list(mtx)
   if(!islist) mtx <- list(mtx)
@@ -57,8 +59,8 @@ demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
      as.integer(icpt),               
      as.double(eps),
      as.integer(threads),
-     as.logical(quiet),
-               PACKAGE='lfe')
+     as.integer(progress),
+		PACKAGE='lfe')
 
   if(!islist) res <- res[[1]]
   names(res) <- names(mtx)

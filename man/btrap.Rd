@@ -29,10 +29,7 @@ filled in.
 }
 
 \details{
-  The bootstrapping is done in parallel if \code{threads > 1}.  However,
-  for better utilization of parallelism one should load one of the
-  packages \pkg{doMC} or \pkg{doSMP}.  The former seems to perform
-  better in this context.
+  The bootstrapping is done in parallel if \code{threads > 1}.  
   \code{\link{btrap}} is run automatically from \code{\link{getfe}} if
   \code{se=TRUE} is specified.
 }

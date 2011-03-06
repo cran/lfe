@@ -13,18 +13,11 @@
 #else
 #ifndef NOTHREADS
 #include <pthread.h>
-
-#ifdef _POSIX_BARRIERS
-#define COOP
-#endif
-
-/* It's slower, too much synchronization */
-#undef COOP
-
 #endif
 #endif
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
@@ -32,6 +25,20 @@
 #include <Rdefines.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
+
+
+/* Trickery to check for interrupts when using threads */
+static void chkIntFn(void *dummy) {
+  R_CheckUserInterrupt();
+}
+
+/* this will call the above in a top-level context so it won't 
+   longjmp-out of context */
+
+int checkInterrupt() {
+  return (R_ToplevelExec(chkIntFn, NULL) == 0);
+}
+
 
 typedef struct {
   int nlevels;
@@ -48,7 +55,7 @@ typedef struct {
 /*#pragma GCC optimize ("O3", "unroll-loops")*/
 #endif
 
-static R_INLINE double gmean(double *v,int start, int end, FACTOR *f,double *means) {
+static R_INLINE double gmean(double *v, int N, FACTOR *f,double *means) {
   /*
     Do the actual work, single vector, single factor, 
     output in preallocated vector means
@@ -63,7 +70,7 @@ static R_INLINE double gmean(double *v,int start, int end, FACTOR *f,double *mea
 
   /* add entries into right group */
 
-  for(i = start; i < end; i++) {
+  for(i = 0; i < N; i++) {
     means[group[i]-1] += v[i];
   }
 
@@ -90,7 +97,7 @@ static R_INLINE double centre(double *v, int N,
     const int *gp = f->group;
     int j=0;
     /* compute means */
-    sum += gmean(v,0,N,f,means);
+    sum += gmean(v,N,f,means);
 
     for(j = 0; j < N; j++) {
       v[j] -= means[gp[j]-1];
@@ -100,12 +107,14 @@ static R_INLINE double centre(double *v, int N,
   return sqrt(sum);
 }
 
+
 /*
   Method of alternating projections.  Input v, output res.
 */
 
 static int demean(double *v, int N, double *res,
-		   FACTOR *factors[],int e,double eps, double *means) {
+		  FACTOR *factors[],int e,double eps, double *means,
+		  int *stop) {
   double delta;
   double norm2 = 0.0;
   int i;
@@ -137,10 +146,15 @@ static int demean(double *v, int N, double *res,
     */
     if(c >= 1.0) {
       /* Seems warning() has problems with threads, do printf instead */
-      fprintf(stderr,"Demeaning failed after %d iterations, c-1=%.0e, delta=%.1e\n",iter,c-1.0,delta);
+      REprintf("Demeaning failed after %d iterations, 1-c=%.0e, delta=%.1e\n",iter,1.0-c,delta);
       okconv = 0;
       break;
     }
+#ifdef NOTHREADS
+    R_CheckUserInterrupt();
+#else
+    if(*stop != 0) return(0);
+#endif
     prevdelta = delta;
   } while(delta > neps*(1.0-c));
   return(okconv);
@@ -164,14 +178,10 @@ typedef struct {
   time_t start;
   int done;
   int quiet;
-#ifdef COOP
+  int stop;
+  int running;
+  int threadnum;
   double **means;
-  double sum;
-  int threads;
-  int tmp;
-  double *gmeans;
-  pthread_barrier_t *barrier;
-#endif
 #ifndef NOTHREADS
 #ifdef WIN
   HANDLE *lock;
@@ -189,11 +199,6 @@ typedef struct {
   by a mutex.
  */
 
-#ifdef COOP
-#define BARRIER(b) pthread_barrier_wait(b)
-#else
-#define BARRIER(b)
-#endif
 
 #ifdef NOTHREADS
 #define LOCK(l)
@@ -209,168 +214,26 @@ typedef struct {
 #endif
 
 
-/* Cooperative centering 
-   Each vector is centered by all the threads.
-   Each thread gets a portion of the vector.
-   This is faster with few vectors, but there's 
-   synchronization which may cause it to slow down.
-   Indeed it's slow.  Deactivated.
-
-   Haven't bothered to figure out how to do barriers in windows yet,
-   so skip the cooperation threading there.
-*/
-
-#ifdef COOP
-
-#ifdef WIN
-DWORD WINAPI demeanlist_coop(LPVOID varg) {
-#else
-static void *demeanlist_coop(void *varg) {
-#endif
-  PTARG *arg = (PTARG*) varg;
-  int maxlev;
-  int i;
-  int myid;
-  double *means;
-  int N = arg->N;
-  int e = arg->e;
-  int vecstart,veclen,vecend;
-  /* preallocate means */
-  maxlev = 0;
-  for(i = 0; i < e; i++)
-    if(maxlev < arg->factors[i]->nlevels) maxlev = arg->factors[i]->nlevels;
-
-  /* Figure out which slice of the vectors I'm going to compute on */
-  /* First, number the threads and store the means pointer */
-
-  LOCK(arg->lock);
-  myid = (arg->tmp)++;
-  means = Calloc(maxlev,double);
-  arg->means[myid] = means;
-  UNLOCK(arg->lock);
-
-  BARRIER(arg->barrier);
-  veclen = N / arg->threads;
-  vecstart = veclen*myid;
-  /* Stuff the rest into the last */
-  if(myid == arg->threads-1) {
-    veclen = N - vecstart;
-  }
-
-  vecend = vecstart + veclen;
-  for(i = 0; i < arg->K; i++) {
-
-    double sd;
-    double c;
-    double prevdiff;
-    double neps;
-    double *v = arg->v[i];
-    double *t = arg->res[i];
-    int k;
-    /* Centre this vector */
-    /* copy to target */
-    neps = 0;
-    for(k = 0; k < N; k++) {
-      neps += v[k]*v[k];
-    }
-    prevdiff = 2.0*sqrt(neps);
-    neps = arg->eps*sqrt(neps);
-    if(myid == 0) {
-      memcpy(t,v,N*sizeof(double));	
-      arg->sum = 0;
-    }
-    /* All wait for the copy to the common area */
-    BARRIER(arg->barrier);
-    
-    do {
-      int j;
-      /* Compute the means */
-      /* Zero the square sums */
-      if(BARRIER(arg->barrier) == PTHREAD_BARRIER_SERIAL_THREAD) {
-	arg->sum = 0;
-      }
-      BARRIER(arg->barrier);
-
-      for(j = 0; j < e; j++) {
-	FACTOR *f = arg->factors[j];
-	int *gp = f->group;
-	int idx;
-
-	gmean(t,vecstart,vecend,f,means);
-	/* All wait for the means */
-	if(BARRIER(arg->barrier) == PTHREAD_BARRIER_SERIAL_THREAD) {
-	  int k,l;
-	  double sum = 0;
-	  /* sum the means from all threads, we're in only one now */
-	  memset(arg->gmeans,0, f->nlevels*sizeof(double));
-	  for(l = 0; l < arg->threads; l++) {
-	    for(k = 0; k < f->nlevels; k++) {
-	      arg->gmeans[k] += arg->means[l][k];
-	    }
-	  }
-	  /* add to the square sum */
-	  for(k = 0; k < f->nlevels; k++) {
-	    sum += arg->gmeans[k] * arg->gmeans[k];
-	  }
-	  /* store it */
-	  arg->sum += sum;
-	}
-	/* all wait for the means */
-	BARRIER(arg->barrier);
-	/* subtract the means, own slice */
-	for(idx = vecstart; idx < vecend; idx++) {
-	  t[idx] -= arg->gmeans[gp[idx]-1];
-	}
-      }
-      BARRIER(arg->barrier);
-      sd = sqrt(arg->sum);
-      c = sd/prevdiff;
-      if(c >= 1.0) {
-	if(myid == 0) {
-	  arg->badconv++;
-	}
-	break;
-      }
-      prevdiff = sd;
-    } while(sd > neps*(1.0-c));
-    now = time(NULL);
-    arg->done++;
-    if(now > arg->last + 300) {
-      printf("...finished centering vector %d of %d in %d seconds\n",
-	      i+1,arg->K,now-arg->start);
-      arg->last = now;
-    }
-  }
-  LOCK(arg->lock);
-  Free(means);
-  UNLOCK(arg->lock);
-  return 0;
-}
-#define demeanlist_thr demeanlist_coop
-#else
-#define demeanlist_thr demeanlist_single
-#endif
 
 
 /* The thread routine 
    Each thread centres an entire vector.
 */
 #ifdef WIN
-DWORD WINAPI demeanlist_single(LPVOID varg) {
+DWORD WINAPI demeanlist_thr(LPVOID varg) {
 #else
-static void *demeanlist_single(void *varg) {
+static void *demeanlist_thr(void *varg) {
 #endif
   PTARG *arg = (PTARG*) varg;
   double *means;
-  int i;
-  int maxlev=0;
   int vecnum;
   int okconv = 0;
-
-  /* preallocate means */
-  for(i = 0; i < arg->e; i++)
-    if(maxlev < arg->factors[i]->nlevels) maxlev = arg->factors[i]->nlevels;
-  means = (double*) malloc(maxlev*sizeof(double));
+  int myid;
+  /* Find the preallocated means buffer */
+  LOCK(arg->lock);
+  myid = arg->threadnum++;
+  UNLOCK(arg->lock);
+  means = arg->means[myid];
   while(1) {
     time_t now;
     /* Find next vector */
@@ -379,21 +242,24 @@ static void *demeanlist_single(void *varg) {
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
 
-    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means);
-    now = time(NULL);
+    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means,&arg->stop);
     LOCK(arg->lock);
+    now = time(NULL);
     if(!okconv) {
       arg->badconv++;
     }
     (arg->done)++;
-    if(!arg->quiet && now > arg->last + 300 && arg->K > 1) {
-      printf("...finished centering vector %d of %d in %d seconds\n",
+    if(arg->quiet > 0 && now > arg->last + arg->quiet && arg->K > 1) {
+      Rprintf("...finished centering vector %d of %d in %d seconds\n",
 	     arg->done,arg->K,(int)(now-arg->start));
       arg->last = now;
     }
     UNLOCK(arg->lock);
   }
-  free(means);
+  /* signal we've finished */
+  LOCK(arg->lock);
+  arg->running--;
+  UNLOCK(arg->lock);
   return 0;
 }
 
@@ -402,11 +268,11 @@ static void *demeanlist_single(void *varg) {
 static int demeanlist(double **vp, int N, int K, double **res,
 		      FACTOR *factors[], int e, double eps,int cores, int quiet) {
   PTARG arg;
-#ifndef NOTHREADS
   int numthr = 1;
-  int i;
   int thr;
   int maxlev;
+  int i;
+#ifndef NOTHREADS
 #ifdef WIN
   HANDLE *threads;
   DWORD *threadids;
@@ -415,18 +281,11 @@ static int demeanlist(double **vp, int N, int K, double **res,
   pthread_t *threads;
   pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
-#ifdef COOP
-  pthread_barrier_t barrier;
-#endif
-
-  maxlev = 0;
-  for(i = 0; i < e; i++)
-    if(maxlev < factors[i]->nlevels) maxlev = factors[i]->nlevels;
-
 
   numthr = cores;
   if(numthr > K) numthr = K;
   if(numthr < 1) numthr = 1;
+  
 #ifdef WIN
   lock = CreateMutex(NULL,FALSE,NULL);
   threads = (HANDLE*) R_alloc(numthr,sizeof(HANDLE));
@@ -436,11 +295,17 @@ static int demeanlist(double **vp, int N, int K, double **res,
 #endif
 
   arg.lock = &lock;
-#ifdef COOP
-  arg.barrier = &barrier;
-  pthread_barrier_init(arg.barrier,NULL,numthr);
 #endif
-#endif
+
+  maxlev = 0;
+  for(i = 0; i < e; i++)
+    if(maxlev < factors[i]->nlevels) maxlev = factors[i]->nlevels;
+
+  arg.running = numthr;
+  arg.means = (double **) R_alloc(numthr,sizeof(double*));
+  for(thr = 0; thr < numthr; thr++) {
+    arg.means[thr] = (double*) R_alloc(maxlev,sizeof(double));
+  }
 
   arg.badconv = 0;
   arg.N = N;
@@ -455,12 +320,8 @@ static int demeanlist(double **vp, int N, int K, double **res,
   arg.e = e;
   arg.eps = eps;
   arg.quiet = quiet;
-#ifdef COOP
-  arg.means = (double**) R_alloc(numthr,sizeof(double*));
-  arg.gmeans = (double*) R_alloc(maxlev,sizeof(double));
-  arg.threads = numthr;
-  arg.tmp = 0;
-#endif
+  arg.stop = 0;
+  arg.threadnum = 0;
 
 #ifdef NOTHREADS
   demeanlist_thr((void*)&arg);
@@ -477,24 +338,47 @@ static int demeanlist(double **vp, int N, int K, double **res,
   }
 
   /* wait for completion */
+  /* We want to check for interrupts regularly, and
+     set a stop flag */
+  while(1) {
+    if(arg.stop == 0 && checkInterrupt()) {
+      REprintf("...stopping centering threads...\n");
+      arg.stop=1;
+    }
 
 #ifdef WIN
-  WaitForMultipleObjects(numthr,threads,TRUE,INFINITE);
-  CloseHandle(lock);
-  for(thr = 0; thr < numthr; thr++) {
-    CloseHandle(threads[thr]);
-  }
+    /*    WaitForMultipleObjects(numthr,threads,TRUE,INFINITE);*/
+    {
+      DWORD stat;
+
+      stat = WaitForMultipleObjects(numthr,threads,TRUE,3000);
+      if(stat != WAIT_TIMEOUT) {
+	for(thr = 0; thr < numthr; thr++) {
+	  CloseHandle(threads[thr]);
+	}
+	CloseHandle(lock);
+	break;
+      }
+    }
 #else
-  for(thr = 0; thr < numthr; thr++) {
-    (void)pthread_join(threads[thr], NULL);
+    /* pthread_timedjoin_np is not portable, so use this mess */
+
+    if(arg.running == 0 || arg.stop == 1) {
+      for(thr = 0; thr < numthr; thr++) {
+	(void)pthread_join(threads[thr], NULL);
+      }
+      break;
+    } else {
+      /* Don't sleep too long */
+      struct timespec tmo={0,50000000};
+      nanosleep(&tmo,NULL);
+    }
+#endif
   }
-#ifdef COOP
-  pthread_barrier_destroy(arg.barrier);
 #endif
-#endif
-#endif
-  if(!quiet && arg.start != arg.last && K > 1)
-    printf("...%d vectors centred in %d seconds\n",K,(int)(time(NULL)-arg.start));
+  if(arg.stop == 1) error("centering interrupted");
+  if(quiet > 0 && arg.start != arg.last && K > 1)
+    Rprintf("...%d vectors centred in %d seconds\n",K,(int)(time(NULL)-arg.start));
   return(arg.badconv);
 }
 
@@ -532,7 +416,7 @@ static void invertfactor(FACTOR *f,int N) {
 
 
 static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
-		       double eps, double *newR, int *indices) {
+		       double eps, double *newR, int *indices, int *stop) {
   /* The factors define a matrix D, we will solve Dx = R
      There are N rows in D, each row a_i contains e non-zero entries, one
      for each factor, the level at that position.
@@ -543,7 +427,6 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
      To get better memory locality, we create an (e X N)-matrix with the non-zero indices
   */
 
-  /*  int *indices = (int*) R_alloc(e*N,sizeof(int));*/
   double einv = 1.0/e;
   double norm2;
   double prevdiff,neweps;
@@ -624,10 +507,14 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
     prevdiff = sd;
     iter++;
     if(c >= 1.0) {
-      fprintf(stderr,"Kaczmarz failed in iter %d*%d, c-1=%.0e, sd=%.1e, eps=%.1e\n",iter,newN,c-1.0,sd,neweps);
-      /*      warning("Kaczmarz failed in iter %d*%d, c-1=%.0le, sd=%.1le, eps=%.1le\n",iter,newN,c-1.0,sd,neweps);*/
+      REprintf("Kaczmarz failed in iter %d*%d, 1-c=%.0e, delta=%.1e, eps=%.1e\n",iter,newN,1.0-c,sd,neweps);
       break;
     }
+#ifdef NOTHREADS
+    R_CheckUserInterrupt();
+#else
+    if(*stop != 0) return(0);
+#endif
   } while(sd >= neweps*(1.0-c)) ;
 
   return(sd);
@@ -642,6 +529,8 @@ typedef struct {
   int e;
   int N;
   int threadnum;
+  int running;
+  int stop;
   int numvec;
   double eps;
   double *tol;
@@ -654,7 +543,6 @@ typedef struct {
   pthread_mutex_t *lock;
 #endif
 #endif
-
 } KARG;
 
 #ifdef WIN
@@ -676,8 +564,11 @@ static void *kaczmarz_thr(void *varg) {
     if(vecnum >= arg->numvec) break;
     (void) kaczmarz(arg->factors,arg->e,arg->N,
 		    arg->source[vecnum],arg->target[vecnum],arg->eps,
-		    arg->newR[myid],arg->indices[myid]);
+		    arg->newR[myid],arg->indices[myid], &arg->stop);
   }
+  LOCK(arg->lock);
+  arg->running--;
+  UNLOCK(arg->lock);
   return 0;
 }
 
@@ -831,11 +722,14 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   arg.eps = eps;
   arg.numvec = numvec;
   arg.N = N;
+  arg.running = numthr;
+  arg.stop = 0;
   arg.newR = (double**) R_alloc(numthr,sizeof(double*));
   arg.indices = (int**) R_alloc(numthr,sizeof(int*));
 
 #ifdef NOTHREADS
   arg.newR[0] = (double*) R_alloc(N,sizeof(double));
+  arg.indices[0] = (int*) R_alloc(numfac*N,sizeof(int));
   kaczmarz_thr((void*)&arg);
 #else
   /* Do it in separate threads */
@@ -853,19 +747,45 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   }
 
   /* wait for completion */
+  /* We want to check for interrupts regularly, and
+     set a stop flag */
+  while(1) {
+    if(arg.stop == 0 && checkInterrupt()) {
+      REprintf("...stopping Kaczmarz threads...\n");
+      arg.stop=1;
+    }
 
 #ifdef WIN
-  WaitForMultipleObjects(numthr,threads,TRUE,INFINITE);
-  CloseHandle(lock);
-  for(thr = 0; thr < numthr; thr++) {
-    CloseHandle(threads[thr]);
-  }
+    /*    WaitForMultipleObjects(numthr,threads,TRUE,INFINITE);*/
+    {
+      DWORD stat;
+
+      stat = WaitForMultipleObjects(numthr,threads,TRUE,3000);
+      if(stat != WAIT_TIMEOUT) {
+	for(thr = 0; thr < numthr; thr++) {
+	  CloseHandle(threads[thr]);
+	}
+	CloseHandle(lock);
+	break;
+      }
+    }
 #else
-  for(thr = 0; thr < numthr; thr++) {
-    (void)pthread_join(threads[thr], NULL);
+    /* pthread_timedjoin_np is not portable, so use this mess */
+
+    if(arg.running == 0 || arg.stop == 1) {
+      for(thr = 0; thr < numthr; thr++) {
+	(void)pthread_join(threads[thr], NULL);
+      }
+      break;
+    } else {
+      /* Don't sleep too long */
+      struct timespec tmo={0,50000000};
+      nanosleep(&tmo,NULL);
+    }
+#endif
   }
 #endif
-#endif
+  if(arg.stop == 1) error("Kaczmarz interrupted");
   UNPROTECT(3);
   return(reslist);
 }

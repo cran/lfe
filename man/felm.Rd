@@ -10,7 +10,7 @@ estimating the remaining coefficients with OLS.
 This function is intended for use with large datasets with multiple group
 effects of large cardinality.  If dummy-encoding the group effects
 results in a manageable number of coefficients, you are probably better
-off by using \code{\link{lm}} or package \pkg{nlme}.
+off by using \code{\link{lm}}.
 }
 
 \usage{ felm(formula,fl,data) }

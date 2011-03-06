@@ -170,7 +170,7 @@ for(i in seq_along(factors)) {
 }
 
 cf <- compfactor(factors)
-cat(date(),'There are',nlevels(cf),'connection components\\n')
+cat(date(),'There are',nlevels(cf),'connected components\\n')
 cat(date(),'Centering tolerance is',getOption('lfe.eps'),'\\n')
 cat(date(),'Centering variables and doing OLS on centered system...\\n\\n')
 ";
@@ -265,6 +265,8 @@ print "
 
 
 
+# note to self.  Check whether package 'plyr' may be used for 
+# faster merging.
 if($merge) {
  print "
 # stuff it back into the dataset
@@ -274,8 +276,12 @@ class(tab) <- 'list'
 tab[['comp']] <- cf
 for(f in names(frms)) {
    fr <- frms[[f]]
+   fact <- tab[[f]]
    effnam <- paste(f,'.eff',sep='')
-   tab[[effnam]] <- fr[tab[[f]],'effect'] 
+
+   tab[[effnam]] <- rep(0,length(fact))
+   split(tab[[effnam]],fact) <- fr[,'effect']
+#   tab[[effnam]] <- fr[fact,'effect'] 
 }
 class(tab) <- 'data.frame'
 

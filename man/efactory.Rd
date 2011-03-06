@@ -31,7 +31,7 @@ length \code{N} which may be used to code additional information.
   \itemize{
   \item \code{"ref"} yields an estimable function which is similar to
   the default one in \code{\link{lm}}, one reference is forced to
-  \code{0} in each connection component.
+  \code{0} in each connected component.
   \item \code{"zm"} Similar to \code{"ref"}, but the factor which does
   not contain a reference is made to have zero mean, and an intercept is
   added.
