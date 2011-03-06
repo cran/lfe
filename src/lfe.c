@@ -18,6 +18,7 @@
 #endif
 
 #include <math.h>
+#include <string.h>
 #include <R.h>
 #include <Rdefines.h>
 #include <R_ext/Rdynload.h>
@@ -50,8 +51,7 @@ static double gmean(double *v,int N, FACTOR *f,double *means) {
   /* add entries into right group */
 
   for(i = 0; i < N; i++) {
-    if(group[i] > 0)
-      means[group[i]-1] += v[i];
+    means[group[i]-1] += v[i];
   }
 
   /* divide by group size */
@@ -60,8 +60,7 @@ static double gmean(double *v,int N, FACTOR *f,double *means) {
     means[i] *= f->invgpsize[i];
     sum += means[i]*means[i];
   }
-  /* return square sum of means per level */
-  return sum/nlev;
+  return sum;
 }
 
 /*
@@ -69,7 +68,7 @@ static double gmean(double *v,int N, FACTOR *f,double *means) {
  */
 
 static double centre(double *v, int N, 
-		   FACTOR *factors[], int e, double **meansbuf) {
+		   FACTOR *factors[], int e, double *means) {
 
   int i;
   double sum = 0.0;
@@ -78,43 +77,59 @@ static double centre(double *v, int N,
     FACTOR *f = factors[i];
     const int *gp = f->group;
     int j=0;
-    double *means = meansbuf[i];
     /* compute means */
     sum += gmean(v,N,f,means);
 
     for(j = 0; j < N; j++) {
-      if(gp[j] > 0) {
-	v[j] -= means[gp[j]-1];
-      }
+      v[j] -= means[gp[j]-1];
     }
   }
-  /* return rms of means substracted per level per factor */
-  return sqrt(sum/e);
+
+  return sqrt(sum);
 }
 
 /*
   Method of alternating projections.  Input v, output res.
  */
-static void demean(double *v, int N, double *res,
-		   FACTOR *factors[],int e,double eps, double **means) {
+static int demean(double *v, int N, double *res,
+		   FACTOR *factors[],int e,double eps, double *means) {
   double delta;
-  /* make a copy to result vector, centre() is in-place */
   double norm2 = 0.0;
   int i;
+  double prevdelta;
+  double c;
   double neps;
-
+  int iter;
+  int okconv = 1;
+  /* make a copy to result vector, centre() is in-place */
   memcpy(res,v,N*sizeof(double));
 
   if(1 == e) {
     centre(res,N,factors,e,means);
-    return;
+    return(1);
   }
 
-  for(i = 0; i < N; i++) norm2 += v[i]*v[i];
-  neps = sqrt(norm2)*eps;
+  for(i = 0; i < N; i++) norm2 += res[i]*res[i];
+  norm2 = sqrt(norm2);
+  prevdelta = 2*norm2;
+  neps = norm2*eps;
+  iter = 0;
   do {
+    iter++;
     delta = centre(res,N,factors,e,means);
-  } while(delta > neps);
+    c = delta/prevdelta;
+    /* c is the convergence rate, at infinity they add up to 1/(1-c).
+       This is true for e==2, but also in the ballpark for e>2 we guess.
+    */
+    if(c >= 1.0) {
+      /* Seems warning() has problems with threads, do printf instead */
+      REprintf("Demeaning failed after %d iterations, c-1=%.0le, delta=%.1le\n",iter,c-1.0,delta);
+      okconv = 0;
+      break;
+    }
+    prevdelta = delta;
+  } while(delta > neps*(1.0-c));
+  return(okconv);
 }
 
 
@@ -130,6 +145,7 @@ typedef struct {
   int e;
   double eps;
   int nowdoing;
+  int badconv;
 #ifndef NOTHREADS
 #ifdef WIN
   HANDLE *lock;
@@ -168,29 +184,36 @@ DWORD WINAPI demeanlist_thr(LPVOID varg) {
 static void *demeanlist_thr(void *varg) {
 #endif
   PTARG *arg = (PTARG*) varg;
-  double **means;
+  double *means;
   int i;
+  int maxlev;
   int vecnum;
+  int okconv = 0;
   /* preallocate means */
-  means = Calloc(arg->e,double*);
-  for(i = 0; i < arg->e; i++) {
-    means[i] = Calloc(arg->factors[i]->nlevels,double);
-  }
+  maxlev = 0;
+  for(i = 0; i < arg->e; i++)
+    if(maxlev < arg->factors[i]->nlevels) maxlev = arg->factors[i]->nlevels;
+  means = Calloc(maxlev,double);
   while(1) {
     LOCK(arg->lock);
     vecnum = (arg->nowdoing)++;
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
-    demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means);
+    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means);
+    if(!okconv) {
+      LOCK(arg->lock);
+      arg->badconv++;
+      UNLOCK(arg->lock);
+    }
   }
-  for(i = 0; i < arg->e; i++) Free(means[i]);
+
   Free(means);
   return 0;
 }
 
 
 /* main C entry-point for demeaning.  Called from the R-entrypoint */
-static void demeanlist(double **vp, int N, int K, double **res,
+static int demeanlist(double **vp, int N, int K, double **res,
 		       FACTOR *factors[], int e, double eps,int cores) {
   PTARG arg;
 
@@ -219,9 +242,9 @@ static void demeanlist(double **vp, int N, int K, double **res,
 #endif
 
   arg.lock = &lock;
-
 #endif
 
+  arg.badconv = 0;
   arg.N = N;
   arg.v = vp;
   arg.res = res;
@@ -259,6 +282,8 @@ static void demeanlist(double **vp, int N, int K, double **res,
   }
 #endif
 #endif
+
+  return(arg.badconv);
 }
 
 
@@ -294,80 +319,106 @@ static void invertfactor(FACTOR *f,int N) {
 }
 
 
-static void kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x, double eps) {
+static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x, double eps) {
   /* The factors define a matrix D, we will solve Dx = R
      There are N rows in D, each row a_i contains e non-zero entries, one
      for each factor, the level at that position.
      We iterate on k, start with x=0, an iteration consists
      of adding a multiple of row i (with i = k %% N), the multiplying coefficient
-     is (R[i] - (a_i,x))/e * lambda_k
+     is (R[i] - (a_i,x))/e 
 
-     To speed up things by memory locality, we create an (e X N)-matrix with the non-zero indices
+     To get better memory locality, we create an (e X N)-matrix with the non-zero indices
   */
 
   int *indices = (int*) R_alloc(e*N,sizeof(int));
   double einv = 1.0/e;
-  double diff;
-  double lambda = 1.0;
+  double norm2;
+  double prevdiff,neweps;
+  double c,sd;
+  int iter=0;
   int i;
-  int k= 0;
   int ie;
+  int *prev,*this;
+  double *newR;
+  int newN;
 
   /* We should remove duplicates, at least when they're consecutive.
-     Non-consecutives duplicates is only alternating projections and may
-     not be too inefficient.
-     We'll have a look at it later.
+     Non-consecutives duplicates are just alternating projections and may
+     not be too inefficient.  Besides, removing them is more work...
   */
 
+  newR = (double*) R_alloc(N,sizeof(double));
+  prev = Calloc(e,int);
+  this = Calloc(e,int);
+  newN = 0;
+  ie = 0;
   for(i = 0; i < N; i++) {
     int j;
-    int nlev = 0;
     for(j = 0; j < e; j++) {
-      indices[i*e+j] = factors[j]->group[i]-1 + nlev;
-      nlev += factors[j]->nlevels;
+      this[j] = factors[j]->group[i];
+    }
+    if(memcmp(this,prev,e*sizeof(int)) != 0) {
+      int nlev=0;
+      /* not duplicate, store in indices */
+      
+      for(j = 0; j < e; j++) {
+	indices[ie+j] = this[j]-1 + nlev;
+	nlev += factors[j]->nlevels;
+      }
+      newR[newN] = R[i];
+      newN++;
+      ie += e;
+      memcpy(prev,this,e*sizeof(int));
     }
   }
-  
-  i = 0;
-  diff = 0.0;
-  ie = 0;  /* equals i*e; integer multiplication is slow, keep track instead */
-  while(1) {
-    double upd = 0.0;
-    int j;
-    upd = R[i];
-    /* Subtract inner product */
-    for(j = 0; j < e; j++) {
-      int idx = indices[ie + j];
-      upd -= x[idx];
+  Free(this);
+  Free(prev);
+
+
+  /* Then, do the Kaczmarz iterations */
+  norm2 =0.0;
+  for(i = 0; i < newN; i++) norm2 += newR[i]*newR[i];
+  norm2 = sqrt(norm2);
+  prevdiff = 2*norm2;
+  neweps = eps*norm2;
+  do {
+    int ie = 0; /* equals i*e; integer multiplication is slow, keep track instead */
+    double diff = 0.0;
+    for(i = 0; i < newN; i++,ie+=e) {
+      double upd = 0.0;
+      int j;
+      upd = newR[i];
+
+      /* Subtract inner product */
+      for(j = 0; j < e; j++) {
+	int idx = indices[ie + j];
+	upd -= x[idx];
+      }
+      upd *= einv;
+
+      /* Update x */
+      for(j = 0; j < e; j++) {
+	int idx = indices[ie + j];      
+	x[idx] += upd;
+      }
+
+      /* Keep track of update */
+      diff += upd*upd;
     }
-    /* Update x */
-    upd *= einv;
-    if(ISNA(upd)) error("NaN");
-    for(j = 0; j < e; j++) {
-      int idx = indices[ie + j];      
-      x[idx] += upd;
+
+    /* Relax a bit */
+    R_CheckUserInterrupt();
+    sd = sqrt(diff*e);
+    c = sd/prevdiff;
+    prevdiff = sd;
+    iter++;
+    if(c >= 1.0) {
+      REprintf("Kaczmarz failed in iter %d*%d, c-1=%.0le, sd=%.1le\n",iter,newN,c-1.0,sd);
+      warning("Kaczmarz failed in iter %d*%d, c-1=%.0le, sd=%.1le\n",iter,newN,c-1.0,sd);
+      break;
     }
-    /* Check convergence */
-    diff += upd*upd;
-    ie += e;
-    i++;
-    /* gcc has branch-prediction in this way, MS reportedly always predicts true 
-       This branch should almost never be run, this could be good for prefetching above.
-     */
-#ifdef __GNUC__
-    if(__builtin_expect(i<N,1)) {
-#else
-    if(i < N) {
-#endif
-    } else {
-      i=0;
-      ie = 0;
-      /*      printf("diff %le\n",sqrt(diff));*/
-      R_CheckUserInterrupt();
-      if(sqrt(diff) < eps) break;
-      diff = 0.0;
-    }
-  }
+  } while(sd >= neweps*(1.0-c)) ;
+  return(sd);
 }
 
 
@@ -381,14 +432,13 @@ static SEXP R_kaczmarz(SEXP flist, SEXP RR, SEXP Reps) {
   int N = LENGTH(RR);
   int i;
   int sumlev = 0;
-  double norm2 = 0.0;
+  SEXP tol;
+  /*  double norm2 = 0.0;*/
   PROTECT(flist = AS_LIST(flist));
   numfac = LENGTH(flist);
 
   factors = (FACTOR**) R_alloc(numfac,sizeof(FACTOR*));
   for(i = 0; i < numfac; i++) {
-    int j;
-    int nlev;
     int len;
     FACTOR *f;
     len = LENGTH(VECTOR_ELT(flist,i));
@@ -399,22 +449,16 @@ static SEXP R_kaczmarz(SEXP flist, SEXP RR, SEXP Reps) {
     factors[i] = (FACTOR*) R_alloc(1,sizeof(FACTOR));
     f = factors[i];
     f->group = INTEGER(VECTOR_ELT(flist,i));
-    /* Do we need the number of levels? */
-    nlev = 0;
-    for(j = 0; j < len; j++) {
-      /* find the number of levels, there must be an easier way */
-      if(f->group[j] > nlev)
-	nlev = f->group[j];
-    }
-    f->nlevels = nlev;
-    sumlev += nlev;
+    f->nlevels = LENGTH(getAttrib(VECTOR_ELT(flist,i),R_LevelsSymbol));
+    sumlev += f->nlevels;
   }
 
   PROTECT(result = allocVector(REALSXP,sumlev));
   for(i = 0; i < sumlev; i++) REAL(result)[i] = 0.0;
-  for(i = 0; i < N; i++) norm2 += R[i]*R[i];
-  kaczmarz(factors,numfac,N,R,REAL(result),eps*sqrt(norm2));
-  UNPROTECT(2);
+  PROTECT(tol = allocVector(REALSXP,1));
+  REAL(tol)[0] = kaczmarz(factors,numfac,N,R,REAL(result),eps);
+  setAttrib(result,install("tolerance"),tol);
+  UNPROTECT(3);
   return(result);
 }
 
@@ -444,6 +488,7 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
   int N=0, len;
   int mtinput = 0;
   int icpt;
+  SEXP badconv;
   icpt = INTEGER(Ricpt)[0] - 1; /* convert from 1-based to zero-based */
   eps = REAL(Reps)[0];
   cores = INTEGER(scores)[0];
@@ -484,7 +529,6 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
   factors = (FACTOR**) R_alloc(numfac,sizeof(FACTOR*));
   for(i = 0; i < numfac; i++) {
     int j;
-    int nlev;
     FACTOR *f;
     len = LENGTH(VECTOR_ELT(flist,i));
     if(len != N) {
@@ -494,19 +538,13 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
     factors[i] = (FACTOR*) R_alloc(1,sizeof(FACTOR));
     f = factors[i];
     f->group = INTEGER(VECTOR_ELT(flist,i));
-    nlev = 0;
-    for(j = 0; j < len; j++) {
-      /* find the number of levels, there must be an easier way */
-      if(f->group[j] > nlev)
-	nlev = f->group[j];
-    }
-    f->nlevels = nlev;
+    f->nlevels = LENGTH(getAttrib(VECTOR_ELT(flist,i),R_LevelsSymbol));
     /* Make array for holding precomputed group levels */
     /* Now, what about entries which don't belong to a group */
     /* I.e. NA entries, how is that handled, I wonder. */
     /* seems to be negative.  Anyway, we fail on them. No, we don't */
-    f->invgpsize = (double *)R_alloc(nlev,sizeof(double));
-    memset(f->invgpsize,0,nlev*sizeof(double));
+    f->invgpsize = (double *)R_alloc(f->nlevels,sizeof(double));
+    memset(f->invgpsize,0,f->nlevels*sizeof(double));
     /* first count it */
     for(j = 0; j < N; j++) {
       /* skip entries without a group, do we need that? */
@@ -516,7 +554,7 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
     }
     /* then invert it, it's much faster to multiply than to divide */
     /* in the iterations */
-    for(j = 0; j < nlev; j++) {
+    for(j = 0; j < f->nlevels; j++) {
       f->invgpsize[j] = 1.0/f->invgpsize[j];
     }
     /*invertfactor(f,N);*/
@@ -543,11 +581,13 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
       UNPROTECT(1);
     }
   }  
-  demeanlist(vectors,N,numvec,target,factors,numfac,eps,cores);
+  PROTECT(badconv = allocVector(INTSXP,1));
+  INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,factors,numfac,eps,cores);
+  if(INTEGER(badconv)[0] > 0)
+    warning("%d vectors failed to centre to tolerance %.1le",INTEGER(badconv)[0],eps);
+  setAttrib(reslist,install("badconv"),badconv);
   /* unprotect the reslist */
-  UNPROTECT(1);
-  /* unprotect vlist and flist */
-  UNPROTECT(2);
+  UNPROTECT(4);
   return(reslist);
 }
 
@@ -626,7 +666,7 @@ static int Components(int **vertices, FACTOR **factors, int K) {
 
 	  POPALL;
 	  /* Get outta here */
-	  if(stacklevel == 0) break;
+	  if(0 == stacklevel) break;
 	} else {
 	  /* start over with data-points */
 	  ii = factors[startfac]->ii[startvert];	
@@ -674,21 +714,12 @@ static SEXP R_conncomp(SEXP flist) {
   factors = (FACTOR**) R_alloc(numfac,sizeof(FACTOR*));
   PROTECT(flist = AS_LIST(flist));
   for(i = 0; i < numfac; i++) {
-    int j;
-    int nlev;
     FACTOR *f;
 
     factors[i] = (FACTOR*) R_alloc(1,sizeof(FACTOR));
     f = factors[i];
     f->group = INTEGER(VECTOR_ELT(flist,i));
-    nlev = 0;
-    for(j = 0; j < N; j++) {
-      /* find the number of levels */
-      if(f->group[j] < 0) error("NAs in factor");
-      if(f->group[j] > nlev)
-	nlev = f->group[j];
-    }
-    f->nlevels = nlev;
+    f->nlevels = LENGTH(getAttrib(VECTOR_ELT(flist,i),R_LevelsSymbol));
     invertfactor(f,N);
   }
 

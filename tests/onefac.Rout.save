@@ -28,76 +28,71 @@ The following object(s) are masked from 'package:base':
 
 LFE using 1 thread, set options(lfe.threads=n) to use more
 > options(lfe.threads=4)
-> set.seed(655320)
+> set.seed(6553)
+> # single fixed effect, special case which we risk destroying when we optimize, so check it
 > x <- rnorm(20000,mean=2000)
 > x2 <- rnorm(length(x))
 > x3 <- rexp(length(x))
 > ## create individual and firm
 > id <- factor(sample(15000,length(x),replace=TRUE))
-> firm <- factor(sample(13000,length(x),replace=TRUE))
 > 
 > ## effects
 > id.eff <- rnorm(nlevels(id))
-> firm.eff <- rnorm(nlevels(firm))
 > 
 > ## left hand side
-> y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
+> y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + rnorm(length(x))
 > 
 > ## estimate
-> est <- felm(y ~ x+x2 + x3 + G(id) + G(firm))
-> summary(est)
+> summary(est <- felm(y ~ x+x2 + x3 + G(id)))
 
 Call:
-   felm(formula = y ~ x + x2 + x3 + G(id) + G(firm)) 
+   felm(formula = y ~ x + x2 + x3 + G(id)) 
 
-       Min         1Q     Median         3Q        Max 
--1.533e+00 -1.267e-09  0.000e+00  2.072e-09  1.409e+00 
+    Min      1Q  Median      3Q     Max 
+-3.2166 -0.3171  0.0000  0.3195  3.1914 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
-x   1.04336    0.03738  27.911  < 2e-16 ***
-x2  0.30186    0.03827   7.887 1.21e-14 ***
-x3  0.42771    0.03692  11.585  < 2e-16 ***
+x   1.02548    0.01054   97.26   <2e-16 ***
+x2  0.24540    0.01069   22.95   <2e-16 ***
+x3  0.49951    0.01078   46.35   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
-Residual standard error: 1.006 on 693 degrees of freedom
+Residual standard error: 1.005 on 8984 degrees of freedom
 Multiple R-squared:     1   Adjusted R-squared:     1 
-F-statistic: 4.1e+06 on 19307 and 693 DF, p-value: < 2.2e-16 
+F-statistic: 7.2e+06 on 11016 and 8984 DF, p-value: < 2.2e-16 
 
 
-> cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
-Components: 1972 largest: 15846 
+> 
 > ## extract the group fixed effects
 > fe <- getfe(est)
 > ## merge back
 > 
 > ideff <- fe[paste('id',id,sep='.'),'effect']
-> firmeff <- fe[paste('firm',firm,sep='.'),'effect']
 > 
 > ## verify that id and firm coefficients are 1
 > options(scipen=8)
-> summary(lm(y ~ x + x2 + x3 + ideff + firmeff-1),digits=8)
+> summary(lm(y ~ x + x2 + x3 + ideff -1),digits=8)
 
 Call:
-lm(formula = y ~ x + x2 + x3 + ideff + firmeff - 1)
+lm(formula = y ~ x + x2 + x3 + ideff - 1)
 
 Residuals:
-   Min     1Q Median     3Q    Max 
--1.533  0.000  0.000  0.000  1.409 
+    Min      1Q  Median      3Q     Max 
+-3.2166 -0.3171  0.0000  0.3195  3.1914 
 
 Coefficients:
-          Estimate Std. Error t value Pr(>|t|)    
-x       1.04335742 0.00003304 31582.2   <2e-16 ***
-x2      0.30185740 0.00132788   227.3   <2e-16 ***
-x3      0.42770781 0.00131965   324.1   <2e-16 ***
-ideff   1.00000000 0.00077635  1288.1   <2e-16 ***
-firmeff 1.00000000 0.00077586  1288.9   <2e-16 ***
+       Estimate Std. Error  t value Pr(>|t|)    
+x     1.0254837  0.0000968 10594.28   <2e-16 ***
+x2    0.2453984  0.0048174    50.94   <2e-16 ***
+x3    0.4995063  0.0048355   103.30   <2e-16 ***
+ideff 1.0000000  0.0037953   263.49   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
-Residual standard error: 0.1872 on 19995 degrees of freedom
+Residual standard error: 0.6733 on 19996 degrees of freedom
 Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 4.568e+11 on 5 and 19995 DF,  p-value: < 2.2e-16 
+F-statistic: 4.413e+10 on 4 and 19996 DF,  p-value: < 2.2e-16 
 
 > 

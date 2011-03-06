@@ -16,7 +16,6 @@ firm.eff <- rnorm(nlevels(firm))
 y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
 ## estimate
-est <- felm(y ~ x+x2 + G(id) + G(firm))
-summary(est)
+summary(est <- felm(y ~ x+x2 + G(id) + G(firm)))
 getfe(est)
 summary(lm(y ~ x + x2 + id + firm -1))

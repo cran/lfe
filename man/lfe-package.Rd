@@ -4,10 +4,12 @@
 \docType{package}
 \title{Linear Group Fixed Effects}
 \concept{Method of Alternating Projections}
+\concept{Kaczmarz Method}
+\concept{Multiple Fixed Effects}
 \description{
 The package uses the Method of Alternating Projections to estimate
 linear models with multiple group fixed effects.  It is
-thread-parallellized and intended for large problems.
+thread-parallelized and intended for large problems.
 }
 
 \details{
@@ -26,24 +28,24 @@ to finding the point estimates.
 
 The estimation is done in two steps.  First the other coefficients are
 estimated with the function \code{\link{felm}} by centering on all the
-group means followed by an OLS (similar to lm).  Then the group effects
+group means, followed by an OLS (similar to lm).  Then the group effects
 are extracted (if needed) with the function \code{\link{getfe}}.  This
 method is described in Gaure (2011).
 
 There's also a function \code{\link{demeanlist}} which just does the
 centering on an arbitrary matrix, and there's a function
 \code{\link{compfactor}} which computes the connection components (which
-is used for interpreting the group effects when there are only two
+are used for interpreting the group effects when there are only two
 factors, see the Abowd et al references), they are also returned by
 \code{\link{getfe}}).
 
 The centering on the means is done with a tolerance.  This tolerance is
-set by \code{options(lfe.eps=1e-7)}, its default is
-\code{sqrt(.Machine$double.eps)} (which is
-\Sexpr{format(sqrt(.Machine$double.eps),digits=3)}).  This is a somewhat
+set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat
 conservative tolerance, in many cases I'd guess
 \code{options(lfe.eps=1e-4)} may be sufficient.  This will speed up the
-centering.
+centering.  In the other direction, setting \code{options(lfe.eps=0)}
+will provide maximum accuracy, at the cost of computing time and
+warnings about convergence failure.
 
 The package is threaded, that is, it may use more than one cpu.  The
 number of threads is fetched upon loading the package, from the
@@ -52,19 +54,19 @@ stored by \code{options(lfe.threads=n)}.  This option may be changed prior to
 calling \code{\link{felm}}, if so desired.
 
 Threading is only done for the centering; the extraction of the group
-effects is not threaded, but it uses any threading in the underlying
-blas-library (which is usually controlled by the \env{OMP_NUM_THREADS}
-environment variable).  The default method for extracting the
+effects is not threaded. The default method for extracting the
 group coefficients is the iterative Kaczmarz-method, its tolerance
 is also the \code{lfe.eps} option.
 
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
-levels (the \code{\link{felm}} takes about 20 minutes on 8 cpus, the
-\code{\link{getfe}} takes 8 minutes).  It uses the sparse
-Cholesky solver of package \pkg{Matrix}, which relies heavily on the
+levels (the \code{\link{felm}} takes about 50 minutes on 8 cpus, the
+\code{\link{getfe}} takes 5 minutes).  It's also possible
+to use the sparse Cholesky solver of package \pkg{Matrix}, which relies heavily on the
 blas-library.  It's thus strongly recommended to link an optimized blas
-into R (such as 'goto', 'atlas', 'acml' or 'mkl').
+into R (such as 'goto', 'atlas', 'acml' or 'mkl'). With this method,
+standard errors may also be retrieved, though at a substantial cost in
+computing time.
 
 The package will work with any positive number of grouping factors, but if
 more than two, their interpretation is in general not well understood.
@@ -117,7 +119,7 @@ Statistical Software Components S456942, Boston College Department of Economics.
   est <- felm(y ~ x+x2+G(id)+G(firm)+G(year))
   summary(est)
 ## specify references manually to compare directly with lm
-  getfe(est,references=c('year.1','firm.1'),se=TRUE)
+  getfe(est,references=c('year.1','firm.1'),se=TRUE,method='cholesky')
 # compare with an ordinary lm
   summary(lm(y ~ x+x2+id+firm+year-1))
 }

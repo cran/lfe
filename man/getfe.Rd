@@ -1,6 +1,7 @@
 \name{getfe}
 \alias{getfe}
 \title{Retrieve the group fixed effects}
+\concept{Kaczmarz Method}
 \description{
   Compute the group fixed effects which were swept out during
   an estimation with \code{\link{felm}}.

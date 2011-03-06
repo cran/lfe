@@ -4,7 +4,7 @@
 
 .onLoad <- function(libname,pkgname) {
   if(is.null(getOption('lfe.eps')))
-    options(lfe.eps=sqrt(.Machine$double.eps))
+    options(lfe.eps=1e-8)
   if(is.null(getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
@@ -51,7 +51,7 @@ compfactor <- function(fl) {
 }
 
 kaczmarz <- function(fl,R,eps=getOption('lfe.eps')) {
-  v <- as.vector(.Call('kaczmarz',fl,R,eps))
+  v <- .Call('kaczmarz',fl,as.vector(R),eps)
   names(v) <- unlist(lapply(names(fl),function(n) paste(n,levels(fl[[n]]),sep='.')))
   v
 }
@@ -344,6 +344,7 @@ felm <- function(formula,fl,data) {
 
   yz <- demeanlist(y,fl)
   xz <- demeanlist(x,fl,icpt)
+  badconv <- attr(xz,'badconv') + attr(yz,'badconv')
 #  attributes(xz) <- attributes(x)
   dim(xz) <- c(nrow(x),ncov)
 #  dimnames(xz) <- dimnames(x)
@@ -380,7 +381,7 @@ felm <- function(formula,fl,data) {
   }
   rm(b)
   if(icpt > 0) names(beta) <- colnames(x)[-icpt] else names(beta) <- colnames(x)
-  z <- list(coefficients=beta)
+  z <- list(coefficients=beta,badconv=badconv)
   N <- nrow(xz)
   p <- ncol(xz)
 

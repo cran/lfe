@@ -1,4 +1,4 @@
-export(felm,getfe,demeanlist,compfactor)
+export(felm,getfe,demeanlist,compfactor,kaczmarz)
 import(Matrix)
 S3method(print,felm)
 S3method(print,summary.felm)

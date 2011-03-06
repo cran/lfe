@@ -1,3 +1,8 @@
+1.2-452 
+	Remove duplicate rows in the Kaczmarz method.  Different
+	convergence check, both in demeaning and Kaczmarz, using
+	convergence rate summed up to infinity.
+	
 1.2-444
 	Implemented the Kaczmarz method for solving the factor-system, made it default.	
 1.1-434
@@ -16,4 +21,4 @@
 	In particular the coefficients-entry from felm is now a vector, not a matrix.
 
 1.0-418
-	Initial version
+	Initial version on cran

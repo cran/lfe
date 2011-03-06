@@ -66,9 +66,7 @@ summary(est)
 summary(lm(y ~ x + x2 + id + firm-1))
 ## alternatively
 \dontrun{felm(y ~ x + x2,fl=list(id=id,firm=firm))}
-
 \dontrun{print(getfe(est))}
-
 }
 \keyword{regression}
 \keyword{models}
