@@ -83,6 +83,11 @@ has convergence problems.  In this case, the option
 \code{getfe}.  This causes random shuffling of the residual system,
 which sometimes improves the convergence.
 
+In the exec-directory there is a perl-script \code{lfescript} which
+is used at the authors site for creating R-scripts from 
+a simple specification file.  The format is documented in 
+\code{doc/lfeguide.txt}.
+
 \pkg{lfe} is similar in function, though not in method, to the
 Stata modules \code{a2reg} and \code{felsdvreg}.
 }

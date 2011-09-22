@@ -8,6 +8,7 @@ $merge = 0;
 $collect = 1;
 $tol = 0;
 $itsbig = 0;
+$randkac = 0;
 $bN = 0;
 while(<>) {
   chomp($_);
@@ -35,6 +36,8 @@ while(<>) {
       if($bN == 0) {$bN = 100;}
   } elsif($cmd eq 'out') {
     @outlist = @line;
+  } elsif($cmd eq 'randkac') {
+      $randkac=1;
   } elsif($cmd eq 'nofe') {
       $nofe = 1;
   } elsif($cmd eq 'savecomp') {
@@ -99,6 +102,7 @@ cat('******* This is the LFE',version,'software at the Frisch Centre
 ******* By courtesy of Simen Gaure, 2011.  Have a nice day!\\n\\n')
 ";
 if($tol > 0) {print "options(lfe.eps=$tol)\n";}
+if($randkac) {print "options(lfe.randkac=TRUE)\n";}
 print "
 require('lfe')
 

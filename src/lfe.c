@@ -18,6 +18,8 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
+#include <semaphore.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
@@ -179,7 +181,6 @@ typedef struct {
   int done;
   int quiet;
   int stop;
-  int running;
   int threadnum;
   double **means;
 #ifndef NOTHREADS
@@ -187,6 +188,8 @@ typedef struct {
   HANDLE *lock;
 #else
   pthread_mutex_t *lock;
+  int running;
+  sem_t finished;
 #endif
 #endif
 } PTARG;
@@ -257,9 +260,15 @@ static void *demeanlist_thr(void *varg) {
     UNLOCK(arg->lock);
   }
   /* signal we've finished */
+#ifndef NOTHREADS
+#ifndef WIN
   LOCK(arg->lock);
-  arg->running--;
+  /* yuck, main thread can't wait for zero on a semaphore, so do it this way.
+   Last leaver turns out the light.*/
+  if(--arg->running == 0) sem_post(&arg->finished);
   UNLOCK(arg->lock);
+#endif
+#endif
   return 0;
 }
 
@@ -292,8 +301,9 @@ static int demeanlist(double **vp, int N, int K, double **res,
   threadids = (DWORD*) R_alloc(numthr,sizeof(DWORD));
 #else
   threads = (pthread_t*) R_alloc(numthr,sizeof(pthread_t));
+  if(sem_init(&arg.finished,0,0) != 0) error("sem_init failed, errno=%d",errno);
+  arg.running = numthr;
 #endif
-
   arg.lock = &lock;
 #endif
 
@@ -301,7 +311,6 @@ static int demeanlist(double **vp, int N, int K, double **res,
   for(i = 0; i < e; i++)
     if(maxlev < factors[i]->nlevels) maxlev = factors[i]->nlevels;
 
-  arg.running = numthr;
   arg.means = (double **) R_alloc(numthr,sizeof(double*));
   for(thr = 0; thr < numthr; thr++) {
     arg.means[thr] = (double*) R_alloc(maxlev,sizeof(double));
@@ -347,31 +356,24 @@ static int demeanlist(double **vp, int N, int K, double **res,
     }
 
 #ifdef WIN
-    /*    WaitForMultipleObjects(numthr,threads,TRUE,INFINITE);*/
-    {
-      DWORD stat;
-
-      stat = WaitForMultipleObjects(numthr,threads,TRUE,3000);
-      if(stat != WAIT_TIMEOUT) {
-	for(thr = 0; thr < numthr; thr++) {
-	  CloseHandle(threads[thr]);
-	}
-	CloseHandle(lock);
-	break;
+    if(WaitForMultipleObjects(numthr,threads,TRUE,3000) != WAIT_TIMEOUT) {
+      for(thr = 0; thr < numthr; thr++) {
+	CloseHandle(threads[thr]);
       }
+      CloseHandle(lock);
+      break;
     }
 #else
-    /* pthread_timedjoin_np is not portable, so use this mess */
-
-    if(arg.running == 0 || arg.stop == 1) {
-      for(thr = 0; thr < numthr; thr++) {
-	(void)pthread_join(threads[thr], NULL);
+    {
+      struct timespec tmo = {time(NULL)+3,0};
+      if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) != ETIMEDOUT) {
+	for(thr = 0; thr < numthr; thr++) {
+	  (void)pthread_join(threads[thr], NULL);
+	}
+	sem_destroy(&arg.finished);
+	pthread_mutex_destroy(arg.lock);
+	break;
       }
-      break;
-    } else {
-      /* Don't sleep too long */
-      struct timespec tmo={0,50000000};
-      nanosleep(&tmo,NULL);
     }
 #endif
   }
@@ -529,7 +531,6 @@ typedef struct {
   int e;
   int N;
   int threadnum;
-  int running;
   int stop;
   int numvec;
   double eps;
@@ -541,6 +542,8 @@ typedef struct {
   HANDLE *lock;
 #else
   pthread_mutex_t *lock;
+  int running;
+  sem_t finished;
 #endif
 #endif
 } KARG;
@@ -566,9 +569,13 @@ static void *kaczmarz_thr(void *varg) {
 		    arg->source[vecnum],arg->target[vecnum],arg->eps,
 		    arg->newR[myid],arg->indices[myid], &arg->stop);
   }
+#ifndef NOTHREADS
+#ifndef WIN
   LOCK(arg->lock);
-  arg->running--;
+  if(--arg->running == 0) sem_post(&arg->finished);
   UNLOCK(arg->lock);
+#endif
+#endif
   return 0;
 }
 
@@ -709,6 +716,8 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   threadids = (DWORD*) R_alloc(numthr,sizeof(DWORD));
 #else
   threads = (pthread_t*) R_alloc(numthr,sizeof(pthread_t));
+  arg.running = numthr;
+  if(sem_init(&arg.finished,0,0) != 0) error("sem_init failed, errno=%d",errno);
 #endif
   arg.lock = &lock;
 #endif
@@ -722,7 +731,6 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   arg.eps = eps;
   arg.numvec = numvec;
   arg.N = N;
-  arg.running = numthr;
   arg.stop = 0;
   arg.newR = (double**) R_alloc(numthr,sizeof(double*));
   arg.indices = (int**) R_alloc(numthr,sizeof(int*));
@@ -757,30 +765,24 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 
 #ifdef WIN
     /*    WaitForMultipleObjects(numthr,threads,TRUE,INFINITE);*/
-    {
-      DWORD stat;
-
-      stat = WaitForMultipleObjects(numthr,threads,TRUE,3000);
-      if(stat != WAIT_TIMEOUT) {
-	for(thr = 0; thr < numthr; thr++) {
-	  CloseHandle(threads[thr]);
-	}
-	CloseHandle(lock);
-	break;
+    if(WaitForMultipleObjects(numthr,threads,TRUE,3000) != WAIT_TIMEOUT) {
+      for(thr = 0; thr < numthr; thr++) {
+	CloseHandle(threads[thr]);
       }
+      CloseHandle(lock);
+      break;
     }
 #else
-    /* pthread_timedjoin_np is not portable, so use this mess */
-
-    if(arg.running == 0 || arg.stop == 1) {
-      for(thr = 0; thr < numthr; thr++) {
-	(void)pthread_join(threads[thr], NULL);
+    {
+      struct timespec tmo = {time(NULL)+3,0};
+      if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
+	for(thr = 0; thr < numthr; thr++) {
+	  (void)pthread_join(threads[thr], NULL);
+	}
+	sem_destroy(&arg.finished);
+	pthread_mutex_destroy(arg.lock);
+	break;
       }
-      break;
-    } else {
-      /* Don't sleep too long */
-      struct timespec tmo={0,50000000};
-      nanosleep(&tmo,NULL);
     }
 #endif
   }

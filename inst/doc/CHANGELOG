@@ -1,3 +1,45 @@
+2011-09-22  sgaure
+
+	* [r681] pkg/R/kaczmarz.R, pkg/tests/fourfac.R,
+	  pkg/tests/fourfac.Rout.save: fixed a bug when number of factors > 3
+	* [r680] pkg/inst/doc/lfeguide.txt, pkg/man/lfe-package.Rd: support
+	  randkac in lfescript
+	* [r679] Makefile: cran build
+	* [r678] pkg/exec/lfescript, pkg/src/lfe.c: support randkac in lfescript
+
+2011-09-21  sgaure
+
+	* [r677] csda, csda/fixed2.aux, csda/fixed2.bbl, csda/fixed2.blg,
+	  csda/fixed2.log, csda/fixed2.spl, csda/fixed2.tex, csda/fixed2.zip,
+	  csda/rev1, csda/rev1/CSDA-D-10-00865.pdf,
+	  csda/rev1/CSDA_highdimensional.pdf, csda/rev1/Chicago.bst,
+	  csda/rev1/NOTE, csda/rev1/Review of CSDA-D-10-00865.pdf,
+	  csda/rev1/Review.pdf, csda/rev1/biblio.bib, csda/rev1/commentary.txt,
+	  csda/rev1/fixed.zip, csda/rev1/fixed2.aux, csda/rev1/fixed2.bbl,
+	  csda/rev1/fixed2.blg, csda/rev1/fixed2.log, csda/rev1/fixed2.out,
+	  csda/rev1/fixed2.pdf, csda/rev1/fixed2.spl, csda/rev1/fixed2.tex.old,
+	  csda/rev1/fixed2.zip, csda/rev1/fixed3.aux, csda/rev1/fixed3.bbl,
+	  csda/rev1/fixed3.blg, csda/rev1/fixed3.log, csda/rev1/fixed3.out,
+	  csda/rev1/fixed3.pdf, csda/rev1/fixed3.spl, csda/rev1/fixed3.tex,
+	  csda/rev1/fixed3.zip, csda/rev1/gpreg.pdf, csda/rev1/model2-names.bst,
+	  csda/rev1/pack, csda/rev1/texput.log: Just for backup-purpose of csda
+
+2011-09-16  sgaure
+
+	* [r676] configure.ac:
+
+2011-09-15  sgaure
+
+	* [r675] DESCRIPTION, Makefile: Add AMS classification
+	* [r674] DESCRIPTION, Makefile: some tidying
+
+2011-09-11  sgaure
+
+	* [r673] pkg/src/lfe.c: test return status of sem_init
+	* [r672] configure.ac: make thread-version optional
+	* [r671] Makefile, pkg/src/lfe.c: switched to timed semaphore instead of
+	  polling in interrupt check
+
 2011-09-10  sgaure
 
 	* [r670] Makefile, pkg/inst/doc/lfehow.Rnw: cran build

@@ -58,16 +58,16 @@ efactory <- function(obj,opt=NULL,...) {
   if(length(obj$fe) == 2) {
     # now, find the component of each parameter, i.e. each level.  We do this
     # by finding the first occurence of each level, i.e. match(levels(f),f)
-    comp <- unlist(lapply(obj$fe, function(f) obj$cfactor[match(levels(f),f)]))
+    comp <- factor(unlist(lapply(obj$fe, function(f) obj$cfactor[match(levels(f),f)])))
     ncomp <- nlevels(comp)
   } else if(length(obj$fe) > 2) {
     # we should formally assign unique component numbers for factors beyond the second
     comp <- factor(unlist(lapply(obj$fe[1:2], function(f) obj$cfactor[match(levels(f),f)])))
     ncomp <- nlevels(comp)
     exlvls <- (nlevels(comp)+1):(nlevels(comp)+1 + length(obj$fe)-3)
-    comp <- c(comp,mapply(rep,exlvls,unlist(lapply(obj$fe[3:length(obj$fe)],nlevels))))
+    comp <- as.factor(c(comp,unlist(mapply(rep,exlvls,unlist(lapply(obj$fe[3:length(obj$fe)],nlevels))))))
   } else {
-    comp <- rep(1,length(obs))
+    comp <- factor(rep(1,length(obs)))
     ncomp <- 1
   }
 
