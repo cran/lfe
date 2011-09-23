@@ -1,14 +1,14 @@
 library(lfe)
 options(lfe.threads=2)
-set.seed(655320)
-x <- rnorm(50000,mean=200)
+set.seed(6320)
+x <- rnorm(10000,mean=200)
 x2 <- rnorm(length(x))
 x3 <- rexp(length(x))
 ## create individual and firm
-id <- factor(sample(15000,length(x),replace=TRUE))
-firm <- factor(sample(13000,length(x),replace=TRUE))
-shoe <- factor(sample(1000,length(x),replace=TRUE))
-shirt <- factor(sample(1000,length(x),replace=TRUE))
+id <- factor(sample(2000,length(x),replace=TRUE))
+firm <- factor(sample(2000,length(x),replace=TRUE))
+shoe <- factor(sample(2000,length(x),replace=TRUE))
+shirt <- factor(sample(2000,length(x),replace=TRUE))
 ## effects
 id.eff <- rnorm(nlevels(id))
 firm.eff <- rnorm(nlevels(firm))
@@ -22,7 +22,7 @@ summary(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm) + G(shoe) + G(shirt)))
 cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
 ## extract the group fixed effects
   ## verify that id and firm coefficients are 1
-options(scipen=8)
+opt <- options(scipen=8,warn=1)
 
 for(ef in c('ln','ref','zm','zm2')) {
   fe <- getfe(est,ef=ef)
@@ -39,3 +39,4 @@ for(ef in c('ln','ref','zm','zm2')) {
     print(summary(lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff-1),digits=8))
   }
 }
+options(opt)

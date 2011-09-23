@@ -67,13 +67,6 @@ With the Kaczmarz-method it's possible to specify a different estimable
 function. 
 }
 
-\note{
-If there are convergence problems, you may try to set 
-\code{options(lfe.randkac=TRUE)} prior to calling \code{getfe}.
-This will cause random shuffling of the rows of the system.  This
-sometimes improves the convergence.
-}
-
 \details{
   For the case with two factors (the \code{fl}-argument to
   \code{\link{felm}}), one reference in each connected component is

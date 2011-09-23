@@ -12,6 +12,7 @@
 #include <windows.h>
 #else
 #ifndef NOTHREADS
+#include <semaphore.h>
 #include <pthread.h>
 #endif
 #endif
@@ -19,7 +20,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include <semaphore.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
@@ -366,7 +366,15 @@ static int demeanlist(double **vp, int N, int K, double **res,
 #else
     {
       struct timespec tmo = {time(NULL)+3,0};
+#ifdef __APPLE_CC__
+      struct timespec atmo = {0,50000000};
+      /* Kludge in MacOSX because no timedwait */
+      
+      if(arg.stop == 0) nanosleep(&atmo,NULL);
+      if(arg.stop == 1 || sem_trywait(&arg.finished) != EAGAIN) {
+#else
       if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) != ETIMEDOUT) {
+#endif
 	for(thr = 0; thr < numthr; thr++) {
 	  (void)pthread_join(threads[thr], NULL);
 	}
@@ -470,6 +478,36 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
   free(this);
   free(prev);
 
+  /* 
+     At this point we should perhaps randomly shuffle the equations.
+     I.e. the indices and newR.  At the moment we have put this
+     optionally inside the R-wrapper code.  It could be wiser to do it
+     here, after duplicate elimination.  
+  */
+
+#if 1
+  GetRNGstate();
+  for(i = newN-1; i > 0; i--) {
+    double dtmp;
+    int k,j;
+    /* Pick j between 0 and i inclusive */
+    j = (int) floor((i+1) * unif_rand());
+    if(j == i) continue;
+    /* exchange newR[i] and newR[j]
+       as well as indices[i*e:i*e+e-1] and indices[j*e:j*e+e-1]
+    */
+    dtmp = newR[j];
+    newR[j] = newR[i];
+    newR[i] = dtmp;
+    for(k = 0; k < e; k++) {
+      int itmp;
+      itmp = indices[j*e+k];
+      indices[j*e+k] = indices[i*e+k];
+      indices[i*e+k] = itmp;
+    }
+  }
+  PutRNGstate();
+#endif
 
   /* Then, do the Kaczmarz iterations */
   norm2 =0.0;

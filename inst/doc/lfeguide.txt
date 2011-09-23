@@ -15,7 +15,6 @@ model y ~ x + x2 + year + G(id)+G(firm)
 dummy year
 #nofe
 #se
-#randkac
 merge
 ----cut----
 
@@ -55,14 +54,6 @@ correct).
 The 'se' line (commented out above) is included if you want standard errors
 on the fixed effects.  These are bootstrapped, and as such very time-consuming
 to compute.  Avoid if you don't need.
-
-The 'randkac' line is a kludge.  Sometimes, under conditions the author
-of the program does not have divine knowledge about, the computation of
-the fixed effects converges very slowly.  Typically this happens for large
-datasets and with one or more category variables with relatively few
-categories.  In this case, a random shuffling of a certain set of equations
-(in the Kaczmarz method, hence the name) may improve convergence.  Then
-you may uncomment this line.
 
 The line 'merge' will cause the fixed effects to be merged into the original
 data-set and output as a file 'fe-merged.csv' for further analysis.

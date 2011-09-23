@@ -1,5 +1,30 @@
+2011-09-23  sgaure
+
+	* [r695] pkg/src/lfe.c:
+	* [r694] pkg/src/lfe.c: syntax error
+	* [r693] pkg/tests/nonest.R, pkg/tests/nonest.Rout.save: changed the
+	  nonest test
+	* [r692] pkg/src/lfe.c: don't include semaphore.h on windows
+	* [r691] pkg/R/kaczmarz.R, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/fourfac.Rout.save, pkg/tests/nonest.R,
+	  pkg/tests/nonest.Rout.save, pkg/tests/verify.Rout.save: make sure to
+	  check estimability if more than 2 factors
+	* [r690] pkg/exec/lfescript, pkg/inst/doc/lfeguide.txt,
+	  pkg/man/getfe.Rd: lfe.randkac-option removed since we allways shuffle
+	* [r689] pkg/R/kaczmarz.R, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/fourfac.R, pkg/tests/fourfac.Rout.save,
+	  pkg/tests/lfetest.Rout.save: tests reflects mandatory
+	  Kaczmarz-shuffling, also fixed bug in zm2-estimable function
+	* [r688] pkg/R/kaczmarz.R: random Kaczmarz is mandatory
+	* [r687] pkg/src/lfe.c: random kaczmarz as mandatory
+	* [r686] pkg/tests/fourfac.R: check zm and zm2
+
 2011-09-22  sgaure
 
+	* [r685] Makefile: minor change in makefile
+	* [r684] Makefile: minor change in makefile
+	* [r683] Makefile: minor change in makefile
+	* [r682] Makefile: make sure vignette ends up on cran
 	* [r681] pkg/R/kaczmarz.R, pkg/tests/fourfac.R,
 	  pkg/tests/fourfac.Rout.save: fixed a bug when number of factors > 3
 	* [r680] pkg/inst/doc/lfeguide.txt, pkg/man/lfe-package.Rd: support

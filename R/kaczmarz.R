@@ -14,19 +14,12 @@ kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('
 getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100) {
 
   R <- obj$residuals-obj$full.residuals
-  if(isTRUE(getOption('lfe.randkac'))) {
-# order randomly
-    oo <- order(runif(length(R)))
-    Roo <- R[oo]
-    fe <- lapply(obj$fe,function(f) f[oo])
-    v <- kaczmarz(fe,Roo,eps)
-  } else {
-    v <- kaczmarz(obj$fe,R,eps)
-  }
+  v <- kaczmarz(obj$fe,R,eps)
   nm <- names(v)
   if(is.character(ef)) {
     ef <- efactory(obj,opt=ef)
-  } else if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef,obj$fe,R)) {
+  }
+  if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef,obj$fe,R)) {
     warning('Supplied function seems non-estimable\n')
   }
   v <- ef(v,TRUE)
@@ -207,7 +200,7 @@ efactory <- function(obj,opt=NULL,...) {
            # i.e. from the same component, add two and two
            # ifact should consist of the components of the
            # levels of zfact.
-           ifact <- factor(gsub('^([0-9]+).*','\\1',levels(zfact)))
+           ifact <- factor(as.integer(gsub('^([0-9]+).*','\\1',levels(zfact))),exclude=NA)
            enames <- paste('icpt',1:ncomp,sep='.')
            zcomp <- factor(c(comp,1:ncomp))
            oo <- order(zcomp)
@@ -247,7 +240,8 @@ efactory <- function(obj,opt=NULL,...) {
   options(o)
   if(exists('cmpfun'))
     ef <- cmpfun(ef,list(optimize=3))
-  if(length(obj$fe) <= 2 && as.character(opt) != 'ln') attr(ef,'verified') <- TRUE
+  if(length(obj$fe) <= 2 && as.character(opt) != 'ln') 
+    attr(ef,'verified') <- TRUE
   ef
 } 
 
@@ -324,25 +318,13 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   Rdup <- matrix(rep(R,vpb),length(smpdraw),vpb)
   gc()
 
-  if(isTRUE(getOption('lfe.randkac'))) {
-    # Now, each element of the list is either
-    # a matrix or a vector, let's reorder randomly
-    oo <- order(runif(length(obj$fe[[1]])))
-    ofl <- lapply(obj$fe,function(f) f[oo])
-  }
-  
+
 
   for(i in 1:blks) {
     rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
     dim(rsamp) <- c(length(smpdraw),vpb)
     newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rdup
-    if(isTRUE(getOption('lfe.randkac'))) {
-      oR <- apply(newR,2,function(l) l[oo])
-      v <- kaczmarz(ofl,oR,eps,threads=threads)*sefact
-      rm(oR)
-    } else {
-      v <- kaczmarz(obj$fe,newR,eps,threads=threads)*sefact
-    }
+    v <- kaczmarz(obj$fe,newR,eps,threads=threads)*sefact
     efv <- apply(v,2,ef,addnames=FALSE)
     rm(v,rsamp,newR); gc()
     vsum <- vsum + rowSums(efv)
@@ -371,11 +353,6 @@ is.estimable <- function(ef,fe,R=NULL) {
     vec <- unlist(lapply(fe,function(f) rnorm(nlevels(f))[f]))
     dim(vec) <- c(nr,nc)
     R <- rowSums(vec)
-  }
-  if(isTRUE(getOption('lfe.randkac'))) {
-    oo <- order(runif(length(fe[[1]])))
-    fe <- lapply(fe,function(f) f[oo])
-    R <- R[oo]
   }
   v1 <- ef(kaczmarz(fe,R,init=runif(N)),TRUE)
   v2 <- ef(kaczmarz(fe,R,init=runif(N)),TRUE)
