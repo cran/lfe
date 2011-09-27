@@ -76,13 +76,6 @@ The package will work with any positive number of grouping factors, but if
 more than two, their interpretation is in general not well understood,
 i.e. one should make sure that the coefficients are estimable.
 
-With certain types of data, which the author has not got a clear
-understanding of, the \code{getfe} function with the Kaczmarz method
-has convergence problems.  In this case, the option
-\code{options(lfe.randkac=TRUE)} may be set prior to calling
-\code{getfe}.  This causes random shuffling of the residual system,
-which sometimes improves the convergence.
-
 In the exec-directory there is a perl-script \code{lfescript} which
 is used at the authors site for creating R-scripts from 
 a simple specification file.  The format is documented in 

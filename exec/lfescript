@@ -102,6 +102,11 @@ cat('******* This is the LFE',version,'software at the Frisch Centre
 ******* By courtesy of Simen Gaure, 2011.  Have a nice day!\\n\\n')
 ";
 if($tol > 0) {print "options(lfe.eps=$tol)\n";}
+print "forcefact <- c()\n";
+if($#dummies >=0) {
+    print "forcefact <- c('" .join("','",@dummies) . "')\n";
+}
+
 print "
 require('lfe')
 
@@ -113,6 +118,7 @@ model <- formula($model)
 tm <- terms(model,specials='G')
 fefrm <- paste('~',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse='+'))
 fvars <- all.vars(parse(text=fefrm))
+
 if(dformat == 'dta') {
     library(foreign)
     cat(date(),'Start reading Stata file','$datafile\\n')
@@ -132,10 +138,6 @@ if(dformat == 'dta') {
   # we know the fe's, and response, we must figure out the covars
   # used in model.  It should be parsed in R
   ";
-  print "forcefact=c()\n";
-  if($#dummies >=0) {
-    print "forcefact = c('" .join("','",@dummies) . "')\n";
-  }
   print "
   varnames <- all.vars(model)
   typelist <- vector('list',length(filevars))
@@ -154,15 +156,17 @@ if(dformat == 'dta') {
   # drop those we don't use, @@@@@ what about merging? @@@@@
   tab <- tab[unlist(lapply(typelist,function(t) !is.null(t)))];
   cat(date(),'File read\\n')
-  # convert to factors manually
-  for( f in forcefact) {
-    tab[[f]] <- factor(tab[[f]])
-  }
   # fake a data.frame
   #attr(tab,'row.names') <- 1:length(tab[[1]])
   class(tab) <- 'data.frame'
   attr(tab,'row.names') <- NULL\n
 }
+
+# convert to factors manually
+for( f in forcefact) {
+    tab[[f]] <- factor(tab[[f]])
+}
+
 festr <- paste('list(',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse=','),')')
 factors <- local({G <- as.factor;'*'<-interaction;eval(parse(text=festr),tab,environment())})
 nm <- unlist(eval(parse(text=festr),list(G=function(t) as.character(substitute(t)))))

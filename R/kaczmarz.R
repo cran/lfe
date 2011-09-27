@@ -305,9 +305,9 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # of vectors, but we don't want to blow the memory.  Stick to allocating two
   # vectors per thread.  The threaded stuff can't be interrupted, so this is
   # an opportunity to control-c too.
-  # hmm, up to 100 MB of vectors, we say, but no less than two per thread
+  # hmm, up to 500 MB of vectors, we say, but no less than two per thread
   # (one per thread is bad for balance, if time to completion varies)
-  maxB <- 100e6
+  maxB <- 500e6
   vpt <- max(2,as.integer(min(maxB/(length(R)*8),N)/threads))
   vpb <- vpt*threads
   blks <- as.integer(ceiling(N / vpb))

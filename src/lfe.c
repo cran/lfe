@@ -28,6 +28,14 @@
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
 
+#ifdef NOTHREADS
+#define LOCK_T int
+#elsif WIN
+#define LOCK_T HANDLE
+#else
+#define LOCK_T pthread_mutex_t*
+#endif
+
 
 /* Trickery to check for interrupts when using threads */
 static void chkIntFn(void *dummy) {
@@ -57,32 +65,14 @@ typedef struct {
 /*#pragma GCC optimize ("O3", "unroll-loops")*/
 #endif
 
-static R_INLINE double gmean(double *v, int N, FACTOR *f,double *means) {
-  /*
-    Do the actual work, single vector, single factor, 
-    output in preallocated vector means
-  */
-  int i;
-  int *group = f->group;
-  int nlev = f->nlevels;
-  
-  double sum = 0.0;
-  /* zero the means */
-  memset(means,0,sizeof(double)*nlev);
+/* 
+   I've seen a couple of datasets which don't converge.
+   Perhaps we could try a similar trick as in the Kaczmarz-iteration?
+   In each factor, every level may be centred independently, we may
+   consider each level of each factor a set of projections, and shuffle
+   them randomly.  We would need some rewriting for this.  Would it help?
+ */
 
-  /* add entries into right group */
-
-  for(i = 0; i < N; i++) {
-    means[group[i]-1] += v[i];
-  }
-
-  /* divide by group size */
-  for(i = 0; i < nlev; i++) {
-    means[i] *= f->invgpsize[i];
-    sum += means[i]*means[i];
-  }
-  return sum;
-}
 
 /*
   Centre on all factors in succession.  Vector v. In place.
@@ -98,10 +88,20 @@ static R_INLINE double centre(double *v, int N,
     FACTOR *f = factors[i];
     const int *gp = f->group;
     int j=0;
+
     /* compute means */
-    sum += gmean(v,N,f,means);
+    memset(means,0,sizeof(double)* f->nlevels);
+    for(j = 0; j < N; j++) {
+      means[gp[j]-1] += v[j];
+    }
+
+    for(j = 0; j < f->nlevels; j++) {
+      means[j] *= f->invgpsize[j];
+      sum += means[j]*means[j];
+    }
 
     for(j = 0; j < N; j++) {
+      /*      sum +=  means[gp[j]-1]*means[gp[j]-1];*/
       v[j] -= means[gp[j]-1];
     }
   }
@@ -426,7 +426,7 @@ static void invertfactor(FACTOR *f,int N) {
 
 
 static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
-		       double eps, double *newR, int *indices, int *stop) {
+		       double eps, double *newR, int *indices, int *stop, LOCK_T lock) {
   /* The factors define a matrix D, we will solve Dx = R
      There are N rows in D, each row a_i contains e non-zero entries, one
      for each factor, the level at that position.
@@ -480,34 +480,34 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
 
   /* 
      At this point we should perhaps randomly shuffle the equations.
-     I.e. the indices and newR.  At the moment we have put this
-     optionally inside the R-wrapper code.  It could be wiser to do it
-     here, after duplicate elimination.  
+     We don't know when this ought to be done, but we've only seen it when
+     there are many factors.
+     The unif_rand isn't thread-safe, so protect with mutex.
+     The Get/PutRNGstate is done in the main thread.
   */
-
-#if 1
-  GetRNGstate();
-  for(i = newN-1; i > 0; i--) {
-    double dtmp;
-    int k,j;
-    /* Pick j between 0 and i inclusive */
-    j = (int) floor((i+1) * unif_rand());
-    if(j == i) continue;
-    /* exchange newR[i] and newR[j]
-       as well as indices[i*e:i*e+e-1] and indices[j*e:j*e+e-1]
-    */
-    dtmp = newR[j];
-    newR[j] = newR[i];
-    newR[i] = dtmp;
-    for(k = 0; k < e; k++) {
-      int itmp;
-      itmp = indices[j*e+k];
-      indices[j*e+k] = indices[i*e+k];
-      indices[i*e+k] = itmp;
+  LOCK(lock);
+  if(e > 2) {
+    for(i = newN-1; i > 0; i--) {
+      double dtmp;
+      int k,j;
+      /* Pick j between 0 and i inclusive */
+      j = (int) floor((i+1) * unif_rand());
+      if(j == i) continue;
+      /* exchange newR[i] and newR[j]
+	 as well as indices[i*e:i*e+e-1] and indices[j*e:j*e+e-1]
+      */
+      dtmp = newR[j];
+      newR[j] = newR[i];
+      newR[i] = dtmp;
+      for(k = 0; k < e; k++) {
+	int itmp;
+	itmp = indices[j*e+k];
+	indices[j*e+k] = indices[i*e+k];
+	indices[i*e+k] = itmp;
+      }
     }
   }
-  PutRNGstate();
-#endif
+  UNLOCK(lock);
 
   /* Then, do the Kaczmarz iterations */
   norm2 =0.0;
@@ -605,7 +605,7 @@ static void *kaczmarz_thr(void *varg) {
     if(vecnum >= arg->numvec) break;
     (void) kaczmarz(arg->factors,arg->e,arg->N,
 		    arg->source[vecnum],arg->target[vecnum],arg->eps,
-		    arg->newR[myid],arg->indices[myid], &arg->stop);
+		    arg->newR[myid],arg->indices[myid], &arg->stop, arg->lock);
   }
 #ifndef NOTHREADS
 #ifndef WIN
@@ -747,6 +747,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   numthr = cores;
   if(numthr > numvec) numthr = numvec;
   if(numthr < 1) numthr = 1;
+  GetRNGstate();
 #ifndef NOTHREADS
 #ifdef WIN
   lock = CreateMutex(NULL,FALSE,NULL);
@@ -791,7 +792,6 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
     if(0 != stat) error("Failed to create kaczmarz thread, stat=%d",stat);
 #endif
   }
-
   /* wait for completion */
   /* We want to check for interrupts regularly, and
      set a stop flag */
@@ -825,6 +825,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #endif
   }
 #endif
+  PutRNGstate();
   if(arg.stop == 1) error("Kaczmarz interrupted");
   UNPROTECT(3);
   return(reslist);

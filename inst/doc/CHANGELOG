@@ -1,3 +1,23 @@
+2011-09-27  sgaure
+
+	* [r702] pkg/exec/lfescript:
+
+2011-09-26  sgaure
+
+	* [r701] pkg/man/lfe-package.Rd:
+	* [r700] pkg/src/lfe.c: Kaczmarz is not thread safe
+	* [r699] pkg/exec/lfescript: make dummy-command available for stata
+	  datasets
+
+2011-09-25  sgaure
+
+	* [r698] pkg/src/lfe.c: protect the shuffling with a lock, due to
+	  non-thread-safe random generator
+	* [r697] pkg/R/kaczmarz.R: allow 500MB in parallel Kaczmarz
+	* [r696] pkg/src/lfe.c, pkg/tests/fourfac.R,
+	  pkg/tests/fourfac.Rout.save, pkg/tests/lfetest.Rout.save: inlined the
+	  gmean() function in centre()
+
 2011-09-23  sgaure
 
 	* [r695] pkg/src/lfe.c:

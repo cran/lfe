@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=2)
+options(lfe.threads=1)
 set.seed(655320)
 x <- rnorm(50000,mean=200)
 x2 <- rnorm(length(x))
@@ -18,12 +18,14 @@ shirt.eff <- rnorm(nlevels(shirt))
 y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + shoe.eff[shoe] + shirt.eff[shirt] + rnorm(length(x))
 
 ## estimate
-summary(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm) + G(shoe) + G(shirt)))
+system.time(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm) + G(shoe) + G(shirt)))
+summary(est)
 cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
 ## extract the group fixed effects
   ## verify that id and firm coefficients are 1
 options(scipen=8)
 
+system.time(
 for(ef in c('ln','ref','zm','zm2')) {
   fe <- getfe(est,ef=ef)
   ## merge back
@@ -34,8 +36,13 @@ for(ef in c('ln','ref','zm','zm2')) {
   shirteff <- fe[paste('shirt',shirt,sep='.'),'effect']
   if(ef %in% c('zm','zm2')) {
     icpt <- fe[paste('icpt',1:nlevels(est$cfactor),sep='.'),'effect'][est$cfactor]
-    print(summary(lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff + icpt-1),digits=8))
+    lmres <- lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff + icpt-1)
+    acc <- coef(lmres)[c('ideff','firmeff','shoeeff','shirteff','icpt')]-1
   } else {
-    print(summary(lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff-1),digits=8))
+    lmres <- lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff-1)
+    acc <- coef(lmres)[c('ideff','firmeff','shoeeff','shirteff')]-1
   }
+  print(summary(lmres,digits=8))	
+  cat('accuracy:',sprintf('%.2e',acc),'\n')
 }
+)
