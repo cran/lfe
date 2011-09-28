@@ -1,5 +1,17 @@
+2011-09-28  sgaure
+
+	* [r708] pkg/R/lfe.R, pkg/src/lfe.c: added some explicit gc, fixed
+	  syntax error in windows
+	* [r707] pkg/src/lfe.c: give progress report on centering each hour
+
 2011-09-27  sgaure
 
+	* [r706] configure.ac:
+	* [r705] pkg/src/lfe.c:
+	* [r704] pkg/src/lfe.c: progress report when centering of single vector
+	  exceeds 1 hour
+	* [r703] configure.ac, pkg/src/Makevars.in: support for missing
+	  sem_timedwait
 	* [r702] pkg/exec/lfescript:
 
 2011-09-26  sgaure

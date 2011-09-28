@@ -30,12 +30,15 @@
 
 #ifdef NOTHREADS
 #define LOCK_T int
-#elsif WIN
+#else
+
+#ifdef WIN
 #define LOCK_T HANDLE
 #else
 #define LOCK_T pthread_mutex_t*
 #endif
 
+#endif
 
 /* Trickery to check for interrupts when using threads */
 static void chkIntFn(void *dummy) {
@@ -116,7 +119,7 @@ static R_INLINE double centre(double *v, int N,
 
 static int demean(double *v, int N, double *res,
 		  FACTOR *factors[],int e,double eps, double *means,
-		  int *stop) {
+		  int *stop,int vecnum) {
   double delta;
   double norm2 = 0.0;
   int i;
@@ -125,6 +128,8 @@ static int demean(double *v, int N, double *res,
   double neps;
   int iter;
   int okconv = 1;
+  time_t last, now;
+  int lastiter;
   /* make a copy to result vector, centre() is in-place */
 
   memcpy(res,v,N*sizeof(double));
@@ -139,6 +144,8 @@ static int demean(double *v, int N, double *res,
   prevdelta = 2*norm2;
   neps = norm2*eps;
   iter = 0;
+  last = time(NULL);
+  lastiter = 0;
   do {
     iter++;
     delta = centre(res,N,factors,e,means);
@@ -148,9 +155,27 @@ static int demean(double *v, int N, double *res,
     */
     if(c >= 1.0) {
       /* Seems warning() has problems with threads, do printf instead */
-      REprintf("Demeaning failed after %d iterations, 1-c=%.0e, delta=%.1e\n",iter,1.0-c,delta);
+      REprintf("Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
+	       vecnum,iter,1.0-c,delta);
       okconv = 0;
       break;
+    }
+    now = time(NULL);
+    if(now - last >= 3600 && delta > 0.0) {
+      int reqiter;
+      double eta;
+      char tu;
+      reqiter = log(neps*(1.0-c)/delta)/log(c);
+      eta = 1.0*(now-last)*reqiter/(iter-lastiter);
+      tu = 's';
+      if(eta > 3600.0) {
+	eta /= 3600.0;
+	tu='h';
+      }
+      REprintf("...centering vec %d iter %d, 1-c=%.1e, delta=%.1e(%.1e), ETA in %.1f%c\n",
+	       vecnum,iter,1.0-c,delta,neps*(1.0-c),eta,tu);
+      lastiter = iter;
+      last = now;
     }
 #ifdef NOTHREADS
     R_CheckUserInterrupt();
@@ -245,7 +270,7 @@ static void *demeanlist_thr(void *varg) {
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
 
-    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means,&arg->stop);
+    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means,&arg->stop,vecnum+1);
     LOCK(arg->lock);
     now = time(NULL);
     if(!okconv) {
@@ -365,15 +390,15 @@ static int demeanlist(double **vp, int N, int K, double **res,
     }
 #else
     {
-      struct timespec tmo = {time(NULL)+3,0};
-#ifdef __APPLE_CC__
+#ifndef HAVE_SEM_TW
       struct timespec atmo = {0,50000000};
-      /* Kludge in MacOSX because no timedwait */
+      /* Kludge when no timedwait, i.e. MacOSX */
       
       if(arg.stop == 0) nanosleep(&atmo,NULL);
-      if(arg.stop == 1 || sem_trywait(&arg.finished) != EAGAIN) {
+      if(arg.stop == 1 || sem_trywait(&arg.finished) == 0) {
 #else
-      if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) != ETIMEDOUT) {
+      struct timespec tmo = {time(NULL)+3,0};
+      if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
 #endif
 	for(thr = 0; thr < numthr; thr++) {
 	  (void)pthread_join(threads[thr], NULL);
@@ -812,8 +837,16 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
     }
 #else
     {
+#ifndef HAVE_SEM_TW
+      struct timespec atmo = {0,50000000};
+      /* Kludge in MacOSX because no timedwait */
+      
+      if(arg.stop == 0) nanosleep(&atmo,NULL);
+      if(arg.stop == 1 || sem_trywait(&arg.finished) == 0) {
+#else
       struct timespec tmo = {time(NULL)+3,0};
       if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
+#endif
 	for(thr = 0; thr < numthr; thr++) {
 	  (void)pthread_join(threads[thr], NULL);
 	}

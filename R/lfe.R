@@ -106,28 +106,25 @@ felm <- function(formula,fl,data) {
       G <- as.factor
       fl <- local({'*'<-iact;eval(felist,data,environment())})
     }
-
+    gc()
     names(fl) <- nm
   } else {
 #    warning('The fl-argument is obsolete')
   }
 
   if(!is.list(fl)) stop('need at least one factor')
-  if(!all(is.factor(unlist(fl,recursive=FALSE)))) {
-    fl <- lapply(fl,as.factor)
-  }
+  fl <- lapply(fl,as.factor)
   if(is.null(names(fl))) names(fl) <- paste('fe',1:length(fl),sep='')
 
+  gc()
 #  mf <- match.call(expand.dots = FALSE)
   m <- match(c("formula", "data"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- as.name("model.frame")
   mf <- eval(mf, parent.frame())
-
-#  mf <- model.frame(formula,data=data,drop.unused.levels=TRUE)
   mt <- attr(mf,'terms')
-
+  gc()
   y <- model.response(mf,'numeric')
 
 # try a sparse model matrix to save memory when removing intercept
@@ -140,6 +137,7 @@ felm <- function(formula,fl,data) {
 
   x <- model.matrix(mt,mf)
   rm(mf)
+  gc()
   icpt <- 0
   icpt <- which(attr(x,'assign') == 0)
   if(length(icpt) == 0) icpt <- 0
@@ -152,19 +150,15 @@ felm <- function(formula,fl,data) {
     return(z)
   }
   # here we need to demean things
-  # in due time we should write demeanlist so that
-  # it's sufficient with one call, so that y may be
-  # parallelized together with the columns of x
-  # (in a manner which avoids copying of data)
+
   dm <- demeanlist(list(y=y,x=x),fl,icpt)
-#  cat(date(),'centering finished\n')
   yz <- dm[[1]]
   xz <- dm[[2]]
   rm(dm)
+  gc()
+
   badconv <- attr(xz,'badconv') + attr(yz,'badconv')
-#  attributes(xz) <- attributes(x)
   dim(xz) <- c(nrow(x),ncov)
-#  dimnames(xz) <- dimnames(x)
   attributes(yz) <- attributes(y)
 
 

@@ -559,6 +559,7 @@ PACKAGE_URL=''
 ac_unique_file="src/lfe.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+SEM_TW
 PTHREAD_CFLAGS
 PTHREAD_LIBS
 PTHREAD_CC
@@ -3080,6 +3081,31 @@ fi
 # Checks for typedefs, structures, and compiler characteristics.
 
 # Checks for library functions.
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sem_timedwait" >&5
+$as_echo_n "checking for sem_timedwait... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <semaphore.h>
+int
+main ()
+{
+void *x=sem_timedwait
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  SEM_TW=-DHAVE_SEM_TW
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+  SEM_TW=
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
 
 ac_config_files="$ac_config_files src/Makevars"
 
