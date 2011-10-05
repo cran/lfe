@@ -214,7 +214,9 @@ typedef struct {
 #else
   pthread_mutex_t *lock;
   int running;
+#ifdef HAVE_SEM
   sem_t finished;
+#endif
 #endif
 #endif
 } PTARG;
@@ -290,7 +292,10 @@ static void *demeanlist_thr(void *varg) {
   LOCK(arg->lock);
   /* yuck, main thread can't wait for zero on a semaphore, so do it this way.
    Last leaver turns out the light.*/
-  if(--arg->running == 0) sem_post(&arg->finished);
+  arg->running--;
+#ifdef HAVE_SEM
+  if(arg->running == 0) sem_post(&arg->finished);
+#endif
   UNLOCK(arg->lock);
 #endif
 #endif
@@ -326,7 +331,9 @@ static int demeanlist(double **vp, int N, int K, double **res,
   threadids = (DWORD*) R_alloc(numthr,sizeof(DWORD));
 #else
   threads = (pthread_t*) R_alloc(numthr,sizeof(pthread_t));
+#ifdef HAVE_SEM
   if(sem_init(&arg.finished,0,0) != 0) error("sem_init failed, errno=%d",errno);
+#endif
   arg.running = numthr;
 #endif
   arg.lock = &lock;
@@ -390,12 +397,12 @@ static int demeanlist(double **vp, int N, int K, double **res,
     }
 #else
     {
-#ifndef HAVE_SEM_TW
+#ifndef HAVE_SEM
       struct timespec atmo = {0,50000000};
       /* Kludge when no timedwait, i.e. MacOSX */
       
       if(arg.stop == 0) nanosleep(&atmo,NULL);
-      if(arg.stop == 1 || sem_trywait(&arg.finished) == 0) {
+      if(arg.stop == 1 || arg.running == 0) {
 #else
       struct timespec tmo = {time(NULL)+3,0};
       if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
@@ -403,7 +410,9 @@ static int demeanlist(double **vp, int N, int K, double **res,
 	for(thr = 0; thr < numthr; thr++) {
 	  (void)pthread_join(threads[thr], NULL);
 	}
+#ifdef HAVE_SEM
 	sem_destroy(&arg.finished);
+#endif
 	pthread_mutex_destroy(arg.lock);
 	break;
       }
@@ -606,7 +615,9 @@ typedef struct {
 #else
   pthread_mutex_t *lock;
   int running;
+#ifdef HAVE_SEM
   sem_t finished;
+#endif
 #endif
 #endif
 } KARG;
@@ -635,7 +646,10 @@ static void *kaczmarz_thr(void *varg) {
 #ifndef NOTHREADS
 #ifndef WIN
   LOCK(arg->lock);
-  if(--arg->running == 0) sem_post(&arg->finished);
+  arg->running--;
+#ifdef HAVE_SEM
+  if(arg->running == 0) sem_post(&arg->finished);
+#endif
   UNLOCK(arg->lock);
 #endif
 #endif
@@ -781,7 +795,9 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #else
   threads = (pthread_t*) R_alloc(numthr,sizeof(pthread_t));
   arg.running = numthr;
+#ifdef HAVE_SEM
   if(sem_init(&arg.finished,0,0) != 0) error("sem_init failed, errno=%d",errno);
+#endif
 #endif
   arg.lock = &lock;
 #endif
@@ -837,12 +853,12 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
     }
 #else
     {
-#ifndef HAVE_SEM_TW
+#ifndef HAVE_SEM
       struct timespec atmo = {0,50000000};
       /* Kludge in MacOSX because no timedwait */
       
       if(arg.stop == 0) nanosleep(&atmo,NULL);
-      if(arg.stop == 1 || sem_trywait(&arg.finished) == 0) {
+      if(arg.stop == 1 || arg.running == 0) {
 #else
       struct timespec tmo = {time(NULL)+3,0};
       if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
@@ -850,7 +866,9 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 	for(thr = 0; thr < numthr; thr++) {
 	  (void)pthread_join(threads[thr], NULL);
 	}
+#ifdef HAVE_SEM
 	sem_destroy(&arg.finished);
+#endif
 	pthread_mutex_destroy(arg.lock);
 	break;
       }

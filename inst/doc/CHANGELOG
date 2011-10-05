@@ -1,3 +1,8 @@
+2011-10-05  sgaure
+
+	* [r709] configure.ac, pkg/src/Makevars.in, pkg/src/lfe.c: check
+	  semaphores in configure
+
 2011-09-28  sgaure
 
 	* [r708] pkg/R/lfe.R, pkg/src/lfe.c: added some explicit gc, fixed
