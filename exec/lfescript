@@ -156,15 +156,18 @@ if(dformat == 'dta') {
   # drop those we don't use, @@@@@ what about merging? @@@@@
   tab <- tab[unlist(lapply(typelist,function(t) !is.null(t)))];
   cat(date(),'File read\\n')
-  # fake a data.frame
-  #attr(tab,'row.names') <- 1:length(tab[[1]])
-  class(tab) <- 'data.frame'
-  attr(tab,'row.names') <- NULL\n
 }
 
 # convert to factors manually
 for( f in forcefact) {
     tab[[f]] <- factor(tab[[f]])
+}
+
+if(!inherits(tab,'data.frame')) {
+  # fake a data.frame
+  #attr(tab,'row.names') <- 1:length(tab[[1]])
+  class(tab) <- 'data.frame'
+  attr(tab,'row.names') <- NULL
 }
 
 festr <- paste('list(',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse=','),')')

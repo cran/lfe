@@ -1,3 +1,40 @@
+2011-11-20  sgaure
+
+	* [r723] pkg/src/lfe.c: changed Rprintf to REprintf, the former calls
+	  checkinterrupt and may fail in threads
+	* [r722] pkg/src/lfe.c: test windows stack check disable
+	* [r721] pkg/src/lfe.c: test windows stack check disable
+
+2011-11-19  sgaure
+
+	* [r720] pkg/src/lfe.c: test windows stack check disable
+	* [r719] pkg/src/lfe.c: test windows stack check disable
+	* [r718] Makefile, pkg/src/lfe.c: serial bug fixed
+	* [r717] Makefile: add serial check
+	* [r716] pkg/src/lfe.c: only drop stach-check on linux
+
+2011-11-11  sgaure
+
+	* [r715] pkg/src/lfe.c: try to disable C stack check
+
+2011-11-10  sgaure
+
+	* [r714] pkg/src/lfe.c: lock-protect the interrupt-checking
+
+2011-11-09  sgaure
+
+	* [r713] pkg/src/lfe.c: print progress on stdout, not stderr
+
+2011-11-05  sgaure
+
+	* [r712] pkg/inst/doc/gen2.R: prevent NOTE from check
+	* [r711] pkg/src/lfe.c: protect diagnostic with LOCK/UNLOCK
+
+2011-10-13  sgaure
+
+	* [r710] pkg/exec/lfescript: fixed a bug pertaining to factors as
+	  ordinary dummies
+
 2011-10-05  sgaure
 
 	* [r709] configure.ac, pkg/src/Makevars.in, pkg/src/lfe.c: check

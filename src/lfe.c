@@ -4,14 +4,19 @@
  Licence: Artistic 2.0
 */
 
+#define CSTACK_DEFNS
+
 #if defined(_WIN32) || defined(_WIN64) || defined(WIN64)
 #define WIN
 #endif
+
+
 
 #ifdef WIN
 #include <windows.h>
 #else
 #ifndef NOTHREADS
+#include <Rinterface.h>
 #include <semaphore.h>
 #include <pthread.h>
 #endif
@@ -28,17 +33,25 @@
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
 
+
 #ifdef NOTHREADS
-#define LOCK_T int
+#define LOCK_T int*
+#define LOCK(l)
+#define UNLOCK(l)
 #else
 
 #ifdef WIN
-#define LOCK_T HANDLE
+#define LOCK_T HANDLE*
+#define LOCK(l) WaitForSingleObject(l,INFINITE)
+#define UNLOCK(l) ReleaseMutex(l)
 #else
 #define LOCK_T pthread_mutex_t*
+#define LOCK(l) (void)pthread_mutex_lock(l)
+#define UNLOCK(l) (void)pthread_mutex_unlock(l)
+#endif
 #endif
 
-#endif
+
 
 /* Trickery to check for interrupts when using threads */
 static void chkIntFn(void *dummy) {
@@ -113,13 +126,81 @@ static R_INLINE double centre(double *v, int N,
 }
 
 
+static R_INLINE double slcentre(double *v, int N, 
+		   FACTOR *factors[], int e, double *means) {
+  int done[e];
+  double w,best;
+  int i,prev;
+  double sum=0.0;
+  int iter;
+  FACTOR *f;
+  if(e <= 2) {
+    return centre(v,N,factors,e,means);
+  }
+
+  /*
+    Factors with few number of levels should be centred on more often,
+    since they typically will "mix" more.  Just a hunch.
+    Use Sainte-Lagues method, inverse number of levels is vote. But don't allow
+    the same factor in two consecutive draws. */
+  w = 0;
+  prev = -1;
+  iter = 1;
+  for(i = 0; i < e; i++) done[i] = 0;
+  sum = 0.0;
+  while(1) {
+    int alldone;
+    int ibest;
+    int  j;
+    const int *gp;
+    /* Pick the highest score, different from previous */
+    best = 0.0;
+    for(i = 0; i < e; i++) {
+      double sc;
+      if(i == prev) continue;
+      /* score is V/(2*s+1) where V is 1/nlevels */
+      sc = 1.0/(sqrt(1.0*factors[i]->nlevels)*(2.0*done[i]+1.0));
+      if(sc > best) {
+	ibest = i;
+	best = sc;
+      }
+    }
+    done[ibest]++;
+    prev = ibest;
+    f = factors[ibest];
+    gp = f->group;
+    /* Centre on f */
+
+    /* compute means */
+    memset(means,0,sizeof(double)* f->nlevels);
+    for(j = 0; j < N; j++) {
+      means[gp[j]-1] += v[j];
+    }
+
+    for(j = 0; j < f->nlevels; j++) {
+      means[j] *= f->invgpsize[j];
+      sum += means[j]*means[j];
+    }
+
+    for(j = 0; j < N; j++) {
+      /*      sum +=  means[gp[j]-1]*means[gp[j]-1];*/
+      v[j] -= means[gp[j]-1];
+    }
+    /* Continue until everyone has got a seat */
+    alldone = 1;
+    for(i = 0; i < e; i++) alldone = alldone && (done[i] > 0);
+    if(alldone) break;
+  }
+  return sqrt(sum);
+}
+
 /*
   Method of alternating projections.  Input v, output res.
 */
 
 static int demean(double *v, int N, double *res,
 		  FACTOR *factors[],int e,double eps, double *means,
-		  int *stop,int vecnum) {
+		  int *stop,int vecnum, LOCK_T lock) {
   double delta;
   double norm2 = 0.0;
   int i;
@@ -155,8 +236,10 @@ static int demean(double *v, int N, double *res,
     */
     if(c >= 1.0) {
       /* Seems warning() has problems with threads, do printf instead */
+      LOCK(lock);
       REprintf("Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
 	       vecnum,iter,1.0-c,delta);
+      UNLOCK(lock);
       okconv = 0;
       break;
     }
@@ -172,8 +255,10 @@ static int demean(double *v, int N, double *res,
 	eta /= 3600.0;
 	tu='h';
       }
+      LOCK(lock);
       REprintf("...centering vec %d iter %d, 1-c=%.1e, delta=%.1e(%.1e), ETA in %.1f%c\n",
 	       vecnum,iter,1.0-c,delta,neps*(1.0-c),eta,tu);
+      UNLOCK(lock);
       lastiter = iter;
       last = now;
     }
@@ -208,11 +293,12 @@ typedef struct {
   int stop;
   int threadnum;
   double **means;
+  LOCK_T lock;
 #ifndef NOTHREADS
 #ifdef WIN
-  HANDLE *lock;
+  /*  HANDLE *lock;*/
 #else
-  pthread_mutex_t *lock;
+  /*  pthread_mutex_t *lock;*/
   int running;
 #ifdef HAVE_SEM
   sem_t finished;
@@ -228,20 +314,6 @@ typedef struct {
   in arg->nowdoing, a common counter.  Proteced
   by a mutex.
  */
-
-
-#ifdef NOTHREADS
-#define LOCK(l)
-#define UNLOCK(l)
-#else
-#ifdef WIN
-#define LOCK(l) WaitForSingleObject(l,INFINITE)
-#define UNLOCK(l) ReleaseMutex(l)
-#else
-#define LOCK(l) (void)pthread_mutex_lock(l)
-#define UNLOCK(l) (void)pthread_mutex_unlock(l)
-#endif
-#endif
 
 
 
@@ -272,7 +344,7 @@ static void *demeanlist_thr(void *varg) {
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
 
-    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means,&arg->stop,vecnum+1);
+    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means,&arg->stop,vecnum+1,arg->lock);
     LOCK(arg->lock);
     now = time(NULL);
     if(!okconv) {
@@ -280,7 +352,7 @@ static void *demeanlist_thr(void *varg) {
     }
     (arg->done)++;
     if(arg->quiet > 0 && now > arg->last + arg->quiet && arg->K > 1) {
-      Rprintf("...finished centering vector %d of %d in %d seconds\n",
+      REprintf("...finished centering vector %d of %d in %d seconds\n",
 	     arg->done,arg->K,(int)(now-arg->start));
       arg->last = now;
     }
@@ -382,11 +454,13 @@ static int demeanlist(double **vp, int N, int K, double **res,
   /* We want to check for interrupts regularly, and
      set a stop flag */
   while(1) {
+    /* Serialize R-calls with a lock */
+    LOCK(arg.lock);
     if(arg.stop == 0 && checkInterrupt()) {
       REprintf("...stopping centering threads...\n");
       arg.stop=1;
     }
-
+    UNLOCK(arg.lock);
 #ifdef WIN
     if(WaitForMultipleObjects(numthr,threads,TRUE,3000) != WAIT_TIMEOUT) {
       for(thr = 0; thr < numthr; thr++) {
@@ -422,7 +496,7 @@ static int demeanlist(double **vp, int N, int K, double **res,
 #endif
   if(arg.stop == 1) error("centering interrupted");
   if(quiet > 0 && arg.start != arg.last && K > 1)
-    Rprintf("...%d vectors centred in %d seconds\n",K,(int)(time(NULL)-arg.start));
+    REprintf("...%d vectors centred in %d seconds\n",K,(int)(time(NULL)-arg.start));
   return(arg.badconv);
 }
 
@@ -609,11 +683,10 @@ typedef struct {
   double *tol;
   double **newR;
   int **indices;
+  LOCK_T lock;
 #ifndef NOTHREADS
 #ifdef WIN
-  HANDLE *lock;
 #else
-  pthread_mutex_t *lock;
   int running;
 #ifdef HAVE_SEM
   sem_t finished;
@@ -909,7 +982,12 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
   int icpt;
   SEXP badconv;
   int listlen;
-  
+
+#ifndef NOTHREADS
+#ifndef WIN
+  R_CStackLimit = (uintptr_t)-1;
+#endif
+#endif
   icpt = INTEGER(Ricpt)[0] - 1; /* convert from 1-based to zero-based */
   eps = REAL(Reps)[0];
   cores = INTEGER(scores)[0];

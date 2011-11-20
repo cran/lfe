@@ -1,4 +1,4 @@
-require('mvtnorm')
+#require('mvtnorm')
 # individuals
 Nind <- 15000
 # firms
