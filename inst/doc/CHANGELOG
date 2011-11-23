@@ -1,3 +1,11 @@
+2011-11-23  sgaure
+
+	* [r726] pkg/src/lfe.c: cran build
+	* [r725] pkg/src/lfe.c: another attempt to declare R_CStackLimit
+	  portably
+	* [r724] configure.ac, pkg/src/Makevars.in, pkg/src/lfe.c: new attempt
+	  to declare R_CStackLimit portably
+
 2011-11-20  sgaure
 
 	* [r723] pkg/src/lfe.c: changed Rprintf to REprintf, the former calls

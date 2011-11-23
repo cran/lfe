@@ -16,13 +16,13 @@
 #include <windows.h>
 #else
 #ifndef NOTHREADS
-#include <Rinterface.h>
 #include <semaphore.h>
 #include <pthread.h>
 #endif
 #endif
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
@@ -33,6 +33,12 @@
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
 
+#ifndef NOTHREADS
+#if !defined(WIN) && !defined(HAVE_UINTPTR_T) && !defined(uintptr_t)
+typedef unsigned long uintptr_t;
+#endif
+extern uintptr_t R_CStackLimit; /* C stack limit */
+#endif
 
 #ifdef NOTHREADS
 #define LOCK_T int*
@@ -984,10 +990,9 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
   int listlen;
 
 #ifndef NOTHREADS
-#ifndef WIN
   R_CStackLimit = (uintptr_t)-1;
 #endif
-#endif
+
   icpt = INTEGER(Ricpt)[0] - 1; /* convert from 1-based to zero-based */
   eps = REAL(Reps)[0];
   cores = INTEGER(scores)[0];
