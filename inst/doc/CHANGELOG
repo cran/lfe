@@ -1,5 +1,13 @@
+2011-11-25  sgaure
+
+	* [r729] pkg/src/lfe.c: print messages in right order
+
 2011-11-23  sgaure
 
+	* [r728] pkg/src/lfe.c: made a message stack to avoid calling R in
+	  threads
+	* [r727] configure.ac, pkg/src/Makevars.in, pkg/src/lfe.c: made a
+	  message stack to avoid calling R in threads
 	* [r726] pkg/src/lfe.c: cran build
 	* [r725] pkg/src/lfe.c: another attempt to declare R_CStackLimit
 	  portably

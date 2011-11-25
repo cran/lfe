@@ -1,6 +1,6 @@
 Package: lfe
-Version: 1.4-726
-Date: 2011-11-23
+Version: 1.4-729
+Date: 2011-11-25
 Title: Linear Group Fixed Effects
 Author: Simen Gaure, Ragnar Frisch Centre for Economic Research
 Maintainer: Simen Gaure <Simen.Gaure@usit.uio.no>
@@ -14,6 +14,6 @@ Keywords: Fixed Effect Estimator, Two-Way Fixed Effects, Panel Data,
 License: Artistic-2.0
 Classification/JEL: C13, C33, C60
 Classification/MSC: 62J05, 65F10, 65F50
-Packaged: 2011-11-23 08:41:21 UTC; sgaure
+Packaged: 2011-11-28 08:50:37 UTC; sgaure
 Repository: CRAN
-Date/Publication: 2011-11-23 10:38:24
+Date/Publication: 2011-11-29 06:57:37

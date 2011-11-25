@@ -22,23 +22,18 @@
 #endif
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
+/* Need sprintf */
+#include <stdio.h>  
 #include <R.h>
 #include <Rdefines.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
 
-#ifndef NOTHREADS
-#if !defined(WIN) && !defined(HAVE_UINTPTR_T) && !defined(uintptr_t)
-typedef unsigned long uintptr_t;
-#endif
-extern uintptr_t R_CStackLimit; /* C stack limit */
-#endif
 
 #ifdef NOTHREADS
 #define LOCK_T int*
@@ -71,6 +66,51 @@ int checkInterrupt() {
   return (R_ToplevelExec(chkIntFn, NULL) == 0);
 }
 
+
+/* More trickery, we can't printf in threads since the R API is not
+   thread-safe.  So set up a message stack.  This is pushed in the threads
+   and popped in the main thread. */
+
+#define msglim 256
+static char *msgstack[msglim];
+static int msgptr;
+/* Craft our own strdup, it's not supported everywhere */
+static char *mystrdup(char *s) {
+  char *sc = (char*)malloc(strlen(s)+1);
+  if(sc != NULL) strcpy(sc,s);
+  return(sc);
+}
+static void pushmsg(char *s, LOCK_T lock) {
+#ifdef NOTHREADS  
+  REprintf(s);
+#else
+  LOCK(lock);
+  if(msgptr < msglim) {
+    msgstack[msgptr++] = mystrdup(s);
+  }
+  UNLOCK(lock);
+#endif
+}
+
+static void printmsg(LOCK_T lock) {
+#ifdef NOTHREADS
+  return;
+#else
+  char *s;
+  int i;
+  LOCK(lock);
+  for(i = 0; i < msgptr; i++) {
+    s = msgstack[i];
+    if(s != NULL) {
+      REprintf(s);
+      free(s);
+    }
+  }
+  msgptr = 0;
+  UNLOCK(lock);
+
+#endif
+}
 
 typedef struct {
   int nlevels;
@@ -241,11 +281,10 @@ static int demean(double *v, int N, double *res,
        This is true for e==2, but also in the ballpark for e>2 we guess.
     */
     if(c >= 1.0) {
-      /* Seems warning() has problems with threads, do printf instead */
-      LOCK(lock);
-      REprintf("Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
+      char buf[256];
+      sprintf(buf,"Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
 	       vecnum,iter,1.0-c,delta);
-      UNLOCK(lock);
+      pushmsg(buf,lock);
       okconv = 0;
       break;
     }
@@ -254,6 +293,7 @@ static int demean(double *v, int N, double *res,
       int reqiter;
       double eta;
       char tu;
+      char buf[256];
       reqiter = log(neps*(1.0-c)/delta)/log(c);
       eta = 1.0*(now-last)*reqiter/(iter-lastiter);
       tu = 's';
@@ -261,10 +301,10 @@ static int demean(double *v, int N, double *res,
 	eta /= 3600.0;
 	tu='h';
       }
-      LOCK(lock);
-      REprintf("...centering vec %d iter %d, 1-c=%.1e, delta=%.1e(%.1e), ETA in %.1f%c\n",
+      
+      sprintf(buf,"...centering vec %d iter %d, 1-c=%.1e, delta=%.1e(%.1e), ETA in %.1f%c\n",
 	       vecnum,iter,1.0-c,delta,neps*(1.0-c),eta,tu);
-      UNLOCK(lock);
+      pushmsg(buf,lock);
       lastiter = iter;
       last = now;
     }
@@ -358,8 +398,12 @@ static void *demeanlist_thr(void *varg) {
     }
     (arg->done)++;
     if(arg->quiet > 0 && now > arg->last + arg->quiet && arg->K > 1) {
-      REprintf("...finished centering vector %d of %d in %d seconds\n",
+      char buf[256];
+      sprintf(buf,"...finished centering vector %d of %d in %d seconds\n",
 	     arg->done,arg->K,(int)(now-arg->start));
+      UNLOCK(arg->lock); /* release lock, pushmsg takes it */
+      pushmsg(buf,arg->lock);
+      LOCK(arg->lock);
       arg->last = now;
     }
     UNLOCK(arg->lock);
@@ -397,6 +441,11 @@ static int demeanlist(double **vp, int N, int K, double **res,
 #else
   pthread_t *threads;
   pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+#ifndef NOTHREADS
+  /* Set up the message stack */
+  msgptr = 0;
 #endif
 
   numthr = cores;
@@ -460,13 +509,12 @@ static int demeanlist(double **vp, int N, int K, double **res,
   /* We want to check for interrupts regularly, and
      set a stop flag */
   while(1) {
-    /* Serialize R-calls with a lock */
-    LOCK(arg.lock);
+    printmsg(arg.lock);
     if(arg.stop == 0 && checkInterrupt()) {
       REprintf("...stopping centering threads...\n");
       arg.stop=1;
     }
-    UNLOCK(arg.lock);
+
 #ifdef WIN
     if(WaitForMultipleObjects(numthr,threads,TRUE,3000) != WAIT_TIMEOUT) {
       for(thr = 0; thr < numthr; thr++) {
@@ -500,9 +548,12 @@ static int demeanlist(double **vp, int N, int K, double **res,
 #endif
   }
 #endif
+    /* print remaining messages */
+  printmsg(arg.lock);
   if(arg.stop == 1) error("centering interrupted");
   if(quiet > 0 && arg.start != arg.last && K > 1)
     REprintf("...%d vectors centred in %d seconds\n",K,(int)(time(NULL)-arg.start));
+
   return(arg.badconv);
 }
 
@@ -596,8 +647,12 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
      At this point we should perhaps randomly shuffle the equations.
      We don't know when this ought to be done, but we've only seen it when
      there are many factors.
-     The unif_rand isn't thread-safe, so protect with mutex.
+     We want to use unif_rand to be able to get reproducible results, 
+     at least for single-threaded things, and keeping the random number
+     generator in the same state when we return to R.
+     The unif_rand isn't concurrency-safe, so protect with mutex.
      The Get/PutRNGstate is done in the main thread.
+     Knuth-Fisher-Yates shuffle.
   */
   LOCK(lock);
   if(e > 2) {
@@ -661,7 +716,9 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
     prevdiff = sd;
     iter++;
     if(c >= 1.0) {
-      REprintf("Kaczmarz failed in iter %d*%d, 1-c=%.0e, delta=%.1e, eps=%.1e\n",iter,newN,1.0-c,sd,neweps);
+      char buf[256];
+      sprintf(buf,"Kaczmarz failed in iter %d*%d, 1-c=%.0e, delta=%.1e, eps=%.1e\n",iter,newN,1.0-c,sd,neweps);
+      pushmsg(buf,lock);
       break;
     }
 #ifdef NOTHREADS
@@ -765,6 +822,10 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #endif
 #endif
 
+#ifndef NOTHREADS
+  /* Set up the message stack */
+  msgptr = 0;
+#endif
   
   if(!isNull(initial)) {
     init = REAL(initial);
@@ -916,13 +977,13 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   /* We want to check for interrupts regularly, and
      set a stop flag */
   while(1) {
+    printmsg(arg.lock);
     if(arg.stop == 0 && checkInterrupt()) {
       REprintf("...stopping Kaczmarz threads...\n");
       arg.stop=1;
     }
 
 #ifdef WIN
-    /*    WaitForMultipleObjects(numthr,threads,TRUE,INFINITE);*/
     if(WaitForMultipleObjects(numthr,threads,TRUE,3000) != WAIT_TIMEOUT) {
       for(thr = 0; thr < numthr; thr++) {
 	CloseHandle(threads[thr]);
@@ -956,6 +1017,8 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   }
 #endif
   PutRNGstate();
+  /* Print any remaining messages */
+  printmsg(arg.lock);
   if(arg.stop == 1) error("Kaczmarz interrupted");
   UNPROTECT(3);
   return(reslist);
@@ -989,9 +1052,6 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
   SEXP badconv;
   int listlen;
 
-#ifndef NOTHREADS
-  R_CStackLimit = (uintptr_t)-1;
-#endif
 
   icpt = INTEGER(Ricpt)[0] - 1; /* convert from 1-based to zero-based */
   eps = REAL(Reps)[0];
