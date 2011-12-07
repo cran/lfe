@@ -1,3 +1,11 @@
+2011-12-07  sgaure
+
+	* [r731] Makefile: add configure.ac to pkg
+
+2011-11-29  sgaure
+
+	* [r730] pkg/src/lfe.c: cran build
+
 2011-11-25  sgaure
 
 	* [r729] pkg/src/lfe.c: print messages in right order

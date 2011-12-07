@@ -171,14 +171,13 @@ static R_INLINE double centre(double *v, int N,
   return sqrt(sum);
 }
 
-
+#if 0
 static R_INLINE double slcentre(double *v, int N, 
 		   FACTOR *factors[], int e, double *means) {
   int done[e];
-  double w,best;
+  double best;
   int i,prev;
   double sum=0.0;
-  int iter;
   FACTOR *f;
   if(e <= 2) {
     return centre(v,N,factors,e,means);
@@ -189,9 +188,8 @@ static R_INLINE double slcentre(double *v, int N,
     since they typically will "mix" more.  Just a hunch.
     Use Sainte-Lagues method, inverse number of levels is vote. But don't allow
     the same factor in two consecutive draws. */
-  w = 0;
+
   prev = -1;
-  iter = 1;
   for(i = 0; i < e; i++) done[i] = 0;
   sum = 0.0;
   while(1) {
@@ -239,6 +237,7 @@ static R_INLINE double slcentre(double *v, int N,
   }
   return sqrt(sum);
 }
+#endif
 
 /*
   Method of alternating projections.  Input v, output res.
