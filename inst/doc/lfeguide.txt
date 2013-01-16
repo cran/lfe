@@ -16,6 +16,7 @@ dummy year
 #nofe
 #se
 merge
+robust
 ----cut----
 
 Most of this is self-explanatory, there's a file-name, it's supposed to be
@@ -58,6 +59,8 @@ to compute.  Avoid if you don't need.
 The line 'merge' will cause the fixed effects to be merged into the original
 data-set and output as a file 'fe-merged.csv' for further analysis.
 
+The line 'robust' instructs the program to compute robust standard errors
+
 Output from the program is both on standard-output (the covariate estimates)
 as well as to a file 'coef.csv'.
 
@@ -72,6 +75,25 @@ If the data-file is a Stata-file, the output files will also be State-files.
 Note that fixed effects from different components are not directly comparable
 because there's a separate reference value in each component.
 
+
+IV estimation
+-------------
+It is also possible to do Instrumental Variable estimation (IV) using
+the two step least squares method as follows:
+
+model y ~ x1 + x2 + year + G(id) + G(firm)
+iv x2 ~ G(area)
+
+Here the category variable 'area' is an instrument for variable x2. 
+The program will perform the step
+
+  x2 ~ x1 + year + G(id) + G(firm) + G(area)
+
+then use the predicted values of x2 (x2.fit) in the regression
+
+  y ~ x1 + x2.fit + year + G(id) + G(firm)
+
+The computed standard errors are adjusted accordingly.
 
 ----------
 Usage:  

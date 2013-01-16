@@ -1,5 +1,5 @@
 
-R version 2.13.1 (2011-07-08)
+R version 2.13.0 (2011-04-13)
 Copyright (C) 2011 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
@@ -26,6 +26,8 @@ The following object(s) are masked from 'package:base':
 
     det
 
+Loading required package: Rcgmin
+Loading required package: numDeriv
 > options(lfe.threads=4)
 > set.seed(655318)
 > x <- rnorm(500)
@@ -63,8 +65,8 @@ x2   0.5069     0.2537   1.998 0.067062 .
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
 Residual standard error: 0.8765 on 13 degrees of freedom
-Multiple R-squared: 0.9958   Adjusted R-squared: 0.8374 
-F-statistic: 6.287 on 487 and 13 DF, p-value: 0.0002871 
+Multiple R-squared: 0.9958   Adjusted R-squared: 0.8373 
+F-statistic: 6.296 on 486 and 13 DF, p-value: 0.0002849 
 
 
 > 

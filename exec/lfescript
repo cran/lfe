@@ -10,6 +10,8 @@ $tol = 0;
 $itsbig = 0;
 $randkac = 0;
 $bN = 0;
+$robust = 'FALSE';
+$usecg = 'FALSE';
 while(<>) {
   chomp($_);
   # strip comments
@@ -27,6 +29,13 @@ while(<>) {
     $resp = shift @line;
   } elsif($cmd eq 'covars') {
     @covars = @line;
+  } elsif($cmd eq 'iv') {
+      $iv = join(' ',@line);
+  } elsif($cmd eq 'robust') {
+      $robust = 'TRUE';
+  } elsif($cmd eq 'cluster') {
+      $clustervar = shift @line;
+      $robust = 'TRUE';
   } elsif ($cmd eq 'model') {
       $model = join(' ',@line);
   } elsif($cmd eq 'fe') {
@@ -54,6 +63,8 @@ while(<>) {
       $wantse = 0; # disabled due to lack of good algorithms
   } elsif($cmd eq 'itsbig') {
       $itsbig = 1;
+  } elsif($cmd eq 'usecg') {
+      $usecg = 'TRUE';
   } elsif($cmd eq 'tol') {
       $tol = shift(@line);
   } else {
@@ -109,7 +120,7 @@ if($#dummies >=0) {
 
 print "
 require('lfe')
-
+options(lfe.usecg=$usecg)
 
 # read the datafile, with correct types, numeric for covariates,
 # character for categories
@@ -138,14 +149,20 @@ if(dformat == 'dta') {
   # we know the fe's, and response, we must figure out the covars
   # used in model.  It should be parsed in R
   ";
+  print "varnames <- all.vars(model)\n";
+  if(defined($iv)) {
+     print "varnames <- unique(c(varnames,all.vars($iv)))\n";
+  }
   print "
-  varnames <- all.vars(model)
   typelist <- vector('list',length(filevars))
   names(typelist) <- filevars
   typelist[names(typelist) %in% varnames]  <- 0
   typelist[names(typelist) %in% forcefact] <- ''
   typelist[fvars] <- ''
   ";
+  if(defined($clustervar)) {
+    print "  typelist['$clustervar'] <- ''\n";
+  }
   print "
   cat(date(),'Start reading from file','$datafile\\n')
   # it takes forever to create a data.frame with a large file
@@ -181,13 +198,39 @@ for(i in seq_along(factors)) {
 
 cf <- compfactor(factors)
 cat(date(),'There are',nlevels(cf),'connected components\\n')
+if(length(factors) > 2) 
+  cat(date(),'There are more than 2 dummy-groups, so nobody can help you if the dummies are non-estimable\\n')
 cat(date(),'Centering tolerance is',getOption('lfe.eps'),'\\n')
 cat(date(),'Centering variables and doing OLS on centered system...\\n\\n')
 ";
-print "est <- felm($model,data=tab)\n";
-
+$cvar = '';
+if(defined($clustervar)) {
+    $cvar = ", clustervar='$clustervar'";
+}
+if(defined($iv)) {
+    print "est <- felm($model,data=tab,iv=$iv$cvar)\n";
+#    print "
+#  ivmod <- update($model,$ivlhs ~ . - $ivlhs + $ivrhs)
+#  cat(date(),'Instrumental eq\\n'); print(ivmod)
+#  est1 <- felm(ivmod ,data=tab)
+#  print(summary(est1))
+#  cat(date(),'Done 1st step on $ivlhs\n')
+#  tab[,'$ivlhs.fit'] <- est1\$fitted
+#  est <- felm(update($model,. ~ . -$ivlhs + $ivlhs.fit),data=tab)
+#  ";
+    
+} else {
+  print "est <- felm($model,data=tab$cvar)\n";
+}
+if(defined($iv)) {
 print "
-print(summary(est))
+cat('First step estimation:\\n')
+print(summary(est\$ivz,robust=$robust$cvar))
+cat('Second step estimation:\\n')
+";
+}
+print "
+print(summary(est,robust=$robust$cvar))
 
 sink('coef.csv')
 print(data.frame(value=est\$coefficients, se=est\$se, row.names=names(est\$coefficients)))
@@ -264,7 +307,7 @@ if($bN > 0) {
 
 print "
   if(dformat == 'dta') {
-     write.dta(fr,fn)
+     write.dta(fr,fn,convert.factors='numeric')
   } else {
     write.table(fr,file=fn,quote=FALSE,row.names=FALSE)
   }

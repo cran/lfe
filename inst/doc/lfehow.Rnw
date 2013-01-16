@@ -379,6 +379,12 @@ Here's the same estimation in \code{lm}, with dummies:
 summary(lm(y ~ x + x2 + x3 + f1 + f2 + f3 - 1))
 @ 
 
+Now, there is a discrepancy between \code{lm} and \code{felm}
+when it comes to degrees of freedom and \(R^2\).  The \code{lm} estimation
+is formally done without an intercept. This yields the
+same estimates as in \code{felm}, but \code{lm} is tricked
+into believing that there is no intercept, and that \(E(y|X) = 0\).
+Thus, it computes \(R^2\) and degrees of freedom accordingly.
 
 \bibliographystyle{amsplain}
 \iftrue
@@ -401,8 +407,8 @@ M.~Andrews, L.~Gill, T.~Schank, and R.~Upward, \emph{{High wage workers and low
   Stat. Soc.(A) \textbf{171(3)} (2008), 673--697.
 
 \bibitem{GS11}
-S.~Gaure, \emph{{OLS with Multiple High Dimensional Category Dummies}}, (to
-  appear) (2011).
+S.~Gaure, \emph{{OLS with Multiple High Dimensional Category Variables}}, (to
+  appear) (2012).
 
 \bibitem{Halp62}
 I.~Halperin, \emph{{The Product of Projection Operators}}, Acta Sci. Math.

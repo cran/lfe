@@ -1,7 +1,9 @@
+useDynLib(lfe,.registration=TRUE, .fixes='C_')
+
 export(felm,getfe,demeanlist,compfactor,kaczmarz,btrap,is.estimable,efactory)
 import(Matrix)
+import(Rcgmin)
 S3method(print,felm)
 S3method(print,summary.felm)
 S3method(summary,felm)
 # S3method(fixef,felm)
-useDynLib('lfe')

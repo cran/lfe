@@ -1,5 +1,5 @@
 
-R version 2.13.1 (2011-07-08)
+R version 2.13.0 (2011-04-13)
 Copyright (C) 2011 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
@@ -26,6 +26,8 @@ The following object(s) are masked from 'package:base':
 
     det
 
+Loading required package: Rcgmin
+Loading required package: numDeriv
 > options(lfe.threads=4)
 > set.seed(6553)
 > # single fixed effect, special case which we risk destroying when we optimize, so check it
@@ -61,8 +63,8 @@ x3  0.49951    0.01078   46.35   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
 Residual standard error: 1.005 on 8984 degrees of freedom
-Multiple R-squared:     1   Adjusted R-squared:     1 
-F-statistic: 7.2e+06 on 11016 and 8984 DF, p-value: < 2.2e-16 
+Multiple R-squared: 0.8631   Adjusted R-squared: 0.6953 
+F-statistic: 5.144 on 11015 and 8984 DF, p-value: < 2.2e-16 
 
 
 > 

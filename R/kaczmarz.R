@@ -1,14 +1,39 @@
 
 
 kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('lfe.threads')) {
+  if(getOption('lfe.usecg')) return(cgsol(fl,R,eps,init))
   if(is.null(threads)) threads <- 1
   islist <- is.list(R)
   if(!islist) R <- list(R)
-  v <- .Call('kaczmarz',fl,R,eps,as.vector(init),as.integer(threads),PACKAGE='lfe')
+  v <- .Call(C_kaczmarz,fl,R,eps,as.vector(init),as.integer(threads))
   if(!islist) {
     v <- drop(v[[1]])
   }
   v
+}
+
+cgsol <- function(fl,R,eps=getOption('lfe.eps'), init=NULL,threads=NULL) {
+  if(is.list(R)) stop("cgsol can't handle list R")
+
+  # create matrix
+  mat <- as(fl[[1]],'sparseMatrix')
+  for(f in fl[-1]) {
+    mat <- rBind(mat,as(f,'sparseMatrix'))
+  }
+  mat <- t(mat)
+
+# target function
+  fn <- function(p) sum((mat %*% p - R)^2)
+# its gradient
+  gr <- function(p) {
+      a <- 2*(mat%*%p-R)
+      dim(a) <- c(1,nrow(mat))
+      as.vector(a %*% mat)
+  }
+  if(is.null(init)) init <- rep(0,ncol(mat))
+  cg <- Rcgmin(init,fn,gr,control=list(eps=eps))
+  if(cg$convergence != 0) warning(cg$message)
+  cg$par
 }
 
 getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100) {
@@ -356,12 +381,12 @@ is.estimable <- function(ef,fe,R=NULL) {
   }
   v1 <- ef(kaczmarz(fe,R,init=runif(N)),TRUE)
   v2 <- ef(kaczmarz(fe,R,init=runif(N)),TRUE)
-  df <- sqrt(sum((v1-v2)**2))
+  df <- max(abs(v1-v2))
   if(df > 1e-6) {
     bad <- which.max(abs(v1-v2))
     badname <- names(bad)
-    warning('non-estimable function, largest error in coordinate ',bad,
-            ' ("',badname,'")')
+    warning('non-estimable function, largest error ',
+      format(df,digits=1),' in coordinate ',bad, ' ("',badname,'")')
     return(FALSE)
   }
   TRUE

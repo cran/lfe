@@ -34,9 +34,9 @@ will be achieved.
 This function is used by \code{\link{getfe}}, it's quite specialized,
 but it might be useful for other purposes too.  
 
-If there are convergence problems, you should try reordering the
-equations randomly.  I.e. both \code{fl} and \code{R}.
-This sometimes improves the convergence.
+In case of convergence problems, setting \code{options(lfe.usecg=TRUE)} will
+cause the kaczmarz() function to dispatch to the conjugate gradient method
+of \pkg{Rcgmin}.  This may or may not be faster.
 }
 
 \examples{
@@ -55,9 +55,14 @@ as(f3,'sparseMatrix'), as(f4,'sparseMatrix')))
   R <- as.vector(D \%*\% truex)
 ## solve it
   sol <- kaczmarz(list(f1,f2,f3,f4),R)
+  opt <- options(lfe.usecg=TRUE)
+  cgsol <- kaczmarz(list(f1,f2,f3,f4),R)
+  options(opt)
 ## verify that the solution solves the system Dx = R
   res <- D \%*\% sol - R
+  cgres <- D \%*\% cgsol - R
   sqrt(sum(res^2))
+  sqrt(sum(cgres^2))
 ## but the solution is not equal to the true x, because the system is
 ## underdetermined
   sqrt(sum((sol - truex)^2))

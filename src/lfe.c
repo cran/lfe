@@ -122,6 +122,17 @@ typedef struct {
   int *ii;  /* indices into gpl */
 } FACTOR;
 
+#define RANDCENT
+#undef RANDCENT
+
+#ifdef RANDCENT
+typedef struct {
+  FACTOR *F;
+  int lev;
+} FACLEV;
+
+#endif
+
 #if __GNUC__ > 3 && __GNUC_MINOR__ > 3
 /*#pragma GCC optimize ("O3", "loop-block", "unroll-loops")*/
 /*#pragma GCC optimize ("O3", "unroll-loops")*/
@@ -170,6 +181,41 @@ static R_INLINE double centre(double *v, int N,
 
   return sqrt(sum);
 }
+
+#ifdef RANDCENT
+/* Randomized centering */
+static R_INLINE double rcentre(double *v, int N, FACLEV *order) {
+
+  int i;
+  double sum = 0.0;
+
+  for(i = 0; i < N; i++) {
+    FACTOR *f;
+    int lev;
+    double mean;
+    int j;
+    int levlen;
+    int base;
+    int *gpl;
+    lev = order[i].lev;
+    f = order[i].F;    
+    mean = 0;
+    base = f->ii[lev];
+    gpl = f->gpl;
+    levlen = f->ii[lev+1] - base;
+    for(j = 0; j < levlen; j++) {
+      mean += v[gpl[base+j]];
+    }
+    mean *= f->invgpsize[lev];
+    sum += mean*mean;
+    for(j = 0; j < levlen; j++) {
+      v[gpl[base+j]] -= mean;
+    }
+  }
+
+  return sqrt(sum);
+}
+#endif
 
 #if 0
 static R_INLINE double slcentre(double *v, int N, 
@@ -256,12 +302,60 @@ static int demean(double *v, int N, double *res,
   int okconv = 1;
   time_t last, now;
   int lastiter;
-  /* make a copy to result vector, centre() is in-place */
 
+#ifdef RANDCENT
+  FACLEV *order;
+  int totlev;
+  int n;
+
+  totlev = 0;
+  for(i = 0; i < e; i++) totlev += factors[i]->nlevels;
+#ifdef NOTHREADS
+  order = (FACLEV*) R_alloc(sizeof(FACLEV),totlev);
+#else
+  order = (FACLEV*) malloc(sizeof(FACLEV)*totlev);
+#endif
+  if(order == NULL) {pushmsg("malloc failed(out of memory?)",lock);return(0);}
+  n = 0;
+  for(i = 0; i < e; i++) {
+    FACTOR *f = factors[i];
+    int j;
+    for(j = 0; j < f->nlevels; j++) {
+      order[n].F = f;
+      order[n].lev = j;
+      n++;
+    }
+  }
+
+  /* shuffle it, Knuth */
+  LOCK(lock);  /* protect unif_rand */
+
+  for(i = totlev-1; i > 0; i--) {
+    FACLEV tmp;
+    int k,j;
+    j = (int) floor((i+1) * unif_rand());
+    if(j == i) continue;
+    tmp = order[j];
+    order[j] = order[i];
+    order[i] = tmp;
+  }
+
+  UNLOCK(lock);
+#endif
+
+  /* make a copy to result vector, centre() is in-place */
   memcpy(res,v,N*sizeof(double));
 
+
   if(1 == e) {
+#ifdef RANDCENT
+    rcentre(res,totlev,order);
+#ifndef NOTHREADS
+    free(order);
+#endif
+#else
     centre(res,N,factors,e,means);
+#endif
     return(1);
   }
 
@@ -274,7 +368,11 @@ static int demean(double *v, int N, double *res,
   lastiter = 0;
   do {
     iter++;
+#ifdef RANDCENT
+    delta = rcentre(res,totlev,order);
+#else
     delta = centre(res,N,factors,e,means);
+#endif
     c = delta/prevdelta;
     /* c is the convergence rate, at infinity they add up to 1/(1-c).
        This is true for e==2, but also in the ballpark for e>2 we guess.
@@ -310,10 +408,16 @@ static int demean(double *v, int N, double *res,
 #ifdef NOTHREADS
     R_CheckUserInterrupt();
 #else
-    if(*stop != 0) return(0);
+    if(*stop != 0) {okconv = 0; break;}
 #endif
     prevdelta = delta;
   } while(delta > neps*(1.0-c));
+
+#ifdef RANDCENT
+#ifndef NOTHREADS
+  free(order);
+#endif
+#endif
   return(okconv);
 }
 
@@ -566,7 +670,6 @@ static void invertfactor(FACTOR *f,int N) {
   int i;
   f->ii = (int*) R_alloc(nlev+1,sizeof(int));
   f->gpl = (int*) R_alloc(N,sizeof(int));
-  curoff = Calloc(nlev+1,int);
 
   memset(f->ii,0,sizeof(int)*(nlev+1));
 
@@ -580,6 +683,7 @@ static void invertfactor(FACTOR *f,int N) {
     f->ii[i] += f->ii[i-1];
   }
 
+  curoff = Calloc(nlev+1,int);
   for(i = 0; i < N; i++) {
     int gp = f->group[i]-1;
     f->gpl[f->ii[gp]+curoff[gp]] = i;
@@ -1097,7 +1201,9 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
     for(j = 0; j < f->nlevels; j++) {
       f->invgpsize[j] = 1.0/f->invgpsize[j];
     }
-    /*invertfactor(f,N);*/
+#ifdef RANDCENT
+    invertfactor(f,N);
+#endif
   }
 
 

@@ -66,6 +66,10 @@ effects is not threaded. The default method for extracting the
 group coefficients is the iterative Kaczmarz-method, its tolerance
 is also the \code{lfe.eps} option.
 
+For some datasets the Kaczmarz-method is converging very slowly, in this
+case it may be replaced with the conjugate gradient method of \pkg{Rcgmin}
+by setting the option \code{options(lfe.usecg=TRUE)}.
+
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
 levels (the \code{\link{felm}} took about 50 minutes on 8 cpus, the
