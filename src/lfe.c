@@ -376,8 +376,10 @@ static int demean(double *v, int N, double *res,
     c = delta/prevdelta;
     /* c is the convergence rate, at infinity they add up to 1/(1-c).
        This is true for e==2, but also in the ballpark for e>2 we guess.
+       Only fail if it's after some rounds. It seems a bit unstable in the
+       beginning.
     */
-    if(c >= 1.0) {
+    if(c >= 1.0 && iter > 20) {
       char buf[256];
       sprintf(buf,"Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
 	       vecnum,iter,1.0-c,delta);
@@ -818,7 +820,7 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
     c = sd/prevdiff;
     prevdiff = sd;
     iter++;
-    if(c >= 1.0) {
+    if(c >= 1.0 && iter > 20) {
       char buf[256];
       sprintf(buf,"Kaczmarz failed in iter %d*%d, 1-c=%.0e, delta=%.1e, eps=%.1e\n",iter,newN,1.0-c,sd,neweps);
       pushmsg(buf,lock);

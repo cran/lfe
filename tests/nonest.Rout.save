@@ -1,6 +1,6 @@
 
-R version 2.13.0 (2011-04-13)
-Copyright (C) 2011 The R Foundation for Statistical Computing
+R version 2.15.2 (2012-10-26) -- "Trick or Treat"
+Copyright (C) 2012 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -19,13 +19,6 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 Loading required package: lattice
-
-Attaching package: 'Matrix'
-
-The following object(s) are masked from 'package:base':
-
-    det
-
 Loading required package: Rcgmin
 Loading required package: numDeriv
 > options(lfe.threads=2)
@@ -215,3 +208,6 @@ F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16
 
 > options(opt)
 > 
+> proc.time()
+   user  system elapsed 
+  8.432   0.124   8.296 

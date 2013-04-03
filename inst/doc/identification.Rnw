@@ -1,0 +1,336 @@
+\documentclass{amsproc}
+
+\usepackage[utf8]{inputenc}
+
+\newcommand{\strong}[1]{{\normalfont\fontseries{b}\selectfont #1}}
+\let\pkg=\strong
+\newcommand\code{\bgroup\@codex}
+\def\@codex#1{{\normalfont\ttfamily\hyphenchar\font=-1 #1}\egroup}
+
+\newcommand{\bma}{\begin{bmatrix}}
+\newcommand{\ema}{\end{bmatrix}}
+
+%%\VignetteIndexEntry{Identification and estimable functions}
+%%\VignetteKeyword{Multiple Fixed Effects}
+%%\VignetteKeyword{Kaczmarz Method}
+%%\VignetteKeyword{Method of Alternating Projections}
+
+
+\title{Identification and estimable functions}
+
+\author{Simen Gaure}
+\address{Ragnar Frisch Centre for Economic Research, Oslo, Norway}
+\date{March 26, 2013}
+
+\begin{document}
+\begin{abstract}
+A walkthrough of the identification problems which may arise in models
+with many dummies, and how \pkg{lfe} handles them.
+\end{abstract}
+\maketitle
+
+\section{}
+The \pkg{lfe} package is used for ordinary least squares estimation, i.e. models
+which conceptually may be estimated by \code{lm} as
+
+<<id, eval=FALSE>>=
+lm(y ~ x1 + x2 + ... + f1 + f2 + ... + fn)
+@ 
+
+where \code{f1,f2,...,fn} are factors.
+The standard method is to introduce a dummy variable for each level of each factor.
+This is too much as it introduces multicollinearities in the system.
+Conceptually, the system may still be solved, but there are many different solutions.
+In all of them, the difference between the coefficients for each factor will be the same.
+
+The ambiguity
+is typically solved by removing a single dummy variable for each factor, this is 
+termed a reference. This is like forcing the coefficient for this dummy variable to zero,
+and the other levels are then seen as relative to this zero.  Other ways to solve the
+problem is to force the sum of the coefficients to be zero, or one may enforce
+some other constraint, typically via the \code{contrasts} argument to \code{lm}.
+The default in \code{lm} is to have a reference level in each factor, and a common
+intercept term.
+
+In \pkg{lfe} the same estimation can be performed by
+<<id, eval=FALSE>>=
+felm(y ~ x1 + x2 + ... + G(f1) + G(f2) + ... + G(fn))
+@ 
+
+Since \code{felm} conceptually does exactly the same as \code{lm}, the contrasts approach may work there
+too. Or rather, it is actually not necessary that \code{felm} handles it at all, it is only necessary
+if one needs to fetch the coefficients for the factor levels with \code{getfe}.
+
+\pkg{lfe} is intended for very large datasets, with factors with many levels.
+Then the approach with a single constraint for each factor may sometimes not be sufficient.
+The standard example in the econometrics literature is the case with two factors, one for individuals,
+and one for firms these individuals work for, changing jobs now and then.  What happens in practice
+is that the labour market may be disconnected, so that one set of individuals move between
+one set of firms, and another (disjoint) set of individuals move between some other firms.
+This happens for no obvious reason, and is data dependent, not intrinsic to the model.
+There may be several such components.  I.e. there are more multicollinearities in the system
+than the obvious ones.
+In such a case, there is no way to compare coefficients from different connected components,
+it is not sufficient with a single individual reference.  The problem may be phrased in
+graph theoretic terms, and it can be shown that it is sufficient with one reference level in each
+of the connected components.  This is what \pkg{lfe} does, in the case with two factors
+it identifies these components, and force one level to zero in one of the factors.
+
+\section{Identification with two factors}
+In the case with two factors, i.e. two \code{G()} terms in the model, identification
+is well-known. \code{getfe} will partition the dataset into connected components, and
+introduce a reference level in each component:
+<<>>=
+library(lfe)
+set.seed(42)
+x1 <- rnorm(20)
+f1 <- sample(8,length(x1),replace=TRUE)/10
+f2 <- sample(8,length(x1),replace=TRUE)/10
+e1 <- sin(f1) + 0.02*f2^2 + rnorm(length(x1))
+y <-  2.5*x1 + (e1-mean(e1))
+summary(est <- felm(y ~ x1 + G(f1) + G(f2)))
+@ 
+
+We examine the estimable function produced by \code{efactory}.
+<<>>=
+ef <- efactory(est,'ref')
+is.estimable(ef,est$fe)
+getfe(est)
+@ 
+
+As we can see from the \code{comp} entry, there are two components, with \code{f1=0.2}, \code{f1=0.7} and
+\code{f2=0.4}. A reference is introduced in each of the components, i.e. \code{f2.0.2=0} and \code{f2.0.4=0}.
+If we look at the dataset, the component structure becomes clearer:
+<<>>=
+data.frame(f1,f2,comp=est$cfactor)
+@ 
+
+Observation 14 and 18 belong to component 2; no other observation has \code{f1=0.7}, \code{f1=0.2} or
+\code{f2=0.4}, thus it is clear that coefficients for these can not be compared to other coefficients.
+
+\section{Identification with three or more factors}
+In the case with three or more factors, there is no general intuitive theory (yet) for handling identification problems.
+\pkg{lfe} resorts to the simple-minded approach that non-obvious multicollinearities
+arise among the first two factors, and assumes it is sufficient with a single reference level
+for each of the remaining factors.  In other words, the order of the factors in the model
+specification is important.  A typical example would be 3 factors; individuals, firms and education:
+
+<<id, eval=FALSE>>=
+est <- felm(logwage ~ x1 + x2 + G(id) + G(firm) + G(edu))
+getfe(est)
+@ 
+
+This will result in exactly the same references as if using the model
+<<id, eval=FALSE>>=
+logwage ~ x1 + x2 + G(id) + G(firm) + edu
+@ 
+though it may run faster (or slower).
+
+Alternatively, one could specify the model as
+<<id, eval=FALSE>>=
+logwage ~ x1 + x2 + G(firm) + G(edu) + G(id)
+@ 
+
+This would not account for a partioning of the labour market along individual/firm, but
+along firm/education, using a single reference level for the individuals.  
+In this example, there is some reason to suspect that it is
+not sufficient, depending on how \code{edu} is specified. 
+There exists no general scheme that sets up suitable reference groups
+when there are more than two factors.  It may happen that the default is sufficient.
+The function \code{getfe} will check whether this is so, and it will yield a warning
+about 'non-estimable function' if not.  With some luck it may be possible to rearrange the
+order of the factors to avoid this situation.
+
+There is nothing special with \pkg{lfe} in this respect. You will meet
+the same problem with \code{lm}, it will remove a reference level (or
+dummy-variable) in each factor, but the system will still contain
+multicollinearities.  You may remove reference levels until all
+the multicollinearities are gone, but there is no obvious way to
+interpret the resulting coefficients.
+
+To illustrate, the classical example is when you include a factor for age (in years), 
+a factor for observation year, and a factor for year of birth.  You pick a reference individual,
+e.g. \code{age=50}, \code{year=2013} and \code{birth=1963}, but this is not sufficient to remove
+all the multicollinearities. If you analyze this problem you will find that the coefficients
+are only identified up to linear trends. You may force the linear trend between \code{birth=1963} and
+\code{birth=1990} to zero, by removing the reference level \code{birth=1990}, and the
+system will be free of multicollinearities. In this case the \code{birth} coefficients have the
+interpretation as being deviations from a linear trend, though you do not know which linear trend.
+The \code{age} and \code{year} coefficients are also relative to this unknown trend in the 
+\code{birth}-coefficients.
+
+In the above case, the multicollinearity is obviously built into the model, and it is
+possible to remove it and find some intuitive interpretation of the coefficients. In
+the general case, when either \code{lm} or \code{getfe} reports a
+handful of non-obvious spurious multicollinearites between factors with many levels, you
+probably will not be able to find any reasonable way to interpret coefficients.  Of
+course, certain linear combinations of coefficients will be unique, 
+i.e. estimable, and for small datasets these may be found by e.g. the algorithm in
+\cite{GG01}, but the general picture is muddy.
+
+\pkg{lfe} does not provide a solution to this problem, however, \code{getfe} will still
+provide a vector of coefficients which results from finding a non-unique solution to a certain
+set of equations.  To get any sense from this, an estimable function must be applied. The simplest
+one is to pick a reference for each factor and subtract this coefficient from each of the other coefficients
+in the same factor, and add it to a common intercept, however in the case this does not result in
+an estimable function, you are out of luck.
+If you for some reason believe that you know of an estimable function, you may
+provide this to \code{getfe} via the \code{ef}-argument. There is an example in the
+\code{getfe} documentation.  You may also test it for estimability with the function 
+\code{is.estimable}, this is a probabilistic test which almost never fails.
+
+\section{Specifying an estimable function}
+A model of the type
+<<id,eval=FALSE>>=
+y ~ x1 + x2 + f1 + f2 + f3
+@ 
+may be written in matrix notation as
+\[
+ y = X\beta + D\alpha + \epsilon,
+\]
+where \(X\) is a matrix with columns \code{x1} and \code{x2} and \(D\) is matix of
+dummies constructed from the levels of the factors \code{f1,f2,f3}.
+Formally, an estimable function in our context is a matrix operator whose row space 
+is contained in the row space of \(D\).  That is, an estimable function may be
+written as a matrix.  Like the \code{contrasts} argument to \code{lm}. However,  the \pkg{lfe} package
+uses an R-function instead.  That is, \code{felm} is called first:
+<<id,eval=FALSE>>=
+est <- felm(y ~ x1 + x2 + G(f1)+G(f2)+G(f3))
+@ 
+
+This yields the parameters for \code{x1} and \code{x2}, i.e. \(\hat\beta\).
+To find the parameters for the levels of \code{f1,f2,f3}, a certain linear system 
+is solved:
+\begin{equation}\label{alphaeq}
+D\gamma = R
+\end{equation}
+where \(R\) can be computed when we have \(\beta\).
+This does not identify \(\gamma\) uniquely, we have to apply an estimable
+function to \(\gamma\).  The estimable function \(F\) is characterized by the
+property that \(F\gamma_1 = F\gamma_2\) whenever \(\gamma_1\) and \(\gamma_2\) are
+solutions to equation~\eqref{alphaeq}.  Rather than coding \(F\) as a matrix, \pkg{lfe}
+codes it as a function. It is of course possible to let the function apply a matrix, so this
+is not a material distinction.
+So, let's look at an example of how an estimable function may be made:
+<<ex>>=
+library(lfe)
+x1 <- rnorm(100)
+f1 <- sample(7,100,replace=TRUE)
+f2 <- sample(8,100,replace=TRUE)/8
+f3 <- sample(10,100,replace=TRUE)/10
+e1 <- sin(f1) + 0.02*f2^2  + 0.17*f3^3 + rnorm(100)
+y <-  2.5*x1 + (e1-mean(e1))
+summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3)))
+@ 
+
+In this case, with 3 factors we can not be certain that it is sufficient with a single
+reference in two of the factors, but we try it as an exercise. (\pkg{lfe} does not include an intercept, it is subsumed
+in one of the factors, so it should tentatively be sufficient with a reference for the two
+others).
+
+The input to our estimable function is a solution \(\gamma\) of equation~\eqref{alphaeq}. The
+argument \code{addnames} is a logical, set to \code{TRUE} when the function should add names to
+the resulting vector.  The coefficients is ordered the same was as the levels in the factors.
+We should pick a single reference in factors \code{f2,f3}, subtract these, and add the sum
+to the first factor:
+<<ex>>=
+ef <- function(gamma,addnames) {
+  ref2 <- gamma[[8]]
+  ref3 <- gamma[[16]]
+  gamma[1:7] <- gamma[1:7]+ref2+ref3
+  gamma[8:15] <- gamma[8:15]-ref2
+  gamma[16:25] <- gamma[16:25]-ref3
+  if(addnames) {
+    names(gamma) <- c(paste('f1',1:7,sep='.'),
+                          paste('f2',1:8,sep='.'),
+                          paste('f3',1:10,sep='.'))
+  }
+  gamma
+}
+is.estimable(ef,fe=est$fe)
+getfe(est,ef=ef)
+@ 
+
+We may compare this to the default estimable function, which picks a reference in each connected
+component as defined by the two first factors.
+<<ex>>=
+getfe(est)
+@ 
+We see that the default has some more information.  It uses the level names, and some more information, added like
+this:
+<<ex>>=
+efactory(est,'ref')
+@ 
+I.e. when asked to provide level names, it is also possible to add additional
+information as a \code{list} (or \code{data.frame}) as an
+attribute \code{'extra'}. The vectors \code{extrarefs,refsubs,refsuba} etc.\ are precomputed
+by \code{efactory} for speed efficiency.
+
+\section{Non-estimability}
+Consider another example. To ensure spurious relations there are
+almost as many factor levels as there are observations, and it will be
+hard to find enough estimable function to interpret all the
+coefficients.  The coefficient for \code{x1} is still estimated, but
+with a large standard error.
+
+<<>>=
+set.seed(42)
+x1 <- rnorm(100)
+f1 <- sample(34,100,replace=TRUE)
+f2 <- sample(34,100,replace=TRUE)/8
+f3 <- sample(34,100,replace=TRUE)/10
+e1 <- sin(f1) + 0.02*f2^2  + 0.17*f3^3 + rnorm(100)
+y <-  2.5*x1 + (e1-mean(e1))
+summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3)))
+@ 
+
+The default estimable function fails, and the coefficients
+from \code{getfe} are not useable.  \code{getfe} yields a warning in
+this case.
+<<>>=
+ef <- efactory(est,'ref')
+is.estimable(ef,est$fe)
+@ 
+
+Indeed, the rank-deficiency is quite large. There are more spurious relations between
+the factors than what can be accounted for by looking at components in the two first factors. 
+In this low-dimensional example we
+may find the matrix \(D\) of equation~\eqref{alphaeq}, and its rank which is lower than
+the number of columns:
+<<>>=
+f1 <- factor(f1); f2 <- factor(f2); f3 <- factor(f3)
+D <- t(rBind(as(f1,'sparseMatrix'),
+             as(f2,'sparseMatrix'),
+             as(f3,'sparseMatrix')))
+dim(D)
+as.numeric(rankMatrix(D))
+@ 
+
+We can get an idea what happens if we keep the dummies for \code{f1}. In this case, with
+2 factors, \pkg{lfe} will partition the dataset into connected components and account
+for all the multicollinearities among the factors \code{f2} and \code{f3},
+but this is not sufficient. The interpretation of the
+resulting coefficients is not straightforward.
+<<>>=
+summary(est <- felm(y ~ x1 + G(f2) + G(f3) + f1))
+getfe(est)
+@ 
+
+\begin{thebibliography}{1}
+  \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+  \expandafter\ifx\csname url\endcsname\relax
+    \def\url#1{\texttt{#1}}\fi
+    \expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+    \providecommand{\eprint}[2][]{\url{#2}}
+    \providecommand{\bibinfo}[2]{#2}
+    \ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+    
+\bibitem[1]{GG01}
+  \bibinfo{author}{Godolphin, J.D.}, \bibinfo{author}{Godolphin, E.J.},
+    \bibinfo{year}{2001}.
+    \newblock \bibinfo{title}{On the connectivity of row-column designs}.
+    \newblock \bibinfo{journal}{Util. Math.} \bibinfo{volume}{60},
+      \bibinfo{pages}{51--65}.
+\end{thebibliography}      
+
+\end{document}

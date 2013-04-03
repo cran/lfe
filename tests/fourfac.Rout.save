@@ -1,6 +1,6 @@
 
-R version 2.13.0 (2011-04-13)
-Copyright (C) 2011 The R Foundation for Statistical Computing
+R version 2.15.2 (2012-10-26) -- "Trick or Treat"
+Copyright (C) 2012 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -19,13 +19,6 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 Loading required package: lattice
-
-Attaching package: 'Matrix'
-
-The following object(s) are masked from 'package:base':
-
-    det
-
 Loading required package: Rcgmin
 Loading required package: numDeriv
 > options(lfe.threads=1)
@@ -49,7 +42,7 @@ Loading required package: numDeriv
 > ## estimate
 > system.time(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm) + G(shoe) + G(shirt)))
    user  system elapsed 
-  2.196   0.004   2.084 
+  2.240   0.012   2.178 
 > summary(est)
 
 Call:
@@ -207,7 +200,7 @@ F-statistic: 5.908e+08 on 8 and 49992 DF,  p-value: < 2.2e-16
 
 accuracy: 9.33e-10 9.14e-11 2.35e-11 -2.36e-12 1.30e-09 
    user  system elapsed 
- 14.425   0.056  14.493 
+ 14.693   0.060  14.767 
 Warning messages:
 1: In is.estimable(ef, obj$fe, R) :
   non-estimable function, largest error 0.6 in coordinate 18570 ("firm.4208")
@@ -215,3 +208,6 @@ Warning messages:
   Supplied function seems non-estimable
 
 > 
+> proc.time()
+   user  system elapsed 
+ 21.213   0.160  21.332 

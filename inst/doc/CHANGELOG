@@ -1,0 +1,987 @@
+2013-04-03  sgaure
+
+	* [r941] pkg/man/lfe-package.Rd: cran build
+	* [r940] DESCRIPTION: cran build
+	* [r939] pkg/man/lfe-package.Rd:
+	* [r938] pkg/R/kaczmarz.R, pkg/vignettes/identification.Rnw:
+
+2013-04-02  sgaure
+
+	* [r937] pkg/vignettes/identification.Rnw, rjart.tex:
+	* [r936] pkg/vignettes/identification.Rnw:
+
+2013-03-29  sgaure
+
+	* [r935] pkg/inst/doc/lfehow.Rnw, pkg/man/lfe-package.Rd, pkg/vignettes,
+	  pkg/vignettes/lfehow.Rnw:
+
+2013-03-10  sgaure
+
+	* [r932] pkg/tests/ivtest.Rout.save:
+	* [r931] pkg/tests/ivtest.Rout.save:
+
+2013-03-06  sgaure
+
+	* [r930] pkg/src/lfe.c: cran build
+
+2013-03-04  sgaure
+
+	* [r928] Makefile, pkg/tests/comparelm.Rout.save,
+	  pkg/tests/degenerate.Rout.save, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/fourfac.Rout.save, pkg/tests/ivtest.Rout.save,
+	  pkg/tests/lfetest.Rout.save, pkg/tests/nonest.Rout.save,
+	  pkg/tests/onefac.Rout.save, pkg/tests/verify.Rout.save:
+
+2013-02-27  sgaure
+
+	* [r916] Makefile:
+
+2013-01-16  sgaure
+
+	* [r771] pkg/R/lfe.R: cran build
+	* [r770] pkg/man/felm.Rd: cran build
+	* [r769] pkg/R/lfe.R, pkg/man/felm.Rd: verified iv and standard errors
+	  with stata
+
+2013-01-15  sgaure
+
+	* [r768] pkg/R/lfe.R, pkg/exec/lfescript: convert the factors to
+	  numeric, default is labels
+
+2012-12-17  sgaure
+
+	* [r767] pkg/exec/lfescript: Normally distributed heterogeneity
+
+2012-08-22  sgaure
+
+	* [r763] pkg/NAMESPACE, pkg/R/kaczmarz.R, pkg/R/lfe.R: update reference
+	  to .Call, mail from Ripley
+
+2012-06-08  sgaure
+
+	* [r762] pkg/R/lfe.R, pkg/R/utils.R, pkg/exec/lfescript: Fixed error
+	  when no covariates
+
+2012-06-07  sgaure
+
+	* [r761] pkg/tests/comparelm.Rout.save, pkg/tests/degenerate.Rout.save,
+	  pkg/tests/efcheck.Rout.save, pkg/tests/fourfac.Rout.save,
+	  pkg/tests/lfetest.Rout.save, pkg/tests/nonest.Rout.save,
+	  pkg/tests/onefac.Rout.save, pkg/tests/verify.Rout.save: updated tests
+	  for better estimable diagnosis
+	* [r760] pkg/R/kaczmarz.R: better diagnostic for non-estimability
+	* [r759] DESCRIPTION, pkg/NAMESPACE, pkg/R/kaczmarz.R, pkg/R/lfe.R,
+	  pkg/man/kaczmarz.Rd, pkg/man/lfe-package.Rd: Added support for cg
+	  replacement of kaczmarz(), via options(lfe.usecg=TRUE)
+
+2012-04-10  sgaure
+
+	* [r758] pkg/R/lfe.R: robust se patch
+
+2012-02-03  sgaure
+
+	* [r757] pkg/R/lfe.R, pkg/exec/lfescript: don't drop the cluster
+	  variable from data frame
+
+2012-02-02  sgaure
+
+	* [r756] pkg/man/felm.Rd: doc update
+	* [r755] pkg/R/lfe.R: add df-adjustment to cluster s.e.
+	* [r754] pkg/R/lfe.R: cleanup
+	* [r753] pkg/R/lfe.R, pkg/man/felm.Rd: cleanup
+
+2012-02-01  sgaure
+
+	* [r752] pkg/exec/lfescript: iv bugfix
+	* [r751] pkg/R/lfe.R, pkg/R/utils.R, pkg/exec/lfescript: Clustered s.e.
+
+2012-01-27  sgaure
+
+	* [r750] pkg/inst/doc/lfehow.Rnw: some explanation about degrees of
+	  freedom
+
+2012-01-26  sgaure
+
+	* [r749] pkg/tests/comparelm.Rout.save, pkg/tests/degenerate.Rout.save,
+	  pkg/tests/efcheck.Rout.save, pkg/tests/fourfac.Rout.save,
+	  pkg/tests/lfetest.Rout.save, pkg/tests/nonest.Rout.save,
+	  pkg/tests/onefac.Rout.save, pkg/tests/verify.Rout.save: cran build
+	* [r748] pkg/man/felm.Rd, pkg/tests/ivtest.R: iv
+	* [r747] pkg/R/lfe.R, pkg/R/utils.R, pkg/exec/lfescript,
+	  pkg/inst/doc/lfeguide.txt: Added IV-option, corrected computation of
+	  R-squared
+
+2012-01-16  sgaure
+
+	* [r746] pkg/exec/lfescript: experiment with iv-estimation. It should
+	  enter the felm-code for efficiency when it works
+
+2012-01-06  sgaure
+
+	* [r745] pkg/src/lfe.c: disable random centering (undef RANDCENT), no
+	  apparent improvement
+	* [r744] pkg/src/lfe.c: disable random centering (undef RANDCENT), no
+	  apparent improvement
+
+2012-01-05  sgaure
+
+	* [r743] pkg/src/lfe.c:
+	* [r742] pkg/src/lfe.c:
+	* [r741] pkg/src/lfe.c: experiment with random centering
+	* [r740] Makefile:
+	* [r739] Makefile: cran build
+
+2011-12-07  sgaure
+
+	* [r731] Makefile: add configure.ac to pkg
+
+2011-11-29  sgaure
+
+	* [r730] pkg/src/lfe.c: cran build
+
+2011-11-25  sgaure
+
+	* [r729] pkg/src/lfe.c: print messages in right order
+
+2011-11-23  sgaure
+
+	* [r728] pkg/src/lfe.c: made a message stack to avoid calling R in
+	  threads
+	* [r727] configure.ac, pkg/src/Makevars.in, pkg/src/lfe.c: made a
+	  message stack to avoid calling R in threads
+	* [r726] pkg/src/lfe.c: cran build
+	* [r725] pkg/src/lfe.c: another attempt to declare R_CStackLimit
+	  portably
+	* [r724] configure.ac, pkg/src/Makevars.in, pkg/src/lfe.c: new attempt
+	  to declare R_CStackLimit portably
+
+2011-11-20  sgaure
+
+	* [r723] pkg/src/lfe.c: changed Rprintf to REprintf, the former calls
+	  checkinterrupt and may fail in threads
+	* [r722] pkg/src/lfe.c: test windows stack check disable
+	* [r721] pkg/src/lfe.c: test windows stack check disable
+
+2011-11-19  sgaure
+
+	* [r720] pkg/src/lfe.c: test windows stack check disable
+	* [r719] pkg/src/lfe.c: test windows stack check disable
+	* [r718] Makefile, pkg/src/lfe.c: serial bug fixed
+	* [r717] Makefile: add serial check
+	* [r716] pkg/src/lfe.c: only drop stach-check on linux
+
+2011-11-11  sgaure
+
+	* [r715] pkg/src/lfe.c: try to disable C stack check
+
+2011-11-10  sgaure
+
+	* [r714] pkg/src/lfe.c: lock-protect the interrupt-checking
+
+2011-11-09  sgaure
+
+	* [r713] pkg/src/lfe.c: print progress on stdout, not stderr
+
+2011-11-05  sgaure
+
+	* [r712] pkg/inst/doc/gen2.R: prevent NOTE from check
+	* [r711] pkg/src/lfe.c: protect diagnostic with LOCK/UNLOCK
+
+2011-10-13  sgaure
+
+	* [r710] pkg/exec/lfescript: fixed a bug pertaining to factors as
+	  ordinary dummies
+
+2011-10-05  sgaure
+
+	* [r709] configure.ac, pkg/src/Makevars.in, pkg/src/lfe.c: check
+	  semaphores in configure
+
+2011-09-28  sgaure
+
+	* [r708] pkg/R/lfe.R, pkg/src/lfe.c: added some explicit gc, fixed
+	  syntax error in windows
+	* [r707] pkg/src/lfe.c: give progress report on centering each hour
+
+2011-09-27  sgaure
+
+	* [r706] configure.ac:
+	* [r705] pkg/src/lfe.c:
+	* [r704] pkg/src/lfe.c: progress report when centering of single vector
+	  exceeds 1 hour
+	* [r703] configure.ac, pkg/src/Makevars.in: support for missing
+	  sem_timedwait
+	* [r702] pkg/exec/lfescript:
+
+2011-09-26  sgaure
+
+	* [r701] pkg/man/lfe-package.Rd:
+	* [r700] pkg/src/lfe.c: Kaczmarz is not thread safe
+	* [r699] pkg/exec/lfescript: make dummy-command available for stata
+	  datasets
+
+2011-09-25  sgaure
+
+	* [r698] pkg/src/lfe.c: protect the shuffling with a lock, due to
+	  non-thread-safe random generator
+	* [r697] pkg/R/kaczmarz.R: allow 500MB in parallel Kaczmarz
+	* [r696] pkg/src/lfe.c, pkg/tests/fourfac.R,
+	  pkg/tests/fourfac.Rout.save, pkg/tests/lfetest.Rout.save: inlined the
+	  gmean() function in centre()
+
+2011-09-23  sgaure
+
+	* [r695] pkg/src/lfe.c:
+	* [r694] pkg/src/lfe.c: syntax error
+	* [r693] pkg/tests/nonest.R, pkg/tests/nonest.Rout.save: changed the
+	  nonest test
+	* [r692] pkg/src/lfe.c: don't include semaphore.h on windows
+	* [r691] pkg/R/kaczmarz.R, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/fourfac.Rout.save, pkg/tests/nonest.R,
+	  pkg/tests/nonest.Rout.save, pkg/tests/verify.Rout.save: make sure to
+	  check estimability if more than 2 factors
+	* [r690] pkg/exec/lfescript, pkg/inst/doc/lfeguide.txt,
+	  pkg/man/getfe.Rd: lfe.randkac-option removed since we allways shuffle
+	* [r689] pkg/R/kaczmarz.R, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/fourfac.R, pkg/tests/fourfac.Rout.save,
+	  pkg/tests/lfetest.Rout.save: tests reflects mandatory
+	  Kaczmarz-shuffling, also fixed bug in zm2-estimable function
+	* [r688] pkg/R/kaczmarz.R: random Kaczmarz is mandatory
+	* [r687] pkg/src/lfe.c: random kaczmarz as mandatory
+	* [r686] pkg/tests/fourfac.R: check zm and zm2
+
+2011-09-22  sgaure
+
+	* [r685] Makefile: minor change in makefile
+	* [r684] Makefile: minor change in makefile
+	* [r683] Makefile: minor change in makefile
+	* [r682] Makefile: make sure vignette ends up on cran
+	* [r681] pkg/R/kaczmarz.R, pkg/tests/fourfac.R,
+	  pkg/tests/fourfac.Rout.save: fixed a bug when number of factors > 3
+	* [r680] pkg/inst/doc/lfeguide.txt, pkg/man/lfe-package.Rd: support
+	  randkac in lfescript
+	* [r679] Makefile: cran build
+	* [r678] pkg/exec/lfescript, pkg/src/lfe.c: support randkac in lfescript
+
+2011-09-21  sgaure
+
+	* [r677] csda, csda/fixed2.aux, csda/fixed2.bbl, csda/fixed2.blg,
+	  csda/fixed2.log, csda/fixed2.spl, csda/fixed2.tex, csda/fixed2.zip,
+	  csda/rev1, csda/rev1/CSDA-D-10-00865.pdf,
+	  csda/rev1/CSDA_highdimensional.pdf, csda/rev1/Chicago.bst,
+	  csda/rev1/NOTE, csda/rev1/Review of CSDA-D-10-00865.pdf,
+	  csda/rev1/Review.pdf, csda/rev1/biblio.bib, csda/rev1/commentary.txt,
+	  csda/rev1/fixed.zip, csda/rev1/fixed2.aux, csda/rev1/fixed2.bbl,
+	  csda/rev1/fixed2.blg, csda/rev1/fixed2.log, csda/rev1/fixed2.out,
+	  csda/rev1/fixed2.pdf, csda/rev1/fixed2.spl, csda/rev1/fixed2.tex.old,
+	  csda/rev1/fixed2.zip, csda/rev1/fixed3.aux, csda/rev1/fixed3.bbl,
+	  csda/rev1/fixed3.blg, csda/rev1/fixed3.log, csda/rev1/fixed3.out,
+	  csda/rev1/fixed3.pdf, csda/rev1/fixed3.spl, csda/rev1/fixed3.tex,
+	  csda/rev1/fixed3.zip, csda/rev1/gpreg.pdf, csda/rev1/model2-names.bst,
+	  csda/rev1/pack, csda/rev1/texput.log: Just for backup-purpose of csda
+
+2011-09-16  sgaure
+
+	* [r676] configure.ac:
+
+2011-09-15  sgaure
+
+	* [r675] DESCRIPTION, Makefile: Add AMS classification
+	* [r674] DESCRIPTION, Makefile: some tidying
+
+2011-09-11  sgaure
+
+	* [r673] pkg/src/lfe.c: test return status of sem_init
+	* [r672] configure.ac: make thread-version optional
+	* [r671] Makefile, pkg/src/lfe.c: switched to timed semaphore instead of
+	  polling in interrupt check
+
+2011-09-10  sgaure
+
+	* [r670] Makefile, pkg/inst/doc/lfehow.Rnw: cran build
+	* [r669] Makefile: cran build
+	* [r668] pkg/src/lfe.c: made Kaczmarz interruptible
+
+2011-09-09  sgaure
+
+	* [r667] configure.ac, pkg/src/lfe.c: make -DNOTHREADS work
+	* [r666] configure.ac, pkg/src/lfe.c: make -DNOTHREADS work
+	* [r665] pkg/src/lfe.c: shorter sleep in wait-for-intr loop
+	* [r664] pkg/src/lfe.c: make demeanlist interruptible
+	* [r663] pkg/man/getfe.Rd, pkg/src/lfe.c:
+	* [r662] pkg/man/felm.Rd, pkg/man/getfe.Rd: minor doc change
+	* [r661] Makefile, pkg/R/kaczmarz.R, pkg/R/lfe.R, pkg/man/compfactor.Rd,
+	  pkg/man/demeanlist.Rd, pkg/man/lfe-package.Rd, pkg/src/lfe.c: allow
+	  specification of progress report interval
+
+2011-09-08  sgaure
+
+	* [r659] Makefile, pkg/src/Makevars.in, pkg/src/lfe_il.c:
+	* [r658] pkg/src/lfe_il.c: tested interleave, not faster
+	* [r657] pkg/R/kaczmarz.R, pkg/exec/lfescript,
+	  pkg/inst/doc/lfeguide.txt, pkg/man/compfactor.Rd, pkg/man/efactory.Rd,
+	  pkg/man/getfe.Rd, pkg/man/lfe-package.Rd:
+	* [r656] pkg/R/kaczmarz.R, pkg/exec/lfescript, pkg/man/btrap.Rd,
+	  pkg/src/lfe.c, rjart.tex:
+
+2011-09-02  sgaure
+
+	* [r655] pkg/src/lfe.c: minor change
+	* [r654] pkg/exec/lfescript, pkg/inst/doc/lfehow.Rnw,
+	  pkg/man/kaczmarz.Rd, pkg/man/lfe-package.Rd, rjart.tex: Minor change
+
+2011-08-31  sgaure
+
+	* [r653] Makefile:
+
+2011-08-30  sgaure
+
+	* [r644] pkg/R/kaczmarz.R:
+	* [r643] pkg/R/kaczmarz.R: Make randomized Kaczmarz optional, also in
+	  the s.e. computation
+
+2011-08-29  sgaure
+
+	* [r642] pkg/R/kaczmarz.R, pkg/man/getfe.Rd, pkg/man/kaczmarz.Rd,
+	  pkg/man/lfe-package.Rd, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/lfetest.Rout.save: Make randomized Kaczmarz optional
+	* [r641] Makefile: Randomizing Kaczmarz method - moved to function
+	  kaczmarz()
+	* [r640] pkg/R/kaczmarz.R, pkg/tests/comparelm.Rout.save,
+	  pkg/tests/degenerate.Rout.save, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/lfetest.Rout.save, pkg/tests/onefac.Rout.save,
+	  pkg/tests/verify.Rout.save: Randomizing Kaczmarz method - moved to
+	  function kaczmarz()
+
+2011-08-28  sgaure
+
+	* [r639] DESCRIPTION, pkg/R/kaczmarz.R, pkg/R/lfe.R, pkg/exec/lfescript:
+	  Randomizing Kaczmarz method
+
+2011-06-16  sgaure
+
+	* [r586] pkg/inst/doc/lfehow.Rnw, rjart.tex:
+
+2011-06-10  sgaure
+
+	* [r585] pkg/inst/doc/lfehow.Rnw:
+
+2011-04-28  sgaure
+
+	* [r581] CHANGELOG, pkg/inst/doc/lfehow.Rnw, pkg/src/lfe.c:
+
+2011-04-27  sgaure
+
+	* [r580] pkg/inst/doc/lfehow.Rnw:
+	* [r579] pkg/inst/doc/lfehow.Rnw:
+	* [r578] pkg/inst/doc/lfehow.Rnw:
+	* [r577] pkg/inst/doc/lfehow.Rnw:
+
+2011-04-22  sgaure
+
+	* [r576] pkg/inst/doc/gen3.R, pkg/inst/doc/lfehow.Rnw,
+	  pkg/inst/doc/test3.lfe, rjart.tex:
+
+2011-04-19  sgaure
+
+	* [r575] Makefile, pkg/exec/lfescript, pkg/inst/doc/lfeguide.txt,
+	  pkg/inst/doc/lfehow.Rnw, pkg/tests/verify.R,
+	  pkg/tests/verify.Rout.save:
+
+2011-04-17  sgaure
+
+	* [r574] CHANGELOG, DESCRIPTION, pkg/R/kaczmarz.R, pkg/R/lfe.R,
+	  pkg/exec/lfescript, pkg/inst/doc/lfehow.Rnw, rjart.tex:
+
+2011-04-15  sgaure
+
+	* [r573] pkg/man/btrap.Rd, pkg/man/demeanlist.Rd, pkg/man/getfe.Rd,
+	  pkg/man/kaczmarz.Rd, pkg/man/lfe-package.Rd, pkg/src/lfe.c: updated
+	  some docs, and made it compile with -DNOTHREADS
+	* [r572] Makefile, pkg/R/kaczmarz.R: cran build
+	* [r571] CHANGELOG:
+
+2011-04-14  sgaure
+
+	* [r570] pkg/R/kaczmarz.R:
+	* [r569] pkg/inst/doc/lfeguide.txt:
+	* [r568] pkg/R/lfe.R:
+	* [r567] pkg/R/lfe.R, pkg/src/lfe.c: cran build
+	* [r566] pkg/src/lfe.c: cran build
+	* [r565] pkg/src/lfe.c: cran build
+	* [r564] pkg/src/lfe.c: cran build
+	* [r563] pkg/R/kaczmarz.R, pkg/src/lfe.c: cran build
+	* [r562] pkg/R/kaczmarz.R, pkg/R/lfe.R, pkg/exec/lfescript,
+	  pkg/inst/doc/lfehow.Rnw, pkg/man/demeanlist.Rd, pkg/man/efactory.Rd,
+	  pkg/man/is.estimable.Rd, pkg/man/lfe-package.Rd, pkg/src/lfe.c,
+	  pkg/tests/efcheck.R, pkg/tests/efcheck.Rout.save: cran build
+
+2011-04-13  sgaure
+
+	* [r560] CHANGELOG, DESCRIPTION, pkg/NAMESPACE, pkg/R/kaczmarz.R,
+	  pkg/R/lfe.R, pkg/exec/lfescript, pkg/man/getfe.Rd,
+	  pkg/man/kaczmarz.Rd, pkg/src/lfe.c, pkg/tests/comparelm.Rout.save,
+	  pkg/tests/degenerate.Rout.save, pkg/tests/efcheck.R,
+	  pkg/tests/efcheck.Rout.save, pkg/tests/lfetest.Rout.save,
+	  pkg/tests/onefac.Rout.save, pkg/tests/verify.Rout.save: cran build
+
+2011-04-12  sgaure
+
+	* [r559] pkg/R/kaczmarz.R, pkg/R/lfe.R, pkg/man/kaczmarz.Rd,
+	  pkg/src/lfe.c, pkg/tests/comparelm.Rout.save,
+	  pkg/tests/degenerate.Rout.save, pkg/tests/efcheck.R,
+	  pkg/tests/efcheck.Rout.save, pkg/tests/lfetest.Rout.save,
+	  pkg/tests/onefac.Rout.save, pkg/tests/verify.Rout.save:
+
+2011-04-11  sgaure
+
+	* [r555] pkg/R/kaczmarz.R, pkg/tests/efcheck.R,
+	  pkg/tests/efcheck.Rout.save:
+
+2011-04-10  sgaure
+
+	* [r554] CHANGELOG, pkg/R/kaczmarz.R, pkg/man/efactory.Rd,
+	  pkg/tests/efcheck.R, pkg/tests/efcheck.Rout.save:
+	* [r548] pkg/man/kaczmarz.Rd, pkg/man/lfe-package.Rd:
+
+2011-04-09  sgaure
+
+	* [r547] pkg/man/efactory.Rd: various changes related to estimable
+	  functions
+	* [r546] pkg/man/is.estimable.Rd, pkg/tests/efcheck.R,
+	  pkg/tests/efcheck.Rout.save: various changes related to estimable
+	  functions
+	* [r545] CHANGELOG, Makefile, pkg/NAMESPACE, pkg/R/kaczmarz.R,
+	  pkg/R/lfe.R, pkg/man/btrap.Rd, pkg/man/getfe.Rd,
+	  pkg/man/lfe-package.Rd: various changes related to estimable functions
+
+2011-04-08  sgaure
+
+	* [r516] CHANGELOG, pkg/R/kaczmarz.R, pkg/inst/doc/lfehow.Rnw: Methinx
+	  this is a better bootstrap adjustment for variation in beta
+	* [r515] pkg/R/kaczmarz.R, pkg/R/lfe.R:
+	* [r514] pkg/R/chmethod.R, pkg/R/kaczmarz.R, pkg/R/lfe.R,
+	  pkg/man/kaczmarz.Rd: restructured R-code
+	* [r513] pkg/R/lfe.R, pkg/man/kaczmarz.Rd, pkg/src/lfe.c:
+
+2011-04-07  sgaure
+
+	* [r505] pkg/R/lfe.R, pkg/man/getfe.Rd, pkg/tests/verify.R,
+	  pkg/tests/verify.Rout.save: cran build
+	* [r504] pkg/R/lfe.R, pkg/man/getfe.Rd, pkg/tests/onefac.R,
+	  pkg/tests/onefac.Rout.save:
+	* [r503] pkg/R/lfe.R:
+	* [r502] pkg/R/lfe.R, pkg/man/btrap.Rd:
+	* [r501] pkg/R/lfe.R:
+	* [r500] DESCRIPTION, pkg/NAMESPACE, pkg/R/lfe.R, pkg/man/btrap.Rd,
+	  pkg/man/getfe.Rd: added btrap as public
+	* [r499] pkg/R/lfe.R: cleanup
+	* [r498] CHANGELOG, DESCRIPTION, Makefile, pkg/NAMESPACE, pkg/R/lfe.R,
+	  pkg/man/compfactor.Rd, pkg/man/getfe.Rd, pkg/man/lfe-package.Rd,
+	  pkg/src/lfe.c, pkg/tests/comparelm.Rout.save,
+	  pkg/tests/degenerate.Rout.save, pkg/tests/lfetest.Rout.save,
+	  pkg/tests/onefac.Rout.save, pkg/tests/verify.Rout.save: bootstrap
+	  standard errors in parallel with foreach
+
+2011-04-05  sgaure
+
+	* [r496] pkg/R/lfe.R:
+	* [r495] pkg/exec/lfescript:
+
+2011-04-04  sgaure
+
+	* [r494] pkg/exec/lfescript:
+	* [r493] pkg/exec/lfescript:
+	* [r492] pkg/exec/lfescript:
+	* [r491] pkg/exec/lfescript:
+	* [r490] pkg/exec/lfescript:
+	* [r489] pkg/exec/lfescript:
+	* [r488] pkg/exec/lfescript:
+	* [r487] Makefile, pkg/man/lfe-package.Rd, pkg/src/lfe.c:
+	* [r486] pkg/src/lfe.c:
+	* [r485] pkg/man/felm.Rd:
+	* [r484] pkg/R/utils.R: support null-model, i.e. without ordinary
+	  covariates
+	* [r483] pkg/R/lfe.R, pkg/R/utils.R, pkg/tests/comparelm.Rout.save,
+	  pkg/tests/degenerate.Rout.save, pkg/tests/lfetest.Rout.save,
+	  pkg/tests/onefac.Rout.save, pkg/tests/verify.Rout.save: Header on
+	  residuals output
+	* [r482] Makefile:
+	* [r481] pkg/R/lfe.R, pkg/man/getfe.Rd, pkg/src/lfe.c:
+	* [r480] pkg/src/lfe.c:
+	* [r479] pkg/src/lfe.c:
+	* [r478] pkg/src/lfe.c:
+	* [r477] pkg/src/lfe.c:
+	* [r476] pkg/src/lfe.c:
+	* [r475] pkg/src/lfe.c:
+	* [r474] pkg/src/lfe.c:
+
+2011-04-03  sgaure
+
+	* [r473] pkg/src/lfe.c: cleanup after cooperative test
+	* [r472] Makefile, pkg/src/lfe.c: Tried cooperative centering, seems
+	  slow, ifdef'ed out
+	* [r471] pkg/src/lfe.c: progress report at 5 min intervals
+	* [r470] pkg/src/lfe.c: progress report at 5 min intervals
+	* [r469] CHANGELOG, pkg/src/lfe.c: progress report at 5 min intervals
+	* [r468] CHANGELOG, Makefile, pkg/inst/doc/lfehow.Rnw,
+	  pkg/man/demeanlist.Rd, pkg/man/kaczmarz.Rd, pkg/src/lfe.c, rjart.tex:
+	  progress report at 5 min intervals
+
+2011-04-02  sgaure
+
+	* [r467] pkg/R/lfe.R: allow factor interactions
+	* [r466] pkg/R/lfe.R, pkg/man/demeanlist.Rd:
+	* [r465] CHANGELOG, pkg/R/lfe.R, pkg/inst/doc/lfehow.Rnw, pkg/src/lfe.c:
+	  demean y together with x to improve parallelism
+	* [r464] CHANGELOG, pkg/inst/doc/CHANGELOG, pkg/tests/degenerate.R,
+	  pkg/tests/degenerate.Rout.save: handle multicollinearities
+	* [r463] pkg/tests/degenerate.R, pkg/tests/degenerate.Rout.save: handle
+	  multicollinearities
+	* [r462] CHANGELOG, Makefile, pkg/R/lfe.R, pkg/inst/doc/CHANGELOG,
+	  pkg/inst/doc/lfehow.Rnw, pkg/tests/verify.R,
+	  pkg/tests/verify.Rout.save: handle multicollinearities
+
+2011-04-01  sgaure
+
+	* [r461] Makefile: cran build
+	* [r460] Makefile:
+	* [r459] lfe:
+	* [r458] Makefile:
+	* [r457] pkg, pkg/config.guess, pkg/config.sub, pkg/configure.win,
+	  pkg/shtool:
+	* [r456] Makefile:
+	* [r455] configure.ac:
+	* [r454] Makefile, configure.ac, lfe/config.guess, lfe/config.status,
+	  lfe/configure.win, lfe/shtool:
+	* [r453] CHANGELOG, CITATION, Makefile, Makevars.in, NAMESPACE,
+	  comparelm.R, comparelm.Rout.save, compfactor.Rd, configure.ac,
+	  demeanlist.Rd, felm.Rd, gen2.R, gen3.R, getfe.Rd, lfe, lfe-package.Rd,
+	  lfe.R, lfe.c, lfe/NAMESPACE, lfe/R, lfe/R/lfe.R, lfe/R/utils.R,
+	  lfe/exec, lfe/exec/lfescript, lfe/inst, lfe/inst/CITATION,
+	  lfe/inst/TODO, lfe/inst/doc, lfe/inst/doc/gen2.R, lfe/inst/doc/gen3.R,
+	  lfe/inst/doc/lfeguide.txt, lfe/inst/doc/lfehow.Rnw,
+	  lfe/inst/doc/test2.lfe, lfe/inst/doc/test3.lfe, lfe/man,
+	  lfe/man/compfactor.Rd, lfe/man/demeanlist.Rd, lfe/man/felm.Rd,
+	  lfe/man/getfe.Rd, lfe/man/kaczmarz.Rd, lfe/man/lfe-package.Rd,
+	  lfe/src, lfe/src/Makevars.in, lfe/src/lfe.c, lfe/tests,
+	  lfe/tests/comparelm.R, lfe/tests/comparelm.Rout.save,
+	  lfe/tests/lfetest.R, lfe/tests/lfetest.Rout.save, lfe/tests/onefac.R,
+	  lfe/tests/onefac.Rout.save, lfe/tests/verify.R,
+	  lfe/tests/verify.Rout.save, lfeguide.txt, lfehow.Rnw, lfescript,
+	  lfetest.R, lfetest.Rout.save, test2.lfe, test3.lfe, utils.R, verify.R,
+	  verify.Rout.save: restructured source tree
+
+2011-03-30  sgaure
+
+	* [r452] CHANGELOG, Makefile, NAMESPACE, comparelm.R,
+	  comparelm.Rout.save, felm.Rd, lfe-package.Rd, lfe.R, lfe.c,
+	  lfehow.Rnw, lfescript, lfetest.R, lfetest.Rout.save, testit.R,
+	  verify.R, verify.Rout.save: cran build
+
+2011-03-28  sgaure
+
+	* [r451] comparelm.Rout.save, lfe-package.Rd, lfe.R, lfetest.Rout.save,
+	  verify.Rout.save: cran build
+	* [r450] comparelm.Rout.save, lfe-package.Rd, lfe.R, lfe.c,
+	  lfetest.Rout.save, verify.R, verify.Rout.save: cran build
+	* [r449] CHANGELOG, lfe.Rnw, lfe.c, lfehow.Rnw:
+
+2011-03-27  sgaure
+
+	* [r448] lfe.c: cran build
+	* [r447] Makefile, lfe.c, lfescript, lfetest.Rout.save,
+	  verify.Rout.save:
+	* [r446] CHANGELOG, Makefile, getfe.Rd, lfe-package.Rd, lfe.Rnw, lfe.c,
+	  lfescript: cran build
+	* [r445] comparelm.R, comparelm.Rout.save:
+	* [r444] Makefile, lfe-package.Rd, lfe.Rnw, lfe.c: cran build
+
+2011-03-26  sgaure
+
+	* [r443] lfescript: cran build
+	* [r442] CHANGELOG, Makefile, getfe.Rd, lfe-package.Rd, lfe.R, lfe.Rnw,
+	  lfe.c, lfescript, lfetest.Rout.save, rjart.tex, utils.R,
+	  verify.Rout.save: cran build
+
+2011-03-24  sgaure
+
+	* [r441] lfe.R, lfe.c:
+	* [r440] felm.Rd, rjart.tex:
+
+2011-03-23  sgaure
+
+	* [r439] DESCRIPTION, NAMESPACE, biblio.bib, lfe-package.Rd, lfe.R,
+	  lfe.c, rjart.tex, utils.R: minor updates
+
+2011-03-17  sgaure
+
+	* [r438] lfescript: cran build
+	* [r437] lfescript: cran build
+	* [r436] lfescript: cran build
+	* [r435] CHANGELOG, CITATION, felm.Rd, getfe.Rd, lfeguide.txt: minor
+	  changes
+
+2011-03-16  sgaure
+
+	* [r434] Makefile, getfe.Rd, lfe.R: cran build
+	* [r433] lfetest.Rout.save: Slightly changed sdev due to change in
+	  computation
+	* [r432] rjart.tex: cran build
+	* [r431] biblio.bib, demeanlist.Rd, felm.Rd, lfe.R, rjart.tex:
+
+2011-03-13  sgaure
+
+	* [r430] felm.Rd, getfe.Rd, lfe-package.Rd, lfe.R, lfe.c, rjart.tex,
+	  utils.R: standard errors for group effects
+	* [r429] lfe.R, lfe.c, lfescript, lfetest.Rout.save, test2.lfe,
+	  test3.lfe, testit.R, verify.Rout.save: updated examples and stuff to
+	  G() syntax
+	* [r428] CHANGELOG, biblio.bib, demeanlist.Rd, felm.Rd, getfe.Rd,
+	  lfe-package.Rd, lfe.R, lfetest.R, print.felm.Rd, print.lm.fe.Rd,
+	  rjart.tex, utils.R, verify.R, verify.Rout.save: better syntax for
+	  model, more R-ish
+
+2011-03-11  sgaure
+
+	* [r427] Makefile, lfetest.Rout.save: cran build
+	* [r426] Makefile: cran build
+	* [r425] Makefile, NAMESPACE, felm.Rd, getfe.Rd, lfe-package.Rd, lfe.R,
+	  lfetest.R: Changed print and summary function, and the class fe.lm to
+	  felm
+
+2011-03-10  sgaure
+
+	* [r424] lfescript: cran build
+	* [r423] lfe.R: cran build
+	* [r422] Makefile: cran build
+	* [r421] CITATION, Makefile, getfe.Rd, lfe-package.Rd, lfe.R: cran build
+	* [r420] Makefile:
+	* [r419] Makefile:
+
+2011-03-09  sgaure
+
+	* [r418] getfe.Rd:
+	* [r417] getfe.Rd:
+	* [r416] getfe.Rd:
+	* [r415] getfe.Rd:
+	* [r414] getfe.Rd:
+	* [r413] DESCRIPTION: copyright
+	* [r412] DESCRIPTION: cleanup
+	* [r411] DESCRIPTION: use R sort
+	* [r410] Makevars.in: use R sort
+	* [r409] Makevars.in, lfe.c: use R sort
+	* [r408] lfetest.Rout.save: use R sort
+	* [r407] lfetest.R: use R sort
+	* [r406] lfe.c: use R sort
+	* [r405] lfetest.Rout.save: use R sort
+	* [r404] lfe.c: use R sort
+	* [r403] lfe.c: use R sort
+	* [r402] lfe.c: use R sort
+	* [r401] lfe.c: use R sort
+	* [r400] lfe.c: use R memory allocation
+	* [r399] lfe.c: use R memory allocation
+	* [r398] lfe.c: use R memory allocation
+	* [r397] lfe.c: use R memory allocation
+	* [r396] lfe-package.Rd:
+	* [r395] felm.Rd, getfe.Rd, lfe-package.Rd:
+	* [r394] print.lm.fe.Rd, print.lm.fe.Rd.notdocumented:
+	* [r393] getfe.Rd, lfe.c:
+
+2011-03-08  sgaure
+
+	* [r392] lfe.c: some cleanup
+	* [r391] print.lm.fe.Rd, print.lm.fe.Rd.notdocumented: some cleanup
+	* [r390] DESCRIPTION: some cleanup
+	* [r389] lfe.c: some cleanup
+	* [r388] lfe.c: test malloc return
+	* [r387] lfe.c:
+	* [r386] lfe.c:
+	* [r385] lfetest.Rout.save:
+	* [r384] lfetest.R:
+	* [r383] lfetest.Rout.save:
+	* [r382] lfetest.R:
+	* [r381] Makefile, lfetest.Rout.save:
+	* [r380] lfetest.R:
+	* [r379] Makefile:
+	* [r378] lfetest.R:
+	* [r377] Makefile:
+	* [r376] Makefile, demeanlist.Rd, felm.Rd, getfe.Rd, lfe-package.Rd,
+	  lfetest.R:
+	* [r375] lfe-package.Rd:
+	* [r374] lfe.R:
+	* [r373] felm.Rd, lfe-package.Rd:
+	* [r372] lfe-package.Rd:
+	* [r371] felm.Rd, getfe.Rd, lfe-package.Rd, lfe.R:
+	* [r370] getfe.Rd:
+	* [r369] getfe.Rd, lfe-package.Rd:
+	* [r368] felm.Rd, getfe.Rd, lfe-package.Rd:
+	* [r367] compfactor.Rd, demeanlist.Rd, felm.Rd, getfe.Rd:
+	* [r366] lfe-package.Rd:
+	* [r365] lfe-package.Rd:
+	* [r364] CITATION, Makefile:
+	* [r363] print.lm.fe.Rd:
+	* [r362] lfe-package.Rd:
+	* [r361] lfe-package.Rd:
+	* [r360] lfe-package.Rd:
+	* [r359] getfe.Rd:
+	* [r358] felm.Rd, getfe.Rd, lfe-package.Rd:
+	* [r357] getfe.Rd:
+	* [r356] getfe.Rd:
+	* [r355] lfe-package.Rd, print.lm.fe.Rd:
+	* [r354] felm.Rd, getfe.Rd, lfe-package.Rd:
+	* [r353] lfe.R:
+	* [r352] demeanlist.Rd:
+	* [r351] demeanlist.Rd:
+	* [r350] lfe.R:
+	* [r349] lfe.R:
+	* [r348] lfe.R:
+	* [r347] lfe.R:
+	* [r346] compfactor.Rd:
+	* [r345] compfactor.Rd:
+	* [r344] compfactor.Rd:
+	* [r343] lfe-package.Rd:
+	* [r342] lfe-package.Rd:
+	* [r341] lfe-package.Rd:
+	* [r340] lfe-package.Rd:
+	* [r339] lfe-package.Rd:
+	* [r338] lfe-package.Rd:
+	* [r337] lfe-package.Rd:
+	* [r336] lfe-package.Rd:
+	* [r335] lfe-package.Rd:
+	* [r334] lfe-package.Rd:
+	* [r333] lfe-package.Rd, lfe.R, lfe.Rd:
+	* [r332] lfe.Rd:
+	* [r331] getfe.Rd, lfe.Rd:
+	* [r330] getfe.Rd:
+	* [r329] felm.Rd, lfe.R:
+
+2011-03-07  sgaure
+
+	* [r328] print.lm.fe.Rd:
+	* [r327] print.lm.fe.Rd:
+	* [r326] NAMESPACE:
+	* [r325] NAMESPACE:
+	* [r324] NAMESPACE:
+	* [r323] DESCRIPTION:
+	* [r322] Makefile:
+	* [r321] demeanlist.Rd, felm.Rd, lfe.R:
+	* [r320] getfe.Rd:
+	* [r319] getfe.Rd:
+	* [r318] getfe.Rd:
+	* [r317] lfe.R:
+	* [r316] lfe.R:
+	* [r315] lfe.R:
+	* [r314] lfe.R:
+	* [r313] lfe.R:
+	* [r312] getfe.Rd:
+	* [r311] lfe.R:
+	* [r310] lfe.R:
+	* [r309] lfe.R:
+	* [r308] lfe.R:
+	* [r307] felm.Rd, getfe.Rd, lfe.R:
+	* [r306] felm.Rd:
+	* [r305] felm.Rd, getfe.Rd:
+	* [r304] felm.Rd, getfe.Rd:
+	* [r303] felm.Rd:
+	* [r302] compfactor.Rd:
+	* [r301] compfactor.Rd, testit.R:
+	* [r300] getfe.Rd, lfe.R, testit.R:
+	* [r299] demeanlist.Rd, lfe.R:
+	* [r298] lfe.R, testit.R:
+	* [r297] lfe.R, lfescript:
+	* [r296] Makefile:
+	* [r295] Makefile:
+	* [r294] Makefile:
+	* [r293] Makefile:
+	* [r292] Makefile: autocommit from Makefile
+	* [r291] configure.win:
+	* [r290] grComp.Rd, summary.felm.Rd:
+	* [r289] Makefile, windows.txt:
+	* [r288] Makefile:
+	* [r287] Makefile:
+	* [r286] Makefile:
+	* [r285] Makefile:
+	* [r284] DESCRIPTION, Makefile, lfe.c:
+	* [r283] lfe.c: native windows threads
+	* [r282] Makefile, NAMESPACE, configure.win, lfe.c: native windows
+	  threads
+	* [r281] DESCRIPTION:
+	* [r280] configure.win, lfe.R, print.lm.fe.Rd:
+
+2011-03-06  sgaure
+
+	* [r276] DESCRIPTION, configure.ac, lfe.R, lfe.c:
+	* [r275] windows.txt: Windows support with threading
+	* [r274] DESCRIPTION, Makefile, compfactor.Rd, demeanlist.Rd, gen2.R,
+	  lfe.R, lfe.c, test2.lfe, testit.R: Windows support with threading
+
+2011-03-05  sgaure
+
+	* [r273] DESCRIPTION, lfe.R:
+	* [r272] NAMESPACE, gen2.R, lfe.R, lfe.c:
+	* [r271] lfe.R, lfe.c, lfescript, testit.R:
+	* [r270] lfe.R, lfe.c:
+
+2011-03-04  sgaure
+
+	* [r269] lfe.R, lfe.c:
+	* [r268] gen2.R, lfe.c, test2.lfe, testit.R:
+	* [r267] gen3.R, lfe.R: Optimizations for large number of components
+
+2011-03-03  sgaure
+
+	* [r266] getfe.Rd, lfe.R: Minor
+	* [r265] lfe.R:
+	* [r264] Makefile: Added autoconf support
+	* [r263] Makefile: Added autoconf support
+	* [r262] Makevars.in: Added autoconf support
+	* [r261] Makefile, Makevars, configure.ac: Added autoconf support
+	* [r260] gen3.R, lfe.R, lfeguide.txt, lfescript, test2.lfe, test3.lfe,
+	  testit.R:
+
+2011-03-02  sgaure
+
+	* [r259] NAMESPACE, lfe.R: Make perm=TRUE in non-super Cholesky, it's
+	  faster
+	* [r258] lfe.R, testit.R: Improved multi-factor cholesky computation
+	* [r257] compfactor.Rd, gen3.R, grComp.Rd, lfe.R, test3.lfe, testit.R:
+	  Minor
+	* [r256] Makefile, lfe.R, lfeguide.txt, testit.R: Minor mods
+	* [r255] NAMESPACE, lfe.R, lfescript, test2.lfe, testit.R: Cleanup and
+	  experimental multi-factor support
+
+2011-03-01  sgaure
+
+	* [r254] DESCRIPTION, gen2.R, lfe.R, lfescript, test2.lfe, testit.R:
+	  More than two fixed effects
+
+2011-01-10  sgaure
+
+	* [r244] Makefile, test2.lfe:
+
+2011-01-03  sgaure
+
+	* [r243] lfeguide.txt: Short intro
+
+2010-12-21  sgaure
+
+	* [r242] lfescript:
+
+2010-12-01  sgaure
+
+	* [r241] gen2.R, lfe.R:
+
+2010-11-22  sgaure
+
+	* [r240] lfe.R, test2.lfe, testit.R: add check for multicollinearities
+	* [r239] lfescript:
+
+2010-10-12  sgaure
+
+	* [r238] Makefile:
+	* [r237] lfescript:
+	* [r236] Makefile, lfe.R:
+
+2010-10-09  sgaure
+
+	* [r235] lfe.R:
+
+2010-10-08  sgaure
+
+	* [r234] lfescript, parselfe:
+
+2010-09-20  sgaure
+
+	* [r233] lfe.R, lfe.c, lfescript, test2.lfe, testit.R:
+
+2010-09-15  sgaure
+
+	* [r232] lfe.R, lfescript, testit.R:
+
+2010-09-14  sgaure
+
+	* [r231] NAMESPACE, lfe.R, lfescript, test2.lfe, testit.R:
+	* [r230] lfe.R, lfescript, testit.R:
+
+2010-09-10  sgaure
+
+	* [r229] fixed2.tex, lfe.R:
+
+2010-09-08  sgaure
+
+	* [r228] fixed2.tex:
+	* [r227] lfe.R:
+	* [r226] lfe.R, lfescript, testit.R:
+
+2010-09-07  sgaure
+
+	* [r225] lfe.R, lfe.c, test2.lfe, testit.R:
+	* [r224] lfe.R:
+	* [r223] lfe.R:
+	* [r222] lfe.R, test2.lfe, testit.R:
+	* [r221] lfe.R:
+	* [r220] lfe.R:
+
+2010-09-05  sgaure
+
+	* [r219] gen2.R, lfe.R, lfe.c, test2.lfe, testit.R:
+	* [r218] lfe.R, lfescript:
+	* [r217] lfe.R:
+
+2010-09-04  sgaure
+
+	* [r216] DESCRIPTION, lfe.R:
+	* [r215] gen2.R, test2.lfe, testit.R:
+	* [r214] Makefile, felm.Rd, fixed.tex, gen2.R, lfe.R, lfescript,
+	  test2.lfe, testit.R:
+
+2010-09-03  sgaure
+
+	* [r213] fixed2.tex:
+	* [r212] fixed.tex, lfe.R, lfescript, presentation.tex, test2.lfe,
+	  testit.R:
+
+2010-09-01  sgaure
+
+	* [r211] DESCRIPTION, NAMESPACE, gen2.R, lfe.R, lfe.c, lfescript,
+	  presentation.tex, test2.lfe, testit.R:
+	* [r210] lfe.R:
+	* [r209] gen2.R, lfe.R, lfe.c, testit.R:
+	* [r208] lfescript, presentation.tex:
+
+2010-08-31  sgaure
+
+	* [r207] Makefile, NAMESPACE, demeanlist.c, lfe.R, lfe.c:
+	* [r206] demeanlist.c:
+	* [r205] conncomp.c, demeanlist.c:
+	* [r204] conncomp.c:
+	* [r203] conncomp.c:
+	* [r202] biblio.bib:
+	* [r201] biblio.bib:
+
+2010-08-30  sgaure
+
+	* [r200] DESCRIPTION, demeanlist.Rd, demeanlist.c, gen2.R, getfe.Rd,
+	  lfe.R, testit.R:
+
+2010-08-29  sgaure
+
+	* [r199] biblio.bib:
+	* [r198] Chicago.bst, statsoc.cls:
+	* [r197] conncomp.jpg, vNeumann.jpg:
+	* [r196] summary.felm.Rd:
+	* [r195] Makefile, demeanlist.Rd, demeanlist.c, felm.Rd, gen2.R,
+	  getfe.Rd, lfe.R, testit.R:
+	* [r194] NAMESPACE, testit.R: Creating R package
+	* [r193] DESCRIPTION, Makefile, Makevars, NAMESPACE, demeanlist.Rd,
+	  demeanlist.c, felm.Rd, getfe.Rd, lfe.R: Creating R package
+
+2010-08-28  sgaure
+
+	* [r192] fe-firm.csv, fe-id.csv, fe-merged.csv, fixed.tex, middata.csv,
+	  presentation.tex, runfe.R, test2.lfe:
+	* [r191] parselfe: support single fixed effect
+	* [r190] ., demeanlist.c, fe-firm.csv, fe-id.csv, fe-merged.csv, gen2.R,
+	  middata.csv, parselfe, runfe.R, test2.lfe:
+

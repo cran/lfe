@@ -68,11 +68,12 @@ getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100
 efactory <- function(obj,opt=NULL,...) {
 
 # the names of the dummies, e.g. id.4 firm.23
-  nm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='.')))
+  nm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='\003')))
 
 # how many obervations for each level
-  obs <- unlist(lapply(obj$fe,table))  
-
+  lobs <- lapply(obj$fe,table)
+  obs <- unlist(lobs)  
+  names(obs) <- unlist(lapply(names(lobs), function(n) paste(n,'\003',names(lobs[[n]]),sep='')))
   if(length(obj$fe) == 2) {
     # now, find the component of each parameter, i.e. each level.  We do this
     # by finding the first occurence of each level, i.e. match(levels(f),f)
@@ -110,7 +111,8 @@ efactory <- function(obj,opt=NULL,...) {
   # level of the factor
   idx <- factor(unlist(lapply(obj$fe,function(f) levels(f))))
   # then figure out in which factor the reference is
-  rf <- sub('(^.*)\\.[^.]*$','\\1',refnames)
+  # make sure to allow '.' in factor names
+  rf <- sub('(^.*)\003..*$','\\1',refnames)
   # now, create a refsubs which is the ones to be subtracted
   # each refsub belonging to somthing else than the reference factor
   # should be NA'ed.

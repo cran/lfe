@@ -1,6 +1,6 @@
 
-R version 2.13.0 (2011-04-13)
-Copyright (C) 2011 The R Foundation for Statistical Computing
+R version 2.15.2 (2012-10-26) -- "Trick or Treat"
+Copyright (C) 2012 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -19,13 +19,6 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 Loading required package: lattice
-
-Attaching package: 'Matrix'
-
-The following object(s) are masked from 'package:base':
-
-    det
-
 Loading required package: Rcgmin
 Loading required package: numDeriv
 > set.seed(127)
@@ -174,3 +167,6 @@ Multiple R-squared:     1,	Adjusted R-squared:     1
 F-statistic: 3.664e+09 on 6 and 1994 DF,  p-value: < 2.2e-16 
 
 > 
+> proc.time()
+   user  system elapsed 
+  4.968   0.140   5.055 

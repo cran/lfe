@@ -25,16 +25,16 @@ effects from the normal equations, hence it is faster. It is a
 generalization of the within estimator.  This may be required if
 the groups have high cardinality (many levels), resulting in tens
 or hundreds of thousands of dummy-variables.  It is also useful if one
-only wants to control for the group effects, without actually computing
+only wants to control for the group effects, without actually estimating
 them.  The package may optionally compute standard errors for the group
-effects, but this is a very time- and memory-consuming process compared
+effects by bootstrapping, but this is a very time- and memory-consuming process compared
 to finding the point estimates.
 
 The estimation is done in two steps.  First the other coefficients are
 estimated with the function \code{\link{felm}} by centering on all the
 group means, followed by an OLS (similar to lm).  Then the group effects
 are extracted (if needed) with the function \code{\link{getfe}}.  This
-method is described in Gaure (2011).
+method is described in Gaure (2013).
 
 There's also a function \code{\link{demeanlist}} which just does the
 centering on an arbitrary matrix, and there's a function
@@ -111,7 +111,9 @@ Cornelissen, T. (2008)
 Stata Journal, 8(2):170--189, 2008.
 \url{http://econpapers.repec.org/RePEc:tsj:stataj:v:8:y:2008:i:2:p:170-189}
 
-Gaure, S. (2011) \cite{OLS with Multiple High Dimensional Category Variables} (to appear)
+Gaure, S. (2013) \cite{OLS with Multiple High Dimensional Category
+  Variables} Computational Statistics and Data Analysis, 
+  \url{http://dx.doi.org/10.1016/j.csda.2013.03.024}
 
 Ouazad, A. (2008)
 \cite{A2REG: Stata module to estimate models with two fixed effects.}
