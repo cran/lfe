@@ -1,3 +1,66 @@
+2013-05-07  sgaure
+
+	* [r963] DESCRIPTION: cran build
+
+2013-04-30  sgaure
+
+	* [r962] pkg/exec/lfescript, pkg/inst/doc/lfeguide.txt, pkg/src/lfe.c,
+	  pkg/tests/lfetest.Rout.save: allow specification of exactDOF in our
+	  wrapper script
+
+2013-04-17  sgaure
+
+	* [r961] pkg/R/lfe.R, pkg/man/felm.Rd:
+
+2013-04-15  sgaure
+
+	* [r960] pkg/tests/ivtest.Rout.save:
+	* [r959] pkg/R/lfe.R, pkg/man/felm.Rd, pkg/tests/efcheck.Rout.save,
+	  pkg/tests/ivtest.R, pkg/tests/ivtest.Rout.save: allow a list of
+	  instrumented variables
+	* [r958] pkg/vignettes/identification.Rnw:
+	* [r957] pkg/vignettes/identification.Rnw:
+
+2013-04-13  sgaure
+
+	* [r956] pkg/R/lfe.R, pkg/R/utils.R, pkg/vignettes/identification.Rnw:
+
+2013-04-12  sgaure
+
+	* [r953] pkg/R/utils.R, pkg/vignettes/identification.Rnw: cran build
+
+2013-04-09  sgaure
+
+	* [r951] pkg/tests/efcheck.Rout.save:
+
+2013-04-08  sgaure
+
+	* [r946] gaure.tex, pkg/R/lfe.R, pkg/R/utils.R, pkg/man/felm.Rd,
+	  rjart.tex: use sparse Cholesky rather than rankMatrix to compute DF
+	* [r945] pkg/man/felm.Rd:
+
+2013-04-07  sgaure
+
+	* [r944] pkg/tests/comparelm.Rout.save, pkg/tests/degenerate.Rout.save,
+	  pkg/tests/efcheck.Rout.save, pkg/tests/fourfac.Rout.save,
+	  pkg/tests/ivtest.Rout.save, pkg/tests/lfetest.Rout.save,
+	  pkg/tests/nonest.Rout.save, pkg/tests/onefac.Rout.save,
+	  pkg/tests/verify.Rout.save: Added exactDOF to felm
+	* [r943] pkg/R/lfe.R, pkg/R/utils.R, pkg/man/felm.Rd,
+	  pkg/tests/efcheck.R, pkg/tests/fourfac.R,
+	  pkg/vignettes/identification.Rnw: Added exactDOF to felm
+
+2013-04-04  sgaure
+
+	* [r942] pkg/tests/comparelm.R, pkg/tests/comparelm.Rout.save,
+	  pkg/tests/degenerate.R, pkg/tests/degenerate.Rout.save,
+	  pkg/tests/efcheck.Rout.save, pkg/tests/fourfac.Rout.save,
+	  pkg/tests/ivtest.R, pkg/tests/ivtest.Rout.save, pkg/tests/lfetest.R,
+	  pkg/tests/lfetest.Rout.save, pkg/tests/nonest.Rout.save,
+	  pkg/tests/onefac.R, pkg/tests/onefac.Rout.save,
+	  pkg/tests/verify.Rout.save, pkg/vignettes/lfehow.Rnw: Minor changes to
+	  tests due to new R-version
+
 2013-04-03  sgaure
 
 	* [r941] pkg/man/lfe-package.Rd: cran build

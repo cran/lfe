@@ -1,7 +1,6 @@
 
-R version 2.15.2 (2012-10-26) -- "Trick or Treat"
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
+R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -55,12 +54,12 @@ x   0.95907    0.02221   43.19   <2e-16 ***
 x2  0.25952    0.02274   11.41   <2e-16 ***
 x3  0.49714    0.02170   22.91   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.007 on 2049 degrees of freedom
 Multiple R-squared: 0.9662   Adjusted R-squared: 0.8349 
 F-statistic: 7.361 on 7950 and 2049 DF, p-value: < 2.2e-16 
-*** Standard errors may be slightly too high due to more than 2 groups
+*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE
 
 
 > cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
@@ -108,11 +107,11 @@ firmeff  1.00000000 0.00353023   283.27   <2e-16 ***
 shoeeff  1.00000000 0.00350505   285.30   <2e-16 ***
 shirteff 1.00000000 0.00341562   292.77   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.4559 on 9993 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16
 
 Warning in is.estimable(ef, obj$fe, R) :
   non-estimable function, largest error 0.4 in coordinate 1759 ("id.1770")
@@ -138,11 +137,11 @@ firmeff  1.000000   0.003530  283.26   <2e-16 ***
 shoeeff  1.000000   0.003505  285.29   <2e-16 ***
 shirteff 1.000000   0.003416  292.77   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.4559 on 9993 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16
 
 Warning in is.estimable(ef, obj$fe, R) :
   non-estimable function, largest error 0.2 in coordinate 7165 ("shirt.1209")
@@ -169,11 +168,11 @@ shoeeff  1.000000   0.003505  285.27   <2e-16 ***
 shirteff 1.000000   0.003416  292.76   <2e-16 ***
 icpt     1.000000   0.092777   10.78   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.456 on 9992 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16
 
 Warning in is.estimable(ef, obj$fe, R) :
   non-estimable function, largest error 0.4 in coordinate 7165 ("shirt.1209")
@@ -200,14 +199,14 @@ shoeeff  1.000000   0.003505  285.27   <2e-16 ***
 shirteff 1.000000   0.003416  292.76   <2e-16 ***
 icpt     1.000000   0.094678   10.56   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.456 on 9992 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16
 
 > options(opt)
 > 
 > proc.time()
    user  system elapsed 
-  8.432   0.124   8.296 
+ 10.232   0.164  10.135 

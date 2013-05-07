@@ -129,7 +129,7 @@ ccrossprod <- function(M,w,f) {
 # ivresid is optional, used in 2. stage of 2sls to pass
 # the difference between the original endogenous variable and the prediction
 # for the purpose of computing sum of square residuals
-doprojols <- function(psys,ivresid=NULL) {
+doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   if(is.null(psys$xz)) {
     # No covariates
     z <- list(residuals=psys$y,fe=psys$fl,p=0,cfactor=compfactor(psys$fl),full.residuals=psys$yz,call=match.call())
@@ -203,26 +203,33 @@ doprojols <- function(psys,ivresid=NULL) {
   pred <- x %*% ifelse(is.na(ibeta),0,ibeta)
   z$residuals <- y - pred
 
-  if(!is.null(ivresid)) {
-    ivnam <- names(ivresid)[[1]]
+  z$ivresid <- rep(0,length(z$residuals))
+  for(ivnam in names(ivresid)) {
+#  if(!is.null(ivresid)) {
+#    ivnam <- names(ivresid)[[1]]
     # fitted difference
     # predict the residuals from the first step
     ivbeta <- nabeta[[ivnam]]
-    ivrp <- ivresid[[1]] * ivbeta
+    ivrp <- ivresid[[ivnam]] * ivbeta
     # subtract these to get the fit with the original variable
     z$full.residuals <- z$full.residuals - ivrp
     z$residuals <- z$residuals - ivrp
-    z$ivresid <- ivrp
+    z$ivresid <- z$ivresid + ivrp
   }
 
   z$terms <- psys$terms
 
   z$cfactor <- compfactor(fl)
 
-  numrefs <- nlevels(z$cfactor) + max(length(fl)-2,0)
+  if(exactDOF && length(fl) > 2) {
+    numrefs <- rankDefic(fl)
+  } else {
+    numrefs <- nlevels(z$cfactor) + max(length(fl)-2,0)
+  }
   numdum <- sum(unlist(lapply(fl,nlevels))) - numrefs
   z$numrefs <- numrefs
   z$df <- z$N - z$p - numdum
+  z$exactDOF <- exactDOF
   res <- z$full.residuals
   vcvfactor <- sum(res**2)/z$df
   z$vcv <- z$inv * vcvfactor
@@ -330,7 +337,7 @@ project <- function(mf,fl,data,clustervar=NULL) {
   list(yz=yz,xz=xz,y=y,x=x,fl=fl,icpt=icpt,badconv=badconv,terms=mt,cluster=clustervar)  
 }
 
-felm <- function(formula,data,iv=NULL,clustervar=NULL) {
+felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
   mf <- match.call(expand.dots = FALSE)
 
 
@@ -339,55 +346,76 @@ felm <- function(formula,data,iv=NULL,clustervar=NULL) {
 # rhs with the rhs of the iv-formula, remove this variable
 # from the lhs and add the lhs of the iv-formula
 
-  if(!is.null(iv)) {
-    origform <- formula
-    # create the new formula
-    formula <- update(formula, substitute(Z ~ . - Z + V,list(Z=iv[[2]],V=iv[[3]])))
-  }
-
-  sep <- flfromformula(formula,data)
-  fl <- sep[['fl']]
-  formula <- sep[['formula']]
-  mf[['formula']] <- formula
-
-  psys <- project(mf,fl,data,clustervar)
-  z <- doprojols(psys)
-  rm(psys)
-  gc()
-  if(!is.null(iv)) {
-    # now, we've done the first step, we need to do the second.
-    # If there are no extra fixed effects in the endogeneous variable
-    # we have already centered all variables so just lift them
-    # from xz, and origyz, otherwise we must center them again, because
-    # it's a different set of fixed effects.
-    ivz <- z
-    # now, do a new projection on the original system
-    # but with the fitted values in place of the endogeneous variable
-    evar <- as.character(iv[[2]])
-    new.var <- paste(evar,'(fit)',sep='')
-    assign(new.var,ivz$fitted,envir=parent.frame())
-
-    pform <- update(origform,substitute(Y ~ X - IV + FIT,
-                    list(Y=origform[[2]],X=origform[[3]],IV=iv[[2]],FIT=as.name(new.var))))
-    sep <- flfromformula(pform,data)
+  if(is.null(iv)) {
+    # no iv, just do the thing
+    sep <- flfromformula(formula,data)
     fl <- sep[['fl']]
     formula <- sep[['formula']]
     mf[['formula']] <- formula
+    
     psys <- project(mf,fl,data,clustervar)
-    ivarg <- list()
-    ivarg[[paste('`',new.var,'`',sep='')]] <- ivz$full.residuals
-    rm(list=new.var,envir=parent.frame())
-    z <- doprojols(psys,ivresid=ivarg)
+    z <- doprojols(psys,exactDOF=exactDOF)
     rm(psys)
-    z$ivz <- ivz
+    gc()
+    z$call <- match.call()
+    return(z)
   }
- 
-  gc()
 
+  # we must do the 1. step for each instrumented variable
+  origform <- formula
+  if(!is.list(iv)) iv <- list(iv)
+  # collect the instrumented variables and remove them from origform
+  baseform <- formula
+  for(ivv in iv) {
+    ivnam <- ivv[[2]]
+  # create the new formula
+    baseform <- update(baseform, substitute(. ~ . - Z,list(Z=ivnam)))
+  }
+
+  # then do the sequence of 1. steps
+  # we put the instrumented variable on the lhs, and add in the formula for it on the rhs
+  step2form <- origform
+  ivarg <- list()
+  vars <- NULL
+  for(ivv in iv) {
+     formula <- update(baseform, substitute(Z ~ . + V,list(Z=ivv[[2]],V=ivv[[3]])))
+     sep <- flfromformula(formula,data)
+     fl <- sep[['fl']]
+     formula <- sep[['formula']]
+     mf[['formula']] <- formula
+     
+     psys <- project(mf,fl,data,clustervar)
+     z <- doprojols(psys)
+     rm(psys)
+     gc()
+     # then we lift the fitted variable and create a new name
+     ivz <- z
+     evar <- as.character(ivv[[2]])
+     new.var <- paste(evar,'(fit)',sep='')
+     assign(new.var,ivz$fitted,envir=parent.frame())
+     vars <- c(vars,new.var)
+     # keep the residuals, they are need in doprojols below
+     ivarg[[paste('`',new.var,'`',sep='')]] <- ivz$full.residuals
+     # and add it to the equation
+     step2form <- update(step2form,substitute(. ~ X - IV + FIT,
+                                         list(X=step2form[[3]],IV=ivv[[2]],FIT=as.name(new.var))))
+
+  }
+
+
+  # now we have a formula in step2form with all the iv-variables
+  # it's just to project it
+  sep <- flfromformula(step2form,data)
+  fl <- sep[['fl']]
+  formula <- sep[['formula']]
+  mf[['formula']] <- formula
+  psys <- project(mf,fl,data,clustervar)
+  rm(list=vars,envir=parent.frame())
+  z <- doprojols(psys,ivresid=ivarg,exactDOF=exactDOF)
+  rm(psys)
+#  z$ivz <- ivz
   z$call <- match.call()
-
   return(z)
-  
 }
 
 felm.old <- function(formula,fl,data) {

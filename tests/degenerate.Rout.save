@@ -1,7 +1,6 @@
 
-R version 2.15.2 (2012-10-26) -- "Trick or Treat"
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
+R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -22,6 +21,7 @@ Loading required package: lattice
 Loading required package: Rcgmin
 Loading required package: numDeriv
 > set.seed(127)
+> options(lfe.threads=1)
 > x <- rnorm(2000,mean=2000)
 > x2 <- rnorm(length(x))
 > x3 <- 1.2*x + 0.9*x2 
@@ -59,7 +59,7 @@ x4       NA         NA      NA       NA
 x5       NA         NA      NA       NA    
 x6       NA         NA      NA       NA    
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.006 on 1980 degrees of freedom
 Multiple R-squared: 0.8759   Adjusted R-squared: 0.8747 
@@ -67,7 +67,8 @@ F-statistic: 735.8 on 19 and 1980 DF, p-value: < 2.2e-16
 
 
 Warning message:
-In chol.default(mat, pivot = TRUE) : matrix not positive definite
+In chol.default(mat, pivot = TRUE) :
+  the matrix is either rank-deficient or indefinite
 > ## extract the group fixed effects
 > alpha <- getfe(est)
 > alpha
@@ -127,11 +128,11 @@ firm5  1.28553    0.12684  10.135   <2e-16 ***
 firm6  4.58096    0.10439  43.883   <2e-16 ***
 firm7       NA         NA      NA       NA    
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.006 on 1980 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 1.091e+09 on 20 and 1980 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 1.091e+09 on 20 and 1980 DF,  p-value: < 2.2e-16
 
 > 
 > # merge back
@@ -160,13 +161,13 @@ x6       2.618e-08  3.439e-02     0.00        1
 ideff    1.000e+00  2.327e-02    42.98   <2e-16 ***
 firmeff  1.000e+00  1.543e-02    64.80   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.002 on 1994 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 3.664e+09 on 6 and 1994 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 3.664e+09 on 6 and 1994 DF,  p-value: < 2.2e-16
 
 > 
 > proc.time()
    user  system elapsed 
-  4.968   0.140   5.055 
+  5.688   0.180   5.846 

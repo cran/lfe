@@ -63,6 +63,7 @@ summary.felm <- function(object,...,robust=FALSE) {
   fstat <- (mss/p)/resvar
 
   pval <- pf(fstat,p,rdf,lower.tail=FALSE)
+  res$exactDOF <- z$exactDOF
   res$df <- c(rdf,rdf)
   res$rse <- sigma
   res$rdf <- rdf
@@ -96,8 +97,8 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
     cat('Multiple R-squared:',formatC(x$r2,digits=digits),'  Adjusted R-squared:',
         formatC(x$r2adj,digits=digits),'\n')
     cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
-    if(length(x$fe) > 2)
-      cat('*** Standard errors may be slightly too high due to more than 2 groups\n')
+    if(length(x$fe) > 2 && !x$exactDOF)
+      cat('*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE\n')
   }
   cat('\n\n')
   
@@ -164,3 +165,11 @@ fixef.felm <- function(object,...) {
 }
 
 # if(!exists('fixef')) fixef <- function(object,...) UseMethod('fixef')
+
+# compute rank deficiency of D-matrix
+rankDefic <- function(fl) {
+  eps <- sqrt(.Machine$double.eps)
+  Ch <- as(Cholesky(tcrossprod(do.call('rBind',lapply(fl,as,Class='sparseMatrix'))),
+                  super=TRUE,perm=TRUE,Imult=eps),'sparseMatrix')
+  sum(diag(Ch)^2 < eps^(1/3))
+}

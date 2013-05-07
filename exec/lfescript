@@ -10,6 +10,7 @@ $tol = 0;
 $itsbig = 0;
 $randkac = 0;
 $bN = 0;
+$exactDF = 0;
 $robust = 'FALSE';
 $usecg = 'FALSE';
 while(<>) {
@@ -29,6 +30,8 @@ while(<>) {
     $resp = shift @line;
   } elsif($cmd eq 'covars') {
     @covars = @line;
+  } elsif($cmd eq 'exactdf') {
+      $exactDF = 1;
   } elsif($cmd eq 'iv') {
       $iv = join(' ',@line);
   } elsif($cmd eq 'robust') {
@@ -207,20 +210,14 @@ $cvar = '';
 if(defined($clustervar)) {
     $cvar = ", clustervar='$clustervar'";
 }
+$edf = '';
+if($exactDF == 1) {
+    $edf = ", exactDOF=TRUE";
+}
 if(defined($iv)) {
-    print "est <- felm($model,data=tab,iv=$iv$cvar)\n";
-#    print "
-#  ivmod <- update($model,$ivlhs ~ . - $ivlhs + $ivrhs)
-#  cat(date(),'Instrumental eq\\n'); print(ivmod)
-#  est1 <- felm(ivmod ,data=tab)
-#  print(summary(est1))
-#  cat(date(),'Done 1st step on $ivlhs\n')
-#  tab[,'$ivlhs.fit'] <- est1\$fitted
-#  est <- felm(update($model,. ~ . -$ivlhs + $ivlhs.fit),data=tab)
-#  ";
-    
+    print "est <- felm($model,data=tab,iv=$iv$cvar$edf)\n";
 } else {
-  print "est <- felm($model,data=tab$cvar)\n";
+  print "est <- felm($model,data=tab$cvar$edf)\n";
 }
 if(defined($iv)) {
 print "

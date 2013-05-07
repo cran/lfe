@@ -406,9 +406,9 @@ M.~Andrews, L.~Gill, T.~Schank, and R.~Upward, \emph{{High wage workers and low
   wage firms: negative assortative matching or limited mobility bias?}}, J.R.
   Stat. Soc.(A) \textbf{171(3)} (2008), 673--697.
 
-\bibitem{GS11}
-S.~Gaure, \emph{{OLS with Multiple High Dimensional Category Variables}}, (to
-  appear) (2012).
+\bibitem{GS13}
+S.~Gaure, \emph{{OLS with Multiple High Dimensional Category Variables}}, 
+  Computational Statistics and Data Analysis (2013).
 
 \bibitem{Halp62}
 I.~Halperin, \emph{{The Product of Projection Operators}}, Acta Sci. Math.

@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=4)
+options(lfe.threads=2)
 set.seed(6553)
 # single fixed effect, special case which we risk destroying when we optimize, so check it
 x <- rnorm(20000,mean=2000)

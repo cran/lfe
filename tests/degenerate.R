@@ -1,5 +1,6 @@
 library(lfe)
 set.seed(127)
+options(lfe.threads=1)
 x <- rnorm(2000,mean=2000)
 x2 <- rnorm(length(x))
 x3 <- 1.2*x + 0.9*x2 

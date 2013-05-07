@@ -1,7 +1,6 @@
 
-R version 2.15.2 (2012-10-26) -- "Trick or Treat"
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
+R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -38,10 +37,10 @@ Loading required package: numDeriv
 > y <- x + 0.25*x2 + x3 + id.eff[id] + firm.eff[firm] + year.eff[year] + rnorm(length(x))
 > 
 > ## estimate and print result
-> summary(est <- felm(y ~ x+x2+x3+G(id)+G(firm)+G(year)))
+> summary(est <- felm(y ~ x+x2+x3+G(id)+G(firm)+G(year), exactDOF=TRUE))
 
 Call:
-   felm(formula = y ~ x + x2 + x3 + G(id) + G(firm) + G(year)) 
+   felm(formula = y ~ x + x2 + x3 + G(id) + G(firm) + G(year), exactDOF = TRUE) 
 
 Residuals:
        Min         1Q     Median         3Q        Max 
@@ -53,16 +52,16 @@ x    1.1740     0.4735    2.48   0.0682 .
 x2   0.3439     0.5212    0.66   0.5454  
 x3       NA         NA      NA       NA  
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.403 on 4 degrees of freedom
 Multiple R-squared: 0.9527   Adjusted R-squared: 0.3852 
 F-statistic: 1.715 on 47 and 4 DF, p-value: 0.3237 
-*** Standard errors may be slightly too high due to more than 2 groups
 
 
 Warning message:
-In chol.default(mat, pivot = TRUE) : matrix not positive definite
+In chol.default(mat, pivot = TRUE) :
+  the matrix is either rank-deficient or indefinite
 > 
 > ## extract the group fixed effects
 > getfe(est)
@@ -326,4 +325,4 @@ In is.estimable(efactory(est, n), est$fe, R) :
 > 
 > proc.time()
    user  system elapsed 
-  6.356   0.116   6.473 
+  6.344   0.200   6.546 

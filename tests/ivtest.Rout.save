@@ -1,7 +1,6 @@
 
-R version 2.15.2 (2012-10-26) -- "Trick or Treat"
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
+R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -21,7 +20,7 @@ Loading required package: Matrix
 Loading required package: lattice
 Loading required package: Rcgmin
 Loading required package: numDeriv
-> options(lfe.threads=4)
+> options(lfe.threads=2)
 > set.seed(42)
 > x <- rnorm(1000)
 > x2 <- rnorm(length(x))
@@ -35,36 +34,38 @@ Loading required package: numDeriv
 > ## left hand side
 > u <- rnorm(length(x))
 > x3 <- rnorm(length(x))
-> Q <- 0.3*x3 + x + 0.2*x2 + id.eff[id] + 0.7*u + rnorm(length(x),sd=0.3)
-> 
-> y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + u
+> x4 <- rnorm(length(x))
+> Q <- 0.3*x3 + x + 0.2*x2 + id.eff[id] + 0.15*u + rnorm(length(x),sd=0.2)
+> R <- 0.5*x4 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
+> y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 > 
 > ## estimate and print result
-> est <- felm(y ~ x+x2+G(id)+G(firm)+Q,iv=Q~x3)
+> est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3, R ~ x4))
 > summary(est,robust=TRUE)
 
 Call:
-   felm(formula = y ~ x + x2 + G(id) + G(firm) + Q, iv = Q ~ x3) 
+   felm(formula = y ~ x + x2 + G(id) + G(firm) + Q + R, iv = list(Q ~      x3, R ~ x4)) 
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--2.98653 -0.64376 -0.03024  0.62568  3.10853 
+      Min        1Q    Median        3Q       Max 
+-3.082877 -0.672341 -0.009618  0.647237  3.238941 
 
 Coefficients:
          Estimate Robust s.e t value Pr(>|t|)    
-x         0.86971    0.08980   9.685   <2e-16 ***
-x2        0.45760    0.03420  13.380   <2e-16 ***
-`Q(fit)`  1.08164    0.09046  11.958   <2e-16 ***
+x         0.84894    0.10638    7.98 4.05e-15 ***
+x2        0.45964    0.04719    9.74  < 2e-16 ***
+`Q(fit)`  1.10497    0.10540   10.48  < 2e-16 ***
+`R(fit)`  0.97849    0.05639   17.35  < 2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 0.9329 on 985 degrees of freedom
-Multiple R-squared: 0.9228   Adjusted R-squared: 0.9217 
-F-statistic: 841.4 on 14 and 985 DF, p-value: < 2.2e-16 
+Residual standard error: 0.9715 on 984 degrees of freedom
+Multiple R-squared: 0.9349   Adjusted R-squared: 0.9338 
+F-statistic: 942.1 on 15 and 984 DF, p-value: < 2.2e-16 
 
 
 > 
 > 
 > proc.time()
    user  system elapsed 
-  5.412   0.072   5.355 
+  6.176   0.096   6.087 

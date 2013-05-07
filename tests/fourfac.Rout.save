@@ -1,7 +1,6 @@
 
-R version 2.15.2 (2012-10-26) -- "Trick or Treat"
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
+R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -42,7 +41,7 @@ Loading required package: numDeriv
 > ## estimate
 > system.time(est <- felm(y ~ x+x2 + x3 + G(id) + G(firm) + G(shoe) + G(shirt)))
    user  system elapsed 
-  2.240   0.012   2.178 
+  2.912   0.024   2.910 
 > summary(est)
 
 Call:
@@ -58,12 +57,12 @@ x  0.993257   0.006980  142.31   <2e-16 ***
 x2 0.262606   0.006955   37.76   <2e-16 ***
 x3 0.500926   0.006965   71.92   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.009 on 20869 degrees of freedom
 Multiple R-squared: 0.933   Adjusted R-squared: 0.8395 
 F-statistic: 9.976 on 29130 and 20869 DF, p-value: < 2.2e-16 
-*** Standard errors may be slightly too high due to more than 2 groups
+*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE
 
 
 > cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
@@ -112,11 +111,11 @@ firmeff  1.00000000 0.00242073   413.10   <2e-16 ***
 shoeeff  1.00000000 0.00278339   359.27   <2e-16 ***
 shirteff 1.00000000 0.00284596   351.38   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.6522 on 49993 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 6.752e+08 on 7 and 49993 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 6.752e+08 on 7 and 49993 DF,  p-value: < 2.2e-16
 
 accuracy: 9.45e-10 8.82e-11 1.37e-11 3.39e-11 
 
@@ -138,11 +137,11 @@ firmeff  1.00000000 0.00241897   413.40   <2e-16 ***
 shoeeff  1.00000000 0.00278340   359.27   <2e-16 ***
 shirteff 1.00000000 0.00284596   351.38   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.6522 on 49993 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 6.752e+08 on 7 and 49993 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 6.752e+08 on 7 and 49993 DF,  p-value: < 2.2e-16
 
 accuracy: 9.36e-10 9.03e-11 1.27e-11 9.27e-12 
 
@@ -165,11 +164,11 @@ shoeeff  1.00000000 0.00278343   359.27   <2e-16 ***
 shirteff 1.00000000 0.00284599   351.37   <2e-16 ***
 icpt     1.00000000 0.05229465    19.12   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.6522 on 49992 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 5.908e+08 on 8 and 49992 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 5.908e+08 on 8 and 49992 DF,  p-value: < 2.2e-16
 
 accuracy: 9.49e-10 9.36e-11 -1.71e-11 4.81e-11 1.38e-09 
 
@@ -192,15 +191,15 @@ shoeeff  1.00000000 0.00278343   359.27   <2e-16 ***
 shirteff 1.00000000 0.00284599   351.37   <2e-16 ***
 icpt     1.00000000 0.05232523    19.11   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.6522 on 49992 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 5.908e+08 on 8 and 49992 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 5.908e+08 on 8 and 49992 DF,  p-value: < 2.2e-16
 
 accuracy: 9.33e-10 9.14e-11 2.35e-11 -2.36e-12 1.30e-09 
    user  system elapsed 
- 14.693   0.060  14.767 
+ 20.289   0.164  20.496 
 Warning messages:
 1: In is.estimable(ef, obj$fe, R) :
   non-estimable function, largest error 0.6 in coordinate 18570 ("firm.4208")
@@ -210,4 +209,4 @@ Warning messages:
 > 
 > proc.time()
    user  system elapsed 
- 21.213   0.160  21.332 
+ 28.161   0.336  28.515 

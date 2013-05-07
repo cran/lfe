@@ -13,7 +13,7 @@ results in a manageable number of coefficients, you are probably better
 off by using \code{\link{lm}}.
 }
 
-\usage{ felm(formula,data,iv=NULL,clustervar=NULL) }
+\usage{ felm(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) }
 
 \arguments{
   \item{formula}{an object of class '"formula"' (or one that can be
@@ -27,12 +27,19 @@ off by using \code{\link{lm}}.
   
   \item{clustervar}{a string or factor.  Either the name of a variable or a factor. Used for
         computing clustered standard errors.}
+  \item{exactDOF}{logical. If more than two factors, the degrees of
+        freedom used to scale the covariance matrix (and the standard
+        errors) is normally estimated. Setting \code{exactDOF=TRUE}
+        causes \code{felm} to compute it, but this may fail if there are
+        too many levels in the factors.}
 }
 
 \value{
-  \code{felm} return an object of \code{class} \code{"felm"}.  The
+  \code{felm} returns an object of \code{class} \code{"felm"}.  The
   content of this is currently not documented, but the generic
   \code{summary}-method will yield a summary which may be \code{print}'ed.
+  The object has some resemblance to the an \code{lm} object, and some
+  postprocessing methods designed for \code{lm} may happen to work.
 }
 
 \note{
@@ -41,11 +48,13 @@ coming from the dummies which are implicitly present.  In the case of
 two factors, the exact number of implicit dummies is easy to compute.  If there
 are more factors, the number of dummies is estimated by assuming there's
 one reference-level for each factor, this may be a slight over-estimation,
-leading to slightly too large standard errors.
+leading to slightly too large standard errors. Setting \code{exactDOF}
+computes the exact degrees of freedom with methods in package \pkg{Matrix}.
 
 For the IV-option, it is only necessary to include the instruments on the
 right hand side.  The other covariates, from \code{formula}, are added automatically
-in the first step.  See the examples.
+in the first step.  See the examples. \code{iv} can also be a list of
+formulas if more than one variable is instrumented.
 
 Ideally, the \code{clustervar} should have been an option to the \code{summary}-function instead.
 However, this would require keeping a copy of the data-matrix in the returned
@@ -54,7 +63,7 @@ the data-matrix to save memory, keeping only residuals and other summary statist
 
 Note that the syntax of the \code{felm}-function has changed, it does no longer
 allow a separate specification of the group factors, they must be specified
-with the \code{G()}-syntax.  The old felm is still available as lfe:::felm.old(), but
+with the \code{G()}-syntax.  The old felm is still available as \code{lfe:::felm.old}, but
 it will no longer be maintained.
 }
 

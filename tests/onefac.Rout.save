@@ -1,7 +1,6 @@
 
-R version 2.15.2 (2012-10-26) -- "Trick or Treat"
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
+R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -21,7 +20,7 @@ Loading required package: Matrix
 Loading required package: lattice
 Loading required package: Rcgmin
 Loading required package: numDeriv
-> options(lfe.threads=4)
+> options(lfe.threads=2)
 > set.seed(6553)
 > # single fixed effect, special case which we risk destroying when we optimize, so check it
 > x <- rnorm(20000,mean=2000)
@@ -53,7 +52,7 @@ x   1.02548    0.01054   97.26   <2e-16 ***
 x2  0.24540    0.01069   22.95   <2e-16 ***
 x3  0.49951    0.01078   46.35   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.005 on 8984 degrees of freedom
 Multiple R-squared: 0.8631   Adjusted R-squared: 0.6953 
@@ -85,13 +84,13 @@ x2    0.2453984  0.0048174    50.94   <2e-16 ***
 x3    0.4995063  0.0048355   103.30   <2e-16 ***
 ideff 1.0000000  0.0037953   263.49   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.6733 on 19996 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 4.413e+10 on 4 and 19996 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 4.413e+10 on 4 and 19996 DF,  p-value: < 2.2e-16
 
 > 
 > proc.time()
    user  system elapsed 
-  5.672   0.124   5.747 
+  6.396   0.200   6.568 

@@ -204,7 +204,7 @@ is solved:
 \begin{equation}\label{alphaeq}
 D\gamma = R
 \end{equation}
-where \(R\) can be computed when we have \(\beta\).
+where \(R\) can be computed when we have \(\hat\beta\).
 This does not identify \(\gamma\) uniquely, we have to apply an estimable
 function to \(\gamma\).  The estimable function \(F\) is characterized by the
 property that \(F\gamma_1 = F\gamma_2\) whenever \(\gamma_1\) and \(\gamma_2\) are
@@ -267,7 +267,7 @@ attribute \code{'extra'}. The vectors \code{extrarefs,refsubs,refsuba} etc.\ are
 by \code{efactory} for speed efficiency.
 
 \section{Non-estimability}
-Consider another example. To ensure spurious relations there are
+We consider another example. To ensure spurious relations there are
 almost as many factor levels as there are observations, and it will be
 hard to find enough estimable function to interpret all the
 coefficients.  The coefficient for \code{x1} is still estimated, but
@@ -299,11 +299,26 @@ may find the matrix \(D\) of equation~\eqref{alphaeq}, and its rank which is low
 the number of columns:
 <<>>=
 f1 <- factor(f1); f2 <- factor(f2); f3 <- factor(f3)
-D <- t(rBind(as(f1,'sparseMatrix'),
-             as(f2,'sparseMatrix'),
-             as(f3,'sparseMatrix')))
+D <- t(do.call('rBind',
+        lapply(list(f1,f2,f3),as,Class='sparseMatrix')))
 dim(D)
-as.numeric(rankMatrix(D))
+as.integer(rankMatrix(D))
+# alternatively we can use an internal function
+# in lfe for finding the rank deficiency directly
+lfe:::rankDefic(list(f1,f2,f3))
+@ 
+
+This rank-deficiency also has an impact on the standard errors
+computed by \code{felm}.  If the rank-deficiency is small relative to
+the degrees of freedom the standard errors are scaled slightly upwards
+if we ignore the rank deficiency, but if it is large, as in this
+example, the effect on the standard errors may be substantial.  The
+rank-computation procedure can be activated by specifying
+\code{exactDOF=TRUE} in the call to \code{felm}, but it may be
+time-consuming if the factors have many levels. Computing the rank
+does not in itself help us find estimable functions for \code{getfe}.
+<<>>=
+summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3), exactDOF=TRUE))
 @ 
 
 We can get an idea what happens if we keep the dummies for \code{f1}. In this case, with
@@ -314,6 +329,21 @@ resulting coefficients is not straightforward.
 <<>>=
 summary(est <- felm(y ~ x1 + G(f2) + G(f3) + f1))
 getfe(est)
+@ 
+
+Below is the same estimation in \code{lm}. We see that the coefficient
+for \code{x1} is identical to the one from \code{felm}, but there is no obvious
+relation between e.g. the coefficients for \code{f1}; the difference \code{f12-f13} is
+not the same for \code{lm} and \code{felm}.  But of course, if we take a combination which
+actually occurs in the dataset, it is estimable:
+<<>>=
+data.frame(f1,f2,f3)[1,]
+@ 
+I.e.\ if we add the coefficients \code{f1.31 + f2.2.125 + f3.0.1}
+and include the intercept for \code{lm}, we will get the same number
+for both \code{lm} and \code{felm}.
+<<>>=
+summary(est <- lm(y ~ x1 + f1 + f2 + f3))
 @ 
 
 \begin{thebibliography}{1}

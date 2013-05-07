@@ -1,7 +1,6 @@
 
-R version 2.15.2 (2012-10-26) -- "Trick or Treat"
-Copyright (C) 2012 The R Foundation for Statistical Computing
-ISBN 3-900051-07-0
+R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -53,12 +52,12 @@ x  1.006454   0.006747  149.17   <2e-16 ***
 x2 0.255382   0.006716   38.02   <2e-16 ***
 x3 0.509961   0.006730   75.77   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.9979 on 21868 degrees of freedom
 Multiple R-squared: 0.9177   Adjusted R-squared: 0.8119 
 F-statistic: 8.673 on 28131 and 21868 DF, p-value: < 2.2e-16 
-*** Standard errors may be slightly too high due to more than 2 groups
+*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE
 
 
 > cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
@@ -93,11 +92,11 @@ ideff   1.00000000 0.00244566   408.89   <2e-16 ***
 firmeff 1.00000000 0.00251321   397.90   <2e-16 ***
 shoeeff 1.00000000 0.00291368   343.21   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.66 on 49994 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 7.69e+08 on 6 and 49994 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 7.69e+08 on 6 and 49994 DF,  p-value: < 2.2e-16
 
 
 Call:
@@ -116,11 +115,11 @@ ideff   1.00000000 0.00244179   409.54   <2e-16 ***
 firmeff 1.00000000 0.00250572   399.09   <2e-16 ***
 shoeeff 1.00000000 0.00291357   343.22   <2e-16 ***
 ---
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.66 on 49994 degrees of freedom
-Multiple R-squared:     1,	Adjusted R-squared:     1 
-F-statistic: 7.69e+08 on 6 and 49994 DF,  p-value: < 2.2e-16 
+Multiple R-squared:      1,	Adjusted R-squared:      1 
+F-statistic: 7.69e+08 on 6 and 49994 DF,  p-value: < 2.2e-16
 
 Warning messages:
 1: In is.estimable(ef, obj$fe, R) :
@@ -131,4 +130,4 @@ Warning messages:
 > 
 > proc.time()
    user  system elapsed 
- 11.276   0.120  11.038 
+ 14.448   0.244  14.295 

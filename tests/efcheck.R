@@ -16,7 +16,7 @@ year.eff <- rnorm(nlevels(year))
 y <- x + 0.25*x2 + x3 + id.eff[id] + firm.eff[firm] + year.eff[year] + rnorm(length(x))
 
 ## estimate and print result
-summary(est <- felm(y ~ x+x2+x3+G(id)+G(firm)+G(year)))
+summary(est <- felm(y ~ x+x2+x3+G(id)+G(firm)+G(year), exactDOF=TRUE))
 
 ## extract the group fixed effects
 getfe(est)

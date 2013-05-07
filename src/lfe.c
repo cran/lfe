@@ -760,7 +760,7 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
      Knuth-Fisher-Yates shuffle.
   */
   LOCK(lock);
-  if(e > 2) {
+  if(e > 1) {
     for(i = newN-1; i > 0; i--) {
       double dtmp;
       int k,j;
