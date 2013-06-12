@@ -66,9 +66,14 @@ demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
   return(res)
 }
 
-compfactor <- function(fl) {
+compfactor <- function(fl, WW=FALSE) {
   if(length(fl) == 1) return(factor(rep(1,length(fl[[1]]))))
-  factor(.Call(C_conncomp,fl[1:2]))
+  if(WW && length(fl) > 2) {
+    cf <- factor(.Call(C_wwcomp,fl))
+  } else {
+    cf <- factor(.Call(C_conncomp,fl[1:2]))
+  }
+  cf
 }
 
 
@@ -132,7 +137,7 @@ ccrossprod <- function(M,w,f) {
 doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   if(is.null(psys$xz)) {
     # No covariates
-    z <- list(residuals=psys$y,fe=psys$fl,p=0,cfactor=compfactor(psys$fl),full.residuals=psys$yz,call=match.call())
+    z <- list(r.residuals=psys$y,fe=psys$fl,p=0,cfactor=compfactor(psys$fl),residuals=psys$yz,call=match.call())
     class(z) <- 'felm'
     return(z)
 
@@ -174,6 +179,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   }
   rm(b)
   if(icpt > 0) names(beta) <- colnames(x)[-icpt] else names(beta) <- colnames(x)
+
 #  cat(date(),'projected system finished\n')
   z <- list(coefficients=beta,badconv=psys$badconv)
   z$N <- nrow(xz)
@@ -196,14 +202,14 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   zresid <- yz - zfit
   z$response <- y
   z$fitted <- y - zresid
-  z$full.residuals <- zresid
+  z$residuals <- zresid
   # insert a zero at the intercept position
   if(icpt > 0) ibeta <- append(beta,0,after=icpt-1) else ibeta <- beta
 
   pred <- x %*% ifelse(is.na(ibeta),0,ibeta)
-  z$residuals <- y - pred
+  z$r.residuals <- y - pred
 
-  z$ivresid <- rep(0,length(z$residuals))
+  z$ivresid <- rep(0,length(z$r.residuals))
   for(ivnam in names(ivresid)) {
 #  if(!is.null(ivresid)) {
 #    ivnam <- names(ivresid)[[1]]
@@ -212,8 +218,8 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
     ivbeta <- nabeta[[ivnam]]
     ivrp <- ivresid[[ivnam]] * ivbeta
     # subtract these to get the fit with the original variable
-    z$full.residuals <- z$full.residuals - ivrp
     z$residuals <- z$residuals - ivrp
+    z$r.residuals <- z$r.residuals - ivrp
     z$ivresid <- z$ivresid + ivrp
   }
 
@@ -230,7 +236,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   z$numrefs <- numrefs
   z$df <- z$N - z$p - numdum
   z$exactDOF <- exactDOF
-  res <- z$full.residuals
+  res <- z$residuals
   vcvfactor <- sum(res**2)/z$df
   z$vcv <- z$inv * vcvfactor
   
@@ -324,6 +330,7 @@ project <- function(mf,fl,data,clustervar=NULL) {
   dm <- demeanlist(list(y=y,x=x),fl,icpt)
   yz <- dm[[1]]
   xz <- dm[[2]]
+
   rm(dm)
   gc()
 
@@ -395,7 +402,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
      assign(new.var,ivz$fitted,envir=parent.frame())
      vars <- c(vars,new.var)
      # keep the residuals, they are need in doprojols below
-     ivarg[[paste('`',new.var,'`',sep='')]] <- ivz$full.residuals
+     ivarg[[paste('`',new.var,'`',sep='')]] <- ivz$residuals
      # and add it to the equation
      step2form <- update(step2form,substitute(. ~ X - IV + FIT,
                                          list(X=step2form[[3]],IV=ivv[[2]],FIT=as.name(new.var))))
@@ -487,7 +494,7 @@ felm.old <- function(formula,fl,data) {
   if(ncov == 0) {
     # No covariates
     fr <- demeanlist(y,fl)
-    z <- list(residuals=y,fe=fl,p=0,cfactor=compfactor(fl),full.residuals=fr,call=match.call())
+    z <- list(r.residuals=y,fe=fl,p=0,cfactor=compfactor(fl),residuals=fr,call=match.call())
     class(z) <- 'felm'
     return(z)
   }
@@ -549,11 +556,11 @@ felm.old <- function(formula,fl,data) {
   zresid <- yz - zfit
   rm(yz)
   z$fitted <- y - zresid
-  z$full.residuals <- zresid
+  z$residuals <- zresid
   # insert a zero at the intercept position
   if(icpt > 0) ibeta <- append(beta,0,after=icpt-1) else ibeta <- beta
   pred <- x %*% ifelse(is.na(ibeta),0,ibeta)
-  z$residuals <- y - pred
+  z$r.residuals <- y - pred
 #  z$xb <- pred
   rm(x)
   rm(y)
@@ -570,7 +577,7 @@ felm.old <- function(formula,fl,data) {
 #    numdum <- sum(unlist(lapply(fl,nlevels))) - length(fl) + 1
 #  }
   z$df <- N - p - numdum
-  vcvfactor <- sum(z$full.residuals**2)/z$df
+  vcvfactor <- sum(z$residuals**2)/z$df
   z$vcv <- inv * vcvfactor
   z$se <- sqrt(diag(z$vcv))
   z$sefactor <- sqrt(vcvfactor)
@@ -601,7 +608,7 @@ getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100
   if(method != 'cholesky') stop('method must be either kaczmarz or cholesky')
   attr(se,'sefactor') <- obj$sefactor
   attr(obj$fe,'references') <- references
-  R <- obj$residuals
+  R <- obj$r.residuals
   # then the remaining.  This is usually sufficient.
   # we could also partition differently, just do the 'comp' adjustment accordingly
   # components

@@ -1,5 +1,5 @@
 
-R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+R Under development (unstable) (2013-06-09 r62918) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -602,4 +602,4 @@ firm.300 -3.01417207   5    1 firm 300
 > 
 > proc.time()
    user  system elapsed 
-  4.696   0.136   4.758 
+  4.752   0.104   4.790 

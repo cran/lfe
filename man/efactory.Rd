@@ -6,15 +6,15 @@
   Creates an estimable function for a factor-structure.
 }
 \usage{
-efactory(obj,opt=NULL,...)
+efactory(obj, opt='ref',...)
 }
 
 
 \arguments{
 \item{obj}{object of class \code{"felm"}, usually, a result of a call to
-  \code{\link{felm}}}
-\item{opt}{character.  Which type of estimable function}
-\item{...}{various}
+  \code{\link{felm}}.}
+\item{opt}{character.  Which type of estimable function.}
+\item{...}{various.}
 }
 
 \value{

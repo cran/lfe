@@ -34,7 +34,9 @@ The estimation is done in two steps.  First the other coefficients are
 estimated with the function \code{\link{felm}} by centering on all the
 group means, followed by an OLS (similar to lm).  Then the group effects
 are extracted (if needed) with the function \code{\link{getfe}}.  This
-method is described in Gaure (2013).
+method is described in Gaure (2013), but also appears in Guimaraes and
+Portugal(2010), disguised as the Gauss-Seidel algorithm.
+
 
 There's also a function \code{\link{demeanlist}} which just does the
 centering on an arbitrary matrix, and there's a function
@@ -73,7 +75,7 @@ by setting the option \code{options(lfe.usecg=TRUE)}.
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
 levels (the \code{\link{felm}} took about 50 minutes on 8 cpus, the
-\code{\link{getfe}} takes 5 minutes).  Though, beware that not
+\code{\link{getfe}} takes 5 minutes.  Though, beware that not
 only the size of the dataset matters, but also its structure.
 
 The package will work with any positive number of grouping factors, but if
@@ -81,7 +83,7 @@ more than two, their interpretation is in general not well understood,
 i.e. one should make sure that the coefficients are estimable.
 
 In the exec-directory there is a perl-script \code{lfescript} which
-is used at the authors site for creating R-scripts from 
+is used at the author's site for creating R-scripts from 
 a simple specification file.  The format is documented in 
 \code{doc/lfeguide.txt}.
 
@@ -112,9 +114,14 @@ Stata Journal, 8(2):170--189, 2008.
 \url{http://econpapers.repec.org/RePEc:tsj:stataj:v:8:y:2008:i:2:p:170-189}
 
 Gaure, S. (2013) \cite{OLS with Multiple High Dimensional Category
-  Variables} Computational Statistics and Data Analysis, 
+  Variables.} Computational Statistics and Data Analysis, 66:8--18, 2013
   \url{http://dx.doi.org/10.1016/j.csda.2013.03.024}
 
+Guimaraes, P. and Portugal, P. (2010) \cite{A simple feasible
+  procedure to fit models with high-dimensional fixed effects.}
+  The Stata Journal, 10(4):629--649, 2010.
+  \url{http://www.stata-journal.com/article.html?article=st0212}
+  
 Ouazad, A. (2008)
 \cite{A2REG: Stata module to estimate models with two fixed effects.}
 Statistical Software Components S456942, Boston College Department of Economics.

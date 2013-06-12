@@ -1,5 +1,5 @@
 
-R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+R Under development (unstable) (2013-06-09 r62918) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -44,7 +44,7 @@ Call:
 
 Residuals:
        Min         1Q     Median         3Q        Max 
--3.065e+00 -4.110e-01 -2.896e-11  4.128e-01  2.712e+00 
+-3.065e+00 -4.110e-01 -1.732e-10  4.128e-01  2.712e+00 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
@@ -122,12 +122,12 @@ Multiple R-squared:      1,	Adjusted R-squared:      1
 F-statistic: 7.69e+08 on 6 and 49994 DF,  p-value: < 2.2e-16
 
 Warning messages:
-1: In is.estimable(ef, obj$fe, R) :
-  non-estimable function, largest error 0.7 in coordinate 15807 ("firm.1397")
+1: In is.estimable(ef, obj$fe) :
+  non-estimable function, largest error 0.7 in coordinate 603 ("id.624")
 2: In getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
   Supplied function seems non-estimable
 
 > 
 > proc.time()
    user  system elapsed 
- 14.448   0.244  14.295 
+ 12.024   0.140  11.813 

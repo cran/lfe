@@ -4,8 +4,6 @@
  Licence: Artistic 2.0
 */
 
-#define CSTACK_DEFNS
-
 #if defined(_WIN32) || defined(_WIN64) || defined(WIN64)
 #define WIN
 #endif
@@ -52,6 +50,10 @@
 #endif
 #endif
 
+
+#define RANDPROJ
+#define GKACC
+#undef GKACC
 
 
 /* Trickery to check for interrupts when using threads */
@@ -302,7 +304,6 @@ static int demean(double *v, int N, double *res,
   int okconv = 1;
   time_t last, now;
   int lastiter;
-
 #ifdef RANDCENT
   FACLEV *order;
   int totlev;
@@ -359,6 +360,11 @@ static int demean(double *v, int N, double *res,
     return(1);
   }
 
+#ifdef GKACC
+  double *prev = (double *) malloc(N*sizeof(double));
+  double t;
+#endif
+
   for(i = 0; i < N; i++) norm2 += res[i]*res[i];
   norm2 = sqrt(norm2);
   prevdelta = 2*norm2;
@@ -366,55 +372,129 @@ static int demean(double *v, int N, double *res,
   iter = 0;
   last = time(NULL);
   lastiter = 0;
+  double target;
+
+#ifdef GKACC
+    target = 1e-4*neps;
+#endif
+
   do {
     iter++;
+#ifdef GKACC
+    if(e > 2) {
+    /* shuffle factors, Knuth */
+      LOCK(lock);  /* protect unif_rand */
+      for(i = e-1; i > 0; i--) {
+	FACTOR *tmp;
+	int k,j;
+	j = (int) floor((i+1) * unif_rand());
+	if(j == i) continue;
+	tmp = factors[j];
+	factors[j] = factors[i];
+	factors[i] = tmp;
+      }
+      UNLOCK(lock);
+    }
+    //    (void) centre(res,N,&factors[e-1],1,means);
+    memcpy(prev, res, N*sizeof(double));
+#endif
 #ifdef RANDCENT
     delta = rcentre(res,totlev,order);
 #else
     delta = centre(res,N,factors,e,means);
 #endif
-    c = delta/prevdelta;
-    /* c is the convergence rate, at infinity they add up to 1/(1-c).
+
+#ifdef GKACC
+    // Try the Gearhart-Koshy acceleration, AS 3.2
+    // The result vector is a convex combination of the previous x and the centred vector Px
+    // tPx + (1-t) x
+    // where t = (x, x-Px)/|x - Px|^2   (t can be > 1).
+    // It's quite much faster for some datasets (factor 2-3), perhaps more.
+    // our convergence failure test below suffers from it, as well as ETA computation, we need to fix it
+    // right now we run 'til machine precision.
+    double ip = 0, nm2 = 0;
+    for(int i = 0; i < N; i++) {
+      ip += prev[i]*(prev[i]-res[i]);
+      nm2 += (prev[i]-res[i])*(prev[i] - res[i]);
+    }
+    if(nm2 <= 0) break;
+    t = ip/nm2;
+    /*
+    if(t <= 0) {
+      char buf[256];
+      sprintf(buf,"... centering vec %d negative (%.1le) at iter %d, target=%.1le\n",vecnum,t,iter,target);
+      pushmsg(buf,lock);
+      break;  // Is this sane, I'm not sure.
+    }
+    */
+    delta = 0.0;
+    for(int i = 0; i < N; i++) {
+      res[i] = t*res[i] + (1.0-t)*prev[i];
+      delta += (res[i]-prev[i])*(res[i]-prev[i]);
+    }
+    delta = sqrt(delta);
+#endif
+
+    if((iter & 127) == 0) {
+      c = pow(delta/prevdelta,1.0/128.0);
+      prevdelta = delta;
+    /* c is the convergence rate per iteration, at infinity they add up to 1/(1-c).
        This is true for e==2, but also in the ballpark for e>2 we guess.
        Only fail if it's after some rounds. It seems a bit unstable in the
-       beginning.
+       beginning.  This is to be expected due to Deutsch and Hundal's result 
     */
-    if(c >= 1.0 && iter > 20) {
-      char buf[256];
-      sprintf(buf,"Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
-	       vecnum,iter,1.0-c,delta);
-      pushmsg(buf,lock);
-      okconv = 0;
-      break;
-    }
-    now = time(NULL);
-    if(now - last >= 3600 && delta > 0.0) {
-      int reqiter;
-      double eta;
-      char tu;
-      char buf[256];
-      reqiter = log(neps*(1.0-c)/delta)/log(c);
-      eta = 1.0*(now-last)*reqiter/(iter-lastiter);
-      tu = 's';
-      if(eta > 3600.0) {
-	eta /= 3600.0;
-	tu='h';
+
+#ifndef GKACC
+      prevdelta = delta;
+      if(c >= 1.0 && iter > 20) {
+	char buf[256];
+	sprintf(buf,"Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
+		vecnum,iter,1.0-c,delta);
+	pushmsg(buf,lock);
+	okconv = 0;
+	break;
       }
-      
-      sprintf(buf,"...centering vec %d iter %d, 1-c=%.1e, delta=%.1e(%.1e), ETA in %.1f%c\n",
-	       vecnum,iter,1.0-c,delta,neps*(1.0-c),eta,tu);
-      pushmsg(buf,lock);
-      lastiter = iter;
-      last = now;
+      target = (1.0-c)*neps;
+#endif
+
+      now = time(NULL);
+      if(now - last >= 3600 && delta > 0.0) {
+	int reqiter;
+	double eta;
+	char tu;
+	char buf[256];
+	reqiter = log(target/delta)/log(c);
+	eta = 1.0*(now-last)*reqiter/(iter-lastiter);
+	tu = 's';
+	if(eta > 3600.0) {
+	  eta /= 3600.0;
+	  tu='h';
+	}
+#ifdef GKACC
+	sprintf(buf,"...centering vec %d iter %d, t=%.3e, delta=%.1e(%.1e), ETA in %.1f%c\n",
+		vecnum,iter,t,delta,target,eta,tu);
+#else
+	sprintf(buf,"...centering vec %d iter %d, 1-c=%.1e, delta=%.1e(%.1e), ETA in %.1f%c\n",
+		vecnum,iter,1.0-c,delta,target,eta,tu);
+#endif
+	pushmsg(buf,lock);
+	lastiter = iter;
+	last = now;
+      }
     }
+
 #ifdef NOTHREADS
     R_CheckUserInterrupt();
 #else
     if(*stop != 0) {okconv = 0; break;}
 #endif
-    prevdelta = delta;
-  } while(delta > neps*(1.0-c));
 
+  } while(delta > target);
+
+
+#ifdef GKACC
+  free(prev);
+#endif
 #ifdef RANDCENT
 #ifndef NOTHREADS
   free(order);
@@ -714,7 +794,6 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
   int iter=0;
   int i;
   int ie;
-  int *prev,*this;
   int newN;
 
   /* We should remove duplicates, at least when they're consecutive.
@@ -722,8 +801,10 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
      not be too inefficient.  Besides, removing them is more work...
   */
 
-  prev = (int*) malloc(e*sizeof(int));
-  this = (int*) malloc(e*sizeof(int));
+  int *prev = (int*) malloc(e*sizeof(int));
+  int *this = (int*) malloc(e*sizeof(int));
+  int numlev = 0;
+  for(int i = 0; i < e; i++) numlev += factors[i]->nlevels;
   newN = 0;
   ie = 0;
   for(i = 0; i < N; i++) {
@@ -789,10 +870,11 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
   norm2 = sqrt(norm2);
   prevdiff = 2*norm2;
   neweps = eps*norm2;
+
   do {
     int ie = 0; /* equals i*e; integer multiplication is slow, keep track instead */
     double diff = 0.0;
-    for(i = 0; i < newN; i++,ie+=e) {
+    for(int i = 0; i < newN; i++,ie+=e) {
       double upd = 0.0;
       int j;
       upd = newR[i];
@@ -813,26 +895,25 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
       /* Keep track of update */
       diff += upd*upd;
     }
-
+    iter++;
     /* Relax a bit */
     /*    R_CheckUserInterrupt();*/
     sd = sqrt(diff*e);
     c = sd/prevdiff;
     prevdiff = sd;
-    iter++;
     if(c >= 1.0 && iter > 20) {
       char buf[256];
       sprintf(buf,"Kaczmarz failed in iter %d*%d, 1-c=%.0e, delta=%.1e, eps=%.1e\n",iter,newN,1.0-c,sd,neweps);
       pushmsg(buf,lock);
       break;
     }
+
 #ifdef NOTHREADS
     R_CheckUserInterrupt();
 #else
     if(*stop != 0) return(0);
 #endif
   } while(sd >= neweps*(1.0-c)) ;
-
   return(sd);
 }
 
@@ -1295,7 +1376,7 @@ components
 
 /*
   This one is a bit tricky.  We could do it quite elegantly recursively,
-  but we would suffer from a deep call-stack.  Thus, we make our own
+  but we would suffer from a deep call-stack.  Hence, we make our own
   stack and push/pop in a loop
  */
 static int Components(int **vertices, FACTOR **factors, int K) {
@@ -1374,11 +1455,124 @@ static int Components(int **vertices, FACTOR **factors, int K) {
   } while(candvert < factors[0]->nlevels);
   Free(stack);
   return(curcomp-1);
+#undef PUSH
+#undef POP
+#undef PUSHALL
+#undef POPALL
 }
+ 
+// Algorithm from:
+// "A Note on the Determination of Connectedness in an N-Way Cross Classification"
+// D.L. Weeks and D.R. Williams, Technometrics, vol 6 no 3, August 1964
+// There probably exists faster algorithms, this one is quite slow
+static void wwcomp(FACTOR *factors[], int numfac, int N, int *newlevels) {
+   int level = 0;
+   int chead = 0;
+   int *newlist = Calloc(N,int);
+   int *oldlist = Calloc(N,int);
+   int oldstart = 0;
+   // For cache-efficiency, make a numfac x N matrix of the factors
+   int *facmat = Calloc(numfac*N, int);
+
+   for(size_t i = 0; i < N; i++) {
+     int *obsp = &facmat[i*numfac];
+     newlevels[i] = 0;
+     oldlist[i] = i;
+     for(int j = 0; j < numfac; j++) {
+       obsp[j] = factors[j]->group[i];
+     }
+   }
+   while(oldstart < N) {
+     int newidx;
+     // set component number for first node in component
+     // find the next we haven't checked, it's oldlist[oldstart]
+     // increase oldstart by one
+     level++;
+     chead = oldlist[oldstart++];
+     // put it as the first element in our newlist
+     newlist[0] = chead;
+     newlevels[chead] = level;
+     newidx = 1;
+     // loop over the list of newly added nodes, including the head
+     // Note that we may increase newidx during the loop
+     for(int i = 0; i < newidx; i++) {
+       size_t newnode = newlist[i];
+       int *newp = &facmat[newnode*numfac];
+       // search for observations with distance 1 from newnode, mark them with level
+       for(int jidx = oldstart; jidx < N; jidx++) { 
+	 size_t trynode = oldlist[jidx];
+	 int *tryp = &facmat[trynode*numfac];
+	 int dist = 0;
+	 // compute distance
+	 for(int fi = 0; fi < numfac && dist < 2; fi++) 
+	   dist += (newp[fi] != tryp[fi]);
+	 //dist += (factors[fi]->group[newnode] != factors[fi]->group[trynode]);
+	 // if close, set its level, add it to the list, move the start node
+	 // to the empty place in oldlist. 
+	 if(dist < 2) {
+	   newlevels[trynode] = level;
+	   newlist[newidx++] = trynode;
+	   oldlist[jidx] = oldlist[oldstart++];
+	 }
+       }
+     }
+   }
+   Free(facmat);
+   Free(newlist);
+   Free(oldlist);
+ }
 
 /*
 R entry-point for conncomp.  Takes a list of factors as input.
  */
+
+ static SEXP R_wwcomp(SEXP flist) {
+   int numfac, N;
+   FACTOR **factors;
+   SEXP result;
+
+  
+  numfac = LENGTH(flist);
+  if(numfac < 2) error("At least two factors must be specified");
+
+  N = LENGTH(VECTOR_ELT(flist,0));
+  for(int i = 0; i < numfac; i++) {
+    if(N != LENGTH(VECTOR_ELT(flist,i))) 
+      error("Factors must have the same length");
+  }
+
+  factors = (FACTOR**) R_alloc(numfac,sizeof(FACTOR*));
+  for(int i = 0; i < numfac; i++) {
+    FACTOR *f;
+
+    factors[i] = (FACTOR*) R_alloc(1,sizeof(FACTOR));
+    f = factors[i];
+    f->group = INTEGER(VECTOR_ELT(flist,i));
+  }
+  PROTECT(result = allocVector(INTSXP,N));
+  int *fac = INTEGER(result);
+  wwcomp(factors, numfac, N, fac);
+  // Now it's time to order the levels by decreasing size, so let's compute the sizes
+  int levels = 0;
+  for(int i = 0; i < N; i++) if(fac[i] > levels) levels = fac[i];
+  double *levsize = (double*) R_alloc(levels, sizeof(double));
+  int *index = (int*) R_alloc(levels, sizeof(int));
+  for(int i = 0; i < levels; i++) {
+    levsize[i] = 0.0;
+    index[i] = i;
+  }
+  for(int i = 0; i < N; i++) levsize[fac[i]-1] = levsize[fac[i]-1]+1;
+  revsort(levsize,index,levels);
+  int *rindex = (int*) R_alloc(levels, sizeof(int));
+  for(int i = 0; i < levels; i++) rindex[index[i]] = i;
+  for(int i = 0; i < N; i++) {
+    fac[i] = rindex[fac[i]-1]+1;
+  }
+
+  
+  UNPROTECT(1);
+  return result;
+}
 
 static SEXP R_conncomp(SEXP flist) {
   int numfac;
@@ -1467,6 +1661,7 @@ static SEXP R_conncomp(SEXP flist) {
 
 static R_CallMethodDef callMethods[] = {
   {"conncomp", (DL_FUNC) &R_conncomp, 1},
+  {"wwcomp", (DL_FUNC) &R_wwcomp, 1},
   {"demeanlist", (DL_FUNC) &R_demeanlist, 6},
   {"kaczmarz", (DL_FUNC) &R_kaczmarz, 5},
   {NULL, NULL, 0}

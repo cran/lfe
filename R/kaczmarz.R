@@ -38,13 +38,13 @@ cgsol <- function(fl,R,eps=getOption('lfe.eps'), init=NULL,threads=NULL) {
 
 getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100) {
 
-  R <- obj$residuals-obj$full.residuals
+  R <- obj$r.residuals-obj$residuals
   v <- kaczmarz(obj$fe,R,eps)
   nm <- names(v)
   if(is.character(ef)) {
     ef <- efactory(obj,opt=ef)
   }
-  if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef,obj$fe,R)) {
+  if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef,obj$fe)) {
     warning('Supplied function seems non-estimable\n')
   }
   v <- ef(v,TRUE)
@@ -65,7 +65,12 @@ getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100
 # most observations
 # if there are more than two factors, assume they don't
 # ruin identification beyond one extra reference for each such factor
-efactory <- function(obj,opt=NULL,...) {
+
+# Note: when I get some time, I'll implement a Weeks-Williams estimable
+# function.  I.e. with a reference in each factor in each component
+# from compfactor(...,WW=TRUE). This may be what many people want.
+
+efactory <- function(obj, opt='ref', ...) {
 
 # the names of the dummies, e.g. id.4 firm.23
   nm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='\003')))
@@ -149,7 +154,6 @@ efactory <- function(obj,opt=NULL,...) {
   nm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='.')))
   fenv <- list(extrarefs=extrarefs,refsubs=refsubs,refsuba=refsuba,fef=fef,nm=nm)
 
-  if(is.null(opt)) opt <- 'ref'
 
   ef <- switch(as.character(opt),
          ln={
@@ -293,7 +297,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
     rownames(alpha) <- names(v)
     if(!is.null(attr(v,'extra'))) alpha <- cbind(alpha,attr(v,'extra'))
   }
-  R <- obj$residuals-obj$full.residuals
+  R <- obj$r.residuals-obj$residuals
   j <- 0 #avoid warning from check
 
   # We use the variance in PY-PXbeta to generate variation V (i.e. the full.residuals),
@@ -305,7 +309,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # this may as well be done after kaczmarz solution, it makes no difference
   
   sefact <- sqrt((length(R)-1)/obj$df)
-  sm <- mean(obj$full.residuals) # ought to be zero
+  sm <- mean(obj$residuals) # ought to be zero
   sefact <- 1  # do it at end instead
   # need a factor into R assigning component number
   if(length(obj$fe) == 1) ac <- rep(1,length(R))
@@ -326,7 +330,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # now, set those which we can't get standard error for to NA
   nose <- is.na(sefact)|is.infinite(sefact)
   sefact <- ifelse(nose,NA,sefact)
-  smpdraw <- as.vector(obj$full.residuals)
+  smpdraw <- as.vector(obj$residuals)
 
   # Now, we want to do everything in parallel, so we should allocate up a set
   # of vectors, but we don't want to blow the memory.  Stick to allocating two
@@ -369,8 +373,8 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
 }
 
 
-# chech whether a function is estimable
-is.estimable <- function(ef,fe,R=NULL) {
+# check whether a function is estimable
+is.estimable <- function(ef,fe,R=NULL,nowarn=FALSE) {
   if(!is.function(ef)) stop('ef must be a function')
   N <- sum(unlist(lapply(fe,nlevels)))
   if(is.null(R)) {
@@ -387,8 +391,9 @@ is.estimable <- function(ef,fe,R=NULL) {
   if(df > 1e-6) {
     bad <- which.max(abs(v1-v2))
     badname <- names(bad)
-    warning('non-estimable function, largest error ',
-      format(df,digits=1),' in coordinate ',bad, ' ("',badname,'")')
+    if(!nowarn)
+      warning('non-estimable function, largest error ',
+              format(df,digits=1),' in coordinate ',bad, ' ("',badname,'")')
     return(FALSE)
   }
   TRUE

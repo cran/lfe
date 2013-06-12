@@ -8,7 +8,7 @@ summary.felm <- function(object,...,robust=FALSE) {
   res <- list()
   res$p <- z$p
   if(res$p == 0) {
-    res <- list(residuals=as.vector(z$full.residuals),p=0,call=z$call)
+    res <- list(residuals=as.vector(z$residuals),p=0,call=z$call)
     class(res) <- 'summary.felm'
     return(res)
   }
@@ -33,7 +33,7 @@ summary.felm <- function(object,...,robust=FALSE) {
 
   }
   res$coefficients <- coefficients
-  res$residuals <- as.vector(z$full.residuals)
+  res$residuals <- as.vector(z$residuals)
 
   qres <- quantile(res$residuals,na.rm=TRUE)
   names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
@@ -50,7 +50,7 @@ summary.felm <- function(object,...,robust=FALSE) {
 # a similar adjustment is done in summary.felm when computing p
 
   rdf <- z$N - p - 1
-  rss <- sum(z$full.residuals^2)
+  rss <- sum(z$residuals^2)
 
   resvar <- rss/rdf
   sigma <- sqrt(resvar)
@@ -113,7 +113,7 @@ print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   print(coef(x),digits=digits)
   return()
   ans <- z[c('call','terms')]
-  ans$residuals <- z$full.residuals
+  ans$residuals <- z$residuals
   rdf <- z$df
   ans$coefficients <- cbind(z$coefficients,z$se,z$tval,z$pval)
   dimnames(ans$coefficients) <- list(names(z$coefficients),
@@ -134,7 +134,7 @@ print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   # fstat, p-value
   p <- z$p
   rdf <- z$N - p
-  rss <- sum(z$full.residuals^2)
+  rss <- sum(z$residuals^2)
   f <- z$fitted
   resvar <- rss/rdf
   sigma <- sqrt(resvar)
@@ -143,8 +143,6 @@ print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   r2 <- mss/(mss+rss)
   r2adj <- 1-(1-r2)*(z$N/rdf)
   fstat <- (mss/p)/resvar
-#  z <- list(call=z$call,residuals=z$full.residuals,
-#            df=z$df)
   pval <- pf(fstat,p,rdf,lower.tail=FALSE)
   cat('\nResidual standard error:',format(signif(sigma,digits)),'on',rdf,'degrees of freedom\n')
   cat('Multiple R-squared:',formatC(r2,digits=digits),'  Adjusted R-squared:',

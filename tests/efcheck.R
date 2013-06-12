@@ -36,7 +36,7 @@ getfe(est,ef=ef,se=TRUE)
 
 # test whether we have estimable functions
 
-R <- est$residuals - est$full.residuals
+R <- est$r.residuals - est$residuals
 
 cat('myef :',is.estimable(ef,est$fe,R),'\n')
 for(n in c('ref','zm','zm2','ln')) {

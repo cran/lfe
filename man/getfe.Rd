@@ -91,12 +91,12 @@ function.
 
 \examples{
 ## create covariates
-x <- rnorm(50000)
+x <- rnorm(4000)
 x2 <- rnorm(length(x))
 
 ## create individual and firm
-id <- factor(sample(5000,length(x),replace=TRUE))
-firm <- factor(sample(3000,length(x),replace=TRUE))
+id <- factor(sample(500,length(x),replace=TRUE))
+firm <- factor(sample(300,length(x),replace=TRUE))
 
 ## effects
 id.eff <- rlnorm(nlevels(id))

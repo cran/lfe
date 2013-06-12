@@ -55,14 +55,9 @@ as(f3,'sparseMatrix'), as(f4,'sparseMatrix')))
   R <- as.vector(D \%*\% truex)
 ## solve it
   sol <- kaczmarz(list(f1,f2,f3,f4),R)
-  opt <- options(lfe.usecg=TRUE)
-  cgsol <- kaczmarz(list(f1,f2,f3,f4),R)
-  options(opt)
 ## verify that the solution solves the system Dx = R
   res <- D \%*\% sol - R
-  cgres <- D \%*\% cgsol - R
   sqrt(sum(res^2))
-  sqrt(sum(cgres^2))
 ## but the solution is not equal to the true x, because the system is
 ## underdetermined
   sqrt(sum((sol - truex)^2))

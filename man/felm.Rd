@@ -35,11 +35,30 @@ off by using \code{\link{lm}}.
 }
 
 \value{
-  \code{felm} returns an object of \code{class} \code{"felm"}.  The
-  content of this is currently not documented, but the generic
-  \code{summary}-method will yield a summary which may be \code{print}'ed.
+  \code{felm} returns an object of \code{class} \code{"felm"}.  It is
+  quite similar to en \code{"lm"} object, but not entirely compatible.
+
+  The \code{"felm"} object is a list containing the following fields:
+
+  \item{coefficients}{a numerical vector. The estimated coefficients.}
+  \item{N}{an integer. The number of observations}
+  \item{p}{an integer. The total number of coefficients, including those
+    projected out.}
+  \item{response}{a numerical vector. The response vector.}
+  \item{fitted}{a numerical vector. The fitted values.}
+  \item{residuals}{a numerical vector. The residuals of the full
+  system, with dummies.}
+  \item{r.residuals}{a numerical vector. Reduced residuals, i.e. the residuals resulting from
+  predicting \emph{without} the dummies.}
+  \item{cfactor}{factor of length N. The factor describing the connected
+    components of the two first \code{G()} terms in the model.}
+  \item{vcv}{a matrix. The variance-covariance matrix.}
+  \item{fe}{list of factors. A list of the \code{G()} terms in the model.}
+
+  The generic \code{summary}-method will yield a summary which may be \code{print}'ed.
   The object has some resemblance to the an \code{lm} object, and some
-  postprocessing methods designed for \code{lm} may happen to work.
+  postprocessing methods designed for \code{lm} may happen to work. It
+  may however be necessary to coerce the object to succeed with this.
 }
 
 \note{

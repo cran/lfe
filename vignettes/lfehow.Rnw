@@ -1,4 +1,4 @@
-\documentclass{amsproc}
+\documentclass{amsart}
 
 \usepackage[utf8]{inputenc}
 
@@ -20,13 +20,15 @@
 
 \author{Simen Gaure}
 \address{Ragnar Frisch Centre for Economic Research, Oslo, Norway}
-\date{March 25, 2011}
+\date{March 25, 2011, update in May 2013}
 
 \begin{document}
 \begin{abstract}
 Here is a proof for the demeaning method used in \pkg{lfe}, and a description
 of the methods used for solving the residual equations.  As well as
-  a toy-example.
+a toy-example. This is a preliminary version of \cite{GS13}.
+This method, formulated as the Gauss-Seidel algorithm, was noted in \cite{GP10} without the
+author noticing it in the first version of this paper.
 \end{abstract}
 \maketitle
 
@@ -122,7 +124,9 @@ which may be reordered as
   Y - (X\hat\beta + D\hat\alpha) = PY - PX\hat\beta
 \]
 showing that the residuals of the projected system \eqref{psys} equals
-the residuals of the original system \eqref{osys}.
+the residuals of the original system \eqref{osys}.  Similarly, the
+\(\hat\beta\) part of the covariance matrix of \eqref{osys} can be shown
+to be identical to the covariance matrix of \eqref{psys}.
 
 All this is well-known as the Frisch-Waugh-Lovell theorem, and is not
 the main point here, that's why we're still in the ``Introduction''-section.
@@ -135,7 +139,7 @@ a single factor, applying \(P\) amounts to subtracting the group-means.  This
 is known as the within-groups transformation, or centering on the means,
 or \emph{demeaning}.  But, what does it look like when we have more factors?
 
-Here's the idea behind \pkg{lfe}, from \cite{GS11}:
+Here's the idea behind \pkg{lfe}, from \cite{GS13}:
 
 For each of the factors, we have a demeaning projection 
 \(P_i = I - D_i(D_i'D_i)^{-1}D_i'\).  This is the projection
@@ -179,11 +183,13 @@ So, there's how to compute \(Pv\) for an arbitrary vector \(v\), just demean it
 with each projection in succession, over and over, until it gives up.
 We do this for every column of \(X\) and \(Y\) to find \(PY\) and \(PX\), and then 
 we may solve \(\hat\beta\) from \eqref{pnorm}.  This procedure has been
-wrapped up with a threaded C-routine in the function \code{felm}.  Thus, the 
+wrapped up with a threaded C-routine in the function \code{felm}.  
+Thus, the 
 \code{X1,X2,...,Xk} can be estimated efficiently by
 <<felm, eval=FALSE>>=
 felm(Y ~ X1 + X2 + ... + Xk + G(D1) + G(D2) + ... + G(De))
 @ 
+
 
 If there is only one factor (i.e. \(e=1\)), this reduces to the within-groups model.
 
@@ -198,7 +204,7 @@ system lends itself to solving by the Kaczmarz method (\cite{kac37}).
 
 The Kaczmarz method may be viewed as a variant of \eqref{halp},
 specifically for solving linear equations.  (Though, historically, the
-Kaczmarz-method predates Halperin's more general Banach-space theorem
+Kaczmarz-method predates Halperin's more general Hilbert-space theorem
 by 25 years.)  The idea is that in a matrix equation like \[ Dx = b \]
 we may view each row of the system \(\langle d_i,x\rangle = b_i\) as
 an equation defining a hyperplane \(Q_i\) (where \(d_i\) is the
@@ -407,8 +413,13 @@ M.~Andrews, L.~Gill, T.~Schank, and R.~Upward, \emph{{High wage workers and low
   Stat. Soc.(A) \textbf{171(3)} (2008), 673--697.
 
 \bibitem{GS13}
-S.~Gaure, \emph{{OLS with Multiple High Dimensional Category Variables}}, 
-  Computational Statistics and Data Analysis (2013).
+S.~Gaure, \emph{{OLS with Multiple High Dimensional Category Variables}},
+  Computational Statistics and Data Analysis \textbf{66} (2013), 8--18.
+
+\bibitem{GP10}
+P.~Guimar{\~a}es and P.~Portugal, \emph{A simple feasible procedure to fit
+  models with high-dimensional fixed effects}, Stata Journal \textbf{10}
+  (2010), no.~4, 628--649(22).
 
 \bibitem{Halp62}
 I.~Halperin, \emph{{The Product of Projection Operators}}, Acta Sci. Math.
@@ -420,6 +431,7 @@ A.~Kaczmarz, \emph{{Angen\"aherte Aufl\"osung von Systemen linearer
   des Lettres \textbf{35} (1937), 355--357.
 
 \end{thebibliography}
+
 \else
 \bibliography{biblio}
 \fi

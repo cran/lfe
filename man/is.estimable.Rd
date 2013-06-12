@@ -5,14 +5,16 @@
   Verify that a function you have written is indeed estimable.
 }
 \usage{
-is.estimable(ef,fe,R=NULL)
+is.estimable(ef, fe, R=NULL, nowarn=FALSE)
 }
 
 
 \arguments{
 \item{ef}{function.  The function to be verified.}
 \item{fe}{list of factors.}
-\item{R}{numeric.  Vector of residuals, is \code{NULL}, one random is created.}
+\item{R}{numeric.  Vector of residuals, if \code{NULL}, a random one is created.}
+\item{nowarn}{logical. Set to \code{TRUE} if \code{is.estimable} should not
+  throw a warning for non-estimable functions.}
 }
 
 \value{

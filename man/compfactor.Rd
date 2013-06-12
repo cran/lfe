@@ -6,11 +6,12 @@
 model.
 }
 \usage{
-  compfactor(fl)
+  compfactor(fl, WW=FALSE)
 }
 
 \arguments{
   \item{fl}{a list of factors defining the dummies}
+  \item{WW}{logical. Use Weeks and Williams components}
 }
 \value{
 A factor of the same length as the factors in the input argument.  It
@@ -20,7 +21,18 @@ connected components.
 }
 
 \details{
-If there are more than two factors, only the first two will be used.
+If there are more than two factors and \code{WW=FALSE}, only the first two will be used.
+
+If \code{WW=TRUE} and \code{length(fl) > 2}, the component structure will be as in 
+"A Note on the Determination of Connectedness in an N-Way Cross
+Classification" by D.L. Weeks and D.R. Williams, Technometrics, vol 6 no
+3, August 1964.
+I.e. in each component, the coefficients within each factor are
+comparable, that is, their difference is estimable even if there are more than
+two factors.  That is, one may use one reference in each factor in each
+component, and interpret the coefficients within a component as usual.
+This is not an exhaustion of all the estimable functions.  There is
+somewhat more about this in one of the vignettes.
 }
 \examples{
 ## create two factors

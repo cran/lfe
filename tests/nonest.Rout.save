@@ -1,5 +1,5 @@
 
-R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+R Under development (unstable) (2013-06-09 r62918) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -83,7 +83,7 @@ Components: 1 largest: 10000
 +     print(summary(lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff-1),digits=8))
 +   }
 + }
-Warning in is.estimable(ef, obj$fe, R) :
+Warning in is.estimable(ef, obj$fe) :
   non-estimable function, largest error 0.4 in coordinate 1759 ("id.1770")
 Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
   Supplied function seems non-estimable
@@ -113,8 +113,8 @@ Residual standard error: 0.4559 on 9993 degrees of freedom
 Multiple R-squared:      1,	Adjusted R-squared:      1 
 F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16
 
-Warning in is.estimable(ef, obj$fe, R) :
-  non-estimable function, largest error 0.4 in coordinate 1759 ("id.1770")
+Warning in is.estimable(ef, obj$fe) :
+  non-estimable function, largest error 0.04 in coordinate 1759 ("id.1770")
 Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
   Supplied function seems non-estimable
 
@@ -143,8 +143,8 @@ Residual standard error: 0.4559 on 9993 degrees of freedom
 Multiple R-squared:      1,	Adjusted R-squared:      1 
 F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16
 
-Warning in is.estimable(ef, obj$fe, R) :
-  non-estimable function, largest error 0.2 in coordinate 7165 ("shirt.1209")
+Warning in is.estimable(ef, obj$fe) :
+  non-estimable function, largest error 0.1 in coordinate 7165 ("shirt.1209")
 Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
   Supplied function seems non-estimable
 
@@ -174,8 +174,8 @@ Residual standard error: 0.456 on 9992 degrees of freedom
 Multiple R-squared:      1,	Adjusted R-squared:      1 
 F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16
 
-Warning in is.estimable(ef, obj$fe, R) :
-  non-estimable function, largest error 0.4 in coordinate 7165 ("shirt.1209")
+Warning in is.estimable(ef, obj$fe) :
+  non-estimable function, largest error 0.02 in coordinate 7165 ("shirt.1209")
 Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
   Supplied function seems non-estimable
 
@@ -209,4 +209,4 @@ F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16
 > 
 > proc.time()
    user  system elapsed 
- 10.232   0.164  10.135 
+  8.692   0.116   8.601 

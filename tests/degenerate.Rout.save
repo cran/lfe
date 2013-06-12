@@ -1,5 +1,5 @@
 
-R version 3.0.0 (2013-04-03) -- "Masked Marvel"
+R Under development (unstable) (2013-06-09 r62918) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -48,7 +48,7 @@ Call:
 
 Residuals:
       Min        1Q    Median        3Q       Max 
--3.324823 -0.679207 -0.004597  0.657543  3.178216 
+-3.324822 -0.679205 -0.004597  0.657540  3.178220 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
@@ -73,23 +73,23 @@ In chol.default(mat, pivot = TRUE) :
 > alpha <- getfe(est)
 > alpha
            effect obs comp   fe idx
-id.1    8.2973804 173    1   id   1
-id.2   10.3512830 156    1   id   2
-id.3    8.4755936 173    1   id   3
-id.4    7.6102346 180    1   id   4
-id.5    9.1846848 151    1   id   5
-id.6    8.6583439 180    1   id   6
-id.7    9.7235674 155    1   id   7
-id.8    6.8584286 190    1   id   8
-id.9    7.4151818 166    1   id   9
-id.10   6.5671255 174    1   id  10
-id.11   7.8905231 149    1   id  11
-id.12   8.9601901 153    1   id  12
-firm.1 -2.1083142 283    1 firm   1
-firm.2 -0.7847117 283    1 firm   2
-firm.3 -1.4387535 275    1 firm   3
-firm.4 -0.6109064 289    1 firm   4
-firm.5 -3.8973480 290    1 firm   5
+id.1    8.2973811 173    1   id   1
+id.2   10.3512850 156    1   id   2
+id.3    8.4755941 173    1   id   3
+id.4    7.6102364 180    1   id   4
+id.5    9.1846836 151    1   id   5
+id.6    8.6583437 180    1   id   6
+id.7    9.7235658 155    1   id   7
+id.8    6.8584247 190    1   id   8
+id.9    7.4151811 166    1   id   9
+id.10   6.5671289 174    1   id  10
+id.11   7.8905210 149    1   id  11
+id.12   8.9601914 153    1   id  12
+firm.1 -2.1083143 283    1 firm   1
+firm.2 -0.7847113 283    1 firm   2
+firm.3 -1.4387533 275    1 firm   3
+firm.4 -0.6109066 289    1 firm   4
+firm.5 -3.8973483 290    1 firm   5
 firm.6  0.0000000 297    1 firm   6
 firm.7 -3.8878789 283    1 firm   7
 > summary(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + id + firm-1))
@@ -151,15 +151,15 @@ Residuals:
 -3.3248 -0.6792 -0.0046  0.6575  3.1782 
 
 Coefficients: (2 not defined because of singularities)
-          Estimate Std. Error  t value Pr(>|t|)    
-x        1.658e+00  9.802e-05 16917.12   <2e-16 ***
-x2       8.734e-01  2.234e-02    39.10   <2e-16 ***
-x3              NA         NA       NA       NA    
-x4              NA         NA       NA       NA    
-x5      -6.738e-07  3.022e-02     0.00        1    
-x6       2.618e-08  3.439e-02     0.00        1    
-ideff    1.000e+00  2.327e-02    42.98   <2e-16 ***
-firmeff  1.000e+00  1.543e-02    64.80   <2e-16 ***
+         Estimate Std. Error  t value Pr(>|t|)    
+x       1.658e+00  9.802e-05 16917.13   <2e-16 ***
+x2      8.734e-01  2.234e-02    39.10   <2e-16 ***
+x3             NA         NA       NA       NA    
+x4             NA         NA       NA       NA    
+x5      2.038e-14  3.022e-02     0.00        1    
+x6      2.502e-14  3.439e-02     0.00        1    
+ideff   1.000e+00  2.327e-02    42.98   <2e-16 ***
+firmeff 1.000e+00  1.543e-02    64.80   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
@@ -170,4 +170,4 @@ F-statistic: 3.664e+09 on 6 and 1994 DF,  p-value: < 2.2e-16
 > 
 > proc.time()
    user  system elapsed 
-  5.688   0.180   5.846 
+  4.880   0.076   4.947 

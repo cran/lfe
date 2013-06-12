@@ -36,12 +36,12 @@ filled in.
 
 \examples{
 ## create covariates
-x <- rnorm(5000)
+x <- rnorm(3000)
 x2 <- rnorm(length(x))
 
 ## create individual and firm
-id <- factor(sample(1000,length(x),replace=TRUE))
-firm <- factor(sample(500,length(x),replace=TRUE))
+id <- factor(sample(700,length(x),replace=TRUE))
+firm <- factor(sample(300,length(x),replace=TRUE))
 
 ## effects
 id.eff <- rlnorm(nlevels(id))
