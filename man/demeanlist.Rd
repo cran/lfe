@@ -9,8 +9,10 @@
 }
 
 \usage{
-demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
-           threads=getOption('lfe.threads'),progress=getOption('lfe.pint'))
+demeanlist(mtx, fl, icpt=0, eps=getOption('lfe.eps'),
+           threads=getOption('lfe.threads'),
+           progress=getOption('lfe.pint'),
+           accel=getOption('lfe.accel'))
 }
 
 \arguments{
@@ -23,6 +25,7 @@ demeanlist(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
 \item{threads}{an integer specifying the number of threads to use}
 \item{progress}{integer. If positive, make progress reports (whenever a
   vector is centered, but not more often than every \code{progress} minutes)}
+\item{accel}{integer. Set to 1 if Gearhart-Koshy acceleration should be done.}
 }
 
 \details{
@@ -50,6 +53,8 @@ In the case that the design-matrix is too large for R, i.e. with more
 than 2 billion entries, it is possible to create a list of
 column-vectors instead (provided the vector-length is smaller than 2
 billion).  \code{demeanlist} will be able to centre these vectors.
+
+The \code{accel} argument may or may not accelerate convergence.
 }
 
 \examples{

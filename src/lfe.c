@@ -51,11 +51,6 @@
 #endif
 
 
-#define RANDPROJ
-#define GKACC
-#undef GKACC
-
-
 /* Trickery to check for interrupts when using threads */
 static void chkIntFn(void *dummy) {
   R_CheckUserInterrupt();
@@ -124,17 +119,6 @@ typedef struct {
   int *ii;  /* indices into gpl */
 } FACTOR;
 
-#define RANDCENT
-#undef RANDCENT
-
-#ifdef RANDCENT
-typedef struct {
-  FACTOR *F;
-  int lev;
-} FACLEV;
-
-#endif
-
 #if __GNUC__ > 3 && __GNUC_MINOR__ > 3
 /*#pragma GCC optimize ("O3", "loop-block", "unroll-loops")*/
 /*#pragma GCC optimize ("O3", "unroll-loops")*/
@@ -184,116 +168,15 @@ static R_INLINE double centre(double *v, int N,
   return sqrt(sum);
 }
 
-#ifdef RANDCENT
-/* Randomized centering */
-static R_INLINE double rcentre(double *v, int N, FACLEV *order) {
-
-  int i;
-  double sum = 0.0;
-
-  for(i = 0; i < N; i++) {
-    FACTOR *f;
-    int lev;
-    double mean;
-    int j;
-    int levlen;
-    int base;
-    int *gpl;
-    lev = order[i].lev;
-    f = order[i].F;    
-    mean = 0;
-    base = f->ii[lev];
-    gpl = f->gpl;
-    levlen = f->ii[lev+1] - base;
-    for(j = 0; j < levlen; j++) {
-      mean += v[gpl[base+j]];
-    }
-    mean *= f->invgpsize[lev];
-    sum += mean*mean;
-    for(j = 0; j < levlen; j++) {
-      v[gpl[base+j]] -= mean;
-    }
-  }
-
-  return sqrt(sum);
-}
-#endif
-
-#if 0
-static R_INLINE double slcentre(double *v, int N, 
-		   FACTOR *factors[], int e, double *means) {
-  int done[e];
-  double best;
-  int i,prev;
-  double sum=0.0;
-  FACTOR *f;
-  if(e <= 2) {
-    return centre(v,N,factors,e,means);
-  }
-
-  /*
-    Factors with few number of levels should be centred on more often,
-    since they typically will "mix" more.  Just a hunch.
-    Use Sainte-Lagues method, inverse number of levels is vote. But don't allow
-    the same factor in two consecutive draws. */
-
-  prev = -1;
-  for(i = 0; i < e; i++) done[i] = 0;
-  sum = 0.0;
-  while(1) {
-    int alldone;
-    int ibest;
-    int  j;
-    const int *gp;
-    /* Pick the highest score, different from previous */
-    best = 0.0;
-    for(i = 0; i < e; i++) {
-      double sc;
-      if(i == prev) continue;
-      /* score is V/(2*s+1) where V is 1/nlevels */
-      sc = 1.0/(sqrt(1.0*factors[i]->nlevels)*(2.0*done[i]+1.0));
-      if(sc > best) {
-	ibest = i;
-	best = sc;
-      }
-    }
-    done[ibest]++;
-    prev = ibest;
-    f = factors[ibest];
-    gp = f->group;
-    /* Centre on f */
-
-    /* compute means */
-    memset(means,0,sizeof(double)* f->nlevels);
-    for(j = 0; j < N; j++) {
-      means[gp[j]-1] += v[j];
-    }
-
-    for(j = 0; j < f->nlevels; j++) {
-      means[j] *= f->invgpsize[j];
-      sum += means[j]*means[j];
-    }
-
-    for(j = 0; j < N; j++) {
-      /*      sum +=  means[gp[j]-1]*means[gp[j]-1];*/
-      v[j] -= means[gp[j]-1];
-    }
-    /* Continue until everyone has got a seat */
-    alldone = 1;
-    for(i = 0; i < e; i++) alldone = alldone && (done[i] > 0);
-    if(alldone) break;
-  }
-  return sqrt(sum);
-}
-#endif
 
 /*
   Method of alternating projections.  Input v, output res.
 */
 
 static int demean(double *v, int N, double *res,
-		  FACTOR *factors[],int e,double eps, double *means,
-		  int *stop,int vecnum, LOCK_T lock) {
+		  FACTOR *infactors[],int e,double eps, double *means,
+		  double *prev, double *prev2,
+		  int *stop,int vecnum, LOCK_T lock, const int gkacc) {
   double delta;
   double norm2 = 0.0;
   int i;
@@ -302,68 +185,18 @@ static int demean(double *v, int N, double *res,
   double neps;
   int iter;
   int okconv = 1;
+  FACTOR *factors[e];
   time_t last, now;
   int lastiter;
-#ifdef RANDCENT
-  FACLEV *order;
-  int totlev;
-  int n;
 
-  totlev = 0;
-  for(i = 0; i < e; i++) totlev += factors[i]->nlevels;
-#ifdef NOTHREADS
-  order = (FACLEV*) R_alloc(sizeof(FACLEV),totlev);
-#else
-  order = (FACLEV*) malloc(sizeof(FACLEV)*totlev);
-#endif
-  if(order == NULL) {pushmsg("malloc failed(out of memory?)",lock);return(0);}
-  n = 0;
-  for(i = 0; i < e; i++) {
-    FACTOR *f = factors[i];
-    int j;
-    for(j = 0; j < f->nlevels; j++) {
-      order[n].F = f;
-      order[n].lev = j;
-      n++;
-    }
-  }
-
-  /* shuffle it, Knuth */
-  LOCK(lock);  /* protect unif_rand */
-
-  for(i = totlev-1; i > 0; i--) {
-    FACLEV tmp;
-    int k,j;
-    j = (int) floor((i+1) * unif_rand());
-    if(j == i) continue;
-    tmp = order[j];
-    order[j] = order[i];
-    order[i] = tmp;
-  }
-
-  UNLOCK(lock);
-#endif
-
+  for(int i = 0; i < e; i++) factors[i] = infactors[i];
   /* make a copy to result vector, centre() is in-place */
   memcpy(res,v,N*sizeof(double));
 
-
   if(1 == e) {
-#ifdef RANDCENT
-    rcentre(res,totlev,order);
-#ifndef NOTHREADS
-    free(order);
-#endif
-#else
     centre(res,N,factors,e,means);
-#endif
     return(1);
   }
-
-#ifdef GKACC
-  double *prev = (double *) malloc(N*sizeof(double));
-  double t;
-#endif
 
   for(i = 0; i < N; i++) norm2 += res[i]*res[i];
   norm2 = sqrt(norm2);
@@ -374,69 +207,68 @@ static int demean(double *v, int N, double *res,
   lastiter = 0;
   double target;
 
-#ifdef GKACC
-    target = 1e-4*neps;
-#endif
+  if(gkacc) target = 1e-4*neps;
+
+  memcpy(prev2, res, N*sizeof(double));
 
   do {
+    double t;
     iter++;
-#ifdef GKACC
-    if(e > 2) {
-    /* shuffle factors, Knuth */
-      LOCK(lock);  /* protect unif_rand */
-      for(i = e-1; i > 0; i--) {
-	FACTOR *tmp;
-	int k,j;
-	j = (int) floor((i+1) * unif_rand());
-	if(j == i) continue;
-	tmp = factors[j];
-	factors[j] = factors[i];
-	factors[i] = tmp;
+    if(gkacc) {
+      if(e > 2) {  
+        // hmm, seems this doesn't go well with GK acceleration...
+	// Perhaps we should shuffle only once in a while?
+	/* shuffle factors, Knuth */
+	LOCK(lock);  /* protect unif_rand */
+	for(i = e-1; i > 0; i--) {
+	  FACTOR *tmp;
+	  int k,j;
+	  j = (int) floor((i+1) * unif_rand());
+	  if(j == i) continue;
+	  tmp = factors[j];
+	  factors[j] = factors[i];
+	  factors[i] = tmp;
+	}
+	UNLOCK(lock);
       }
-      UNLOCK(lock);
+
+      memcpy(prev, res, N*sizeof(double));
     }
-    //    (void) centre(res,N,&factors[e-1],1,means);
-    memcpy(prev, res, N*sizeof(double));
-#endif
-#ifdef RANDCENT
-    delta = rcentre(res,totlev,order);
-#else
     delta = centre(res,N,factors,e,means);
-#endif
 
-#ifdef GKACC
-    // Try the Gearhart-Koshy acceleration, AS 3.2
-    // The result vector is a convex combination of the previous x and the centred vector Px
-    // tPx + (1-t) x
-    // where t = (x, x-Px)/|x - Px|^2   (t can be > 1).
-    // It's quite much faster for some datasets (factor 2-3), perhaps more.
-    // our convergence failure test below suffers from it, as well as ETA computation, we need to fix it
-    // right now we run 'til machine precision.
-    double ip = 0, nm2 = 0;
-    for(int i = 0; i < N; i++) {
-      ip += prev[i]*(prev[i]-res[i]);
-      nm2 += (prev[i]-res[i])*(prev[i] - res[i]);
+    if(gkacc) {
+      // Try the Gearhart-Koshy acceleration, AS 3.2
+      // The result vector is a convex combination of the previous x and the centred vector Px
+      // tPx + (1-t) x
+      // where t = (x, x-Px)/|x - Px|^2   (t can be > 1).
+      // It's quite much faster for some datasets (factor 2-3), perhaps more.
+      // our convergence failure test below suffers from it, as well as ETA computation, we need to fix it
+      // right now we run 'til machine precision.
+      double ip = 0, nm2 = 0;
+      for(int i = 0; i < N; i++) {
+	ip += prev[i]*(prev[i]-res[i]);
+	nm2 += (prev[i]-res[i])*(prev[i] - res[i]);
+      }
+      if(nm2 <= 0) break;
+      t = ip/nm2;
+      for(int i = 0; i < N; i++) {
+	res[i] = t*res[i] + (1.0-t)*prev[i];
+      }
     }
-    if(nm2 <= 0) break;
-    t = ip/nm2;
-    /*
-    if(t <= 0) {
-      char buf[256];
-      sprintf(buf,"... centering vec %d negative (%.1le) at iter %d, target=%.1le\n",vecnum,t,iter,target);
-      pushmsg(buf,lock);
-      break;  // Is this sane, I'm not sure.
-    }
-    */
-    delta = 0.0;
-    for(int i = 0; i < N; i++) {
-      res[i] = t*res[i] + (1.0-t)*prev[i];
-      delta += (res[i]-prev[i])*(res[i]-prev[i]);
-    }
-    delta = sqrt(delta);
-#endif
-
-    if((iter & 127) == 0) {
-      c = pow(delta/prevdelta,1.0/128.0);
+    // make this a power of two, so we don't have to do integer division
+#define IBATCH 128
+    if((iter & (IBATCH-1)) == 0) {
+      // compute delta per iter
+      delta = 0.0;
+      for(int i = 0; i < N; i++) delta += (prev2[i]-res[i])*(prev2[i]-res[i]);
+      memcpy(prev2,res,N*sizeof(double));
+      // delta is the square norm improvement from last time
+      // we divide it by the number of iterations to get an improvement per iteration
+      delta = sqrt(delta/IBATCH);
+      // then we compute how fast the improvement dimishes. We use this to predict when we're done
+      // for e == 2 without gkacc it should diminish, so that c < 1, but for e > 2 it may
+      // increase, in particular when we do acceleration. Then it is difficult to predict when we will be done
+      c = pow(delta/prevdelta,1.0/IBATCH);
       prevdelta = delta;
     /* c is the convergence rate per iteration, at infinity they add up to 1/(1-c).
        This is true for e==2, but also in the ballpark for e>2 we guess.
@@ -444,19 +276,26 @@ static int demean(double *v, int N, double *res,
        beginning.  This is to be expected due to Deutsch and Hundal's result 
     */
 
-#ifndef GKACC
-      prevdelta = delta;
-      if(c >= 1.0 && iter > 20) {
+      if(gkacc && t <=0 && iter > 100) {
 	char buf[256];
-	sprintf(buf,"Demeaning of vec %d failed after %d iterations, 1-c=%.0e, delta=%.1e\n",
-		vecnum,iter,1.0-c,delta);
+	sprintf(buf,"Demeaning of vec %d failed after %d iterations, t=%.0e, delta=%.1e\n",
+		vecnum,iter,t,delta);
 	pushmsg(buf,lock);
 	okconv = 0;
 	break;
       }
-      target = (1.0-c)*neps;
-#endif
+      if(c >= 1.0 && iter > 100) {
+	char buf[256];
+	sprintf(buf,"Demeaning of vec %d failed after %d iterations, c-1=%.0e, delta=%.1e\n",
+		vecnum,iter,c-1.0,delta);
+	pushmsg(buf,lock);
+	okconv = 0;
+	break;
+      }
 
+      if(c < 1.0) target = (1.0-c)*neps;
+      // target should not be smaller than 3 bits of precision in each coordinate
+      if(target < N*1e-15) target = N*1e-15;
       now = time(NULL);
       if(now - last >= 3600 && delta > 0.0) {
 	int reqiter;
@@ -465,18 +304,20 @@ static int demean(double *v, int N, double *res,
 	char buf[256];
 	reqiter = log(target/delta)/log(c);
 	eta = 1.0*(now-last)*reqiter/(iter-lastiter);
+	if(eta < 0) eta = NA_REAL; 
 	tu = 's';
 	if(eta > 3600.0) {
 	  eta /= 3600.0;
 	  tu='h';
 	}
-#ifdef GKACC
-	sprintf(buf,"...centering vec %d iter %d, t=%.3e, delta=%.1e(%.1e), ETA in %.1f%c\n",
-		vecnum,iter,t,delta,target,eta,tu);
-#else
-	sprintf(buf,"...centering vec %d iter %d, 1-c=%.1e, delta=%.1e(%.1e), ETA in %.1f%c\n",
-		vecnum,iter,1.0-c,delta,target,eta,tu);
-#endif
+	if(gkacc&&0) {
+	  sprintf(buf,"...centering vec %d iter %d, delta=%.1e(target %.1e)\n",
+		  vecnum,iter,delta,target);
+
+	} else {
+	  sprintf(buf,"...centering vec %d iter %d, c=1-%.1e, delta=%.1e(target %.1e), ETA in %.1f%c\n",
+		  vecnum,iter,1.0-c,delta,target,eta,tu);
+	}
 	pushmsg(buf,lock);
 	lastiter = iter;
 	last = now;
@@ -490,16 +331,6 @@ static int demean(double *v, int N, double *res,
 #endif
 
   } while(delta > target);
-
-
-#ifdef GKACC
-  free(prev);
-#endif
-#ifdef RANDCENT
-#ifndef NOTHREADS
-  free(order);
-#endif
-#endif
   return(okconv);
 }
 
@@ -524,7 +355,9 @@ typedef struct {
   int stop;
   int threadnum;
   double **means;
+  double **tmp1, **tmp2;
   LOCK_T lock;
+  int gkacc;
 #ifndef NOTHREADS
 #ifdef WIN
   /*  HANDLE *lock;*/
@@ -559,6 +392,7 @@ static void *demeanlist_thr(void *varg) {
 #endif
   PTARG *arg = (PTARG*) varg;
   double *means;
+  double *tmp1, *tmp2;
   int vecnum;
   int okconv = 0;
   int myid;
@@ -567,6 +401,8 @@ static void *demeanlist_thr(void *varg) {
   myid = arg->threadnum++;
   UNLOCK(arg->lock);
   means = arg->means[myid];
+  tmp1 = arg->tmp1[myid];
+  tmp2 = arg->tmp2[myid];
   while(1) {
     time_t now;
     /* Find next vector */
@@ -575,7 +411,11 @@ static void *demeanlist_thr(void *varg) {
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
 
-    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->factors,arg->e,arg->eps,means,&arg->stop,vecnum+1,arg->lock);
+    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],
+		    arg->factors,arg->e,arg->eps,means,
+		    tmp1,tmp2,
+		    &arg->stop,vecnum+1,
+		    arg->lock,arg->gkacc);
     LOCK(arg->lock);
     now = time(NULL);
     if(!okconv) {
@@ -612,7 +452,8 @@ static void *demeanlist_thr(void *varg) {
 
 /* main C entry-point for demeaning.  Called from the R-entrypoint */
 static int demeanlist(double **vp, int N, int K, double **res,
-		      FACTOR *factors[], int e, double eps,int cores, int quiet) {
+		      FACTOR *factors[], int e, double eps,int cores,
+		      int quiet, const int gkacc) {
   PTARG arg;
   int numthr = 1;
   int thr;
@@ -656,8 +497,12 @@ static int demeanlist(double **vp, int N, int K, double **res,
     if(maxlev < factors[i]->nlevels) maxlev = factors[i]->nlevels;
 
   arg.means = (double **) R_alloc(numthr,sizeof(double*));
+  arg.tmp1 = (double **) R_alloc(numthr,sizeof(double*));
+  arg.tmp2 = (double **) R_alloc(numthr,sizeof(double*));
   for(thr = 0; thr < numthr; thr++) {
     arg.means[thr] = (double*) R_alloc(maxlev,sizeof(double));
+    arg.tmp1[thr] = (double*) R_alloc(N,sizeof(double));
+    arg.tmp2[thr] = (double*) R_alloc(N,sizeof(double));
   }
 
   arg.badconv = 0;
@@ -675,6 +520,7 @@ static int demeanlist(double **vp, int N, int K, double **res,
   arg.quiet = quiet;
   arg.stop = 0;
   arg.threadnum = 0;
+  arg.gkacc = gkacc;
 
 #ifdef NOTHREADS
   demeanlist_thr((void*)&arg);
@@ -804,7 +650,10 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
   int *prev = (int*) malloc(e*sizeof(int));
   int *this = (int*) malloc(e*sizeof(int));
   int numlev = 0;
-  for(int i = 0; i < e; i++) numlev += factors[i]->nlevels;
+  for(int i = 0; i < e; i++) {
+    numlev += factors[i]->nlevels;
+    prev[i] = 0;
+  }
   newN = 0;
   ie = 0;
   for(i = 0; i < N; i++) {
@@ -903,7 +752,7 @@ static double kaczmarz(FACTOR *factors[],int e,int N, double *R,double *x,
     prevdiff = sd;
     if(c >= 1.0 && iter > 20) {
       char buf[256];
-      sprintf(buf,"Kaczmarz failed in iter %d*%d, 1-c=%.0e, delta=%.1e, eps=%.1e\n",iter,newN,1.0-c,sd,neweps);
+      sprintf(buf,"Kaczmarz failed in iter %d*%d, c=1-%.0e, delta=%.1e, eps=%.1e\n",iter,newN,1.0-c,sd,neweps);
       pushmsg(buf,lock);
       break;
     }
@@ -1222,7 +1071,8 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
  and call our demeanlist and return
 */
 
-static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP scores, SEXP quiet) {
+static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
+			 SEXP scores, SEXP quiet, SEXP gkacc) {
   int numvec;
   int numfac;
   int cnt;
@@ -1284,9 +1134,6 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
     for(j = 0; j < f->nlevels; j++) {
       f->invgpsize[j] = 1.0/f->invgpsize[j];
     }
-#ifdef RANDCENT
-    invertfactor(f,N);
-#endif
   }
 
 
@@ -1355,7 +1202,8 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP sco
 
   /* Then do stuff */
   PROTECT(badconv = allocVector(INTSXP,1));
-  INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,factors,numfac,eps,cores,INTEGER(quiet)[0]);
+  INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,factors,numfac,
+				   eps,cores,INTEGER(quiet)[0], INTEGER(gkacc)[0]);
 
   if(INTEGER(badconv)[0] > 0)
     warning("%d vectors failed to centre to tolerance %.1le",INTEGER(badconv)[0],eps);
@@ -1662,7 +1510,7 @@ static SEXP R_conncomp(SEXP flist) {
 static R_CallMethodDef callMethods[] = {
   {"conncomp", (DL_FUNC) &R_conncomp, 1},
   {"wwcomp", (DL_FUNC) &R_wwcomp, 1},
-  {"demeanlist", (DL_FUNC) &R_demeanlist, 6},
+  {"demeanlist", (DL_FUNC) &R_demeanlist, 7},
   {"kaczmarz", (DL_FUNC) &R_kaczmarz, 5},
   {NULL, NULL, 0}
 };

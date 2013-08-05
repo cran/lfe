@@ -1,3 +1,0 @@
-PKG_LIBS=-pthread 
-PKG_CFLAGS=$(C_VISIBILITY) -pthread -DHAVE_SEM
-OBJECTS=lfe.o

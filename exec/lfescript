@@ -13,6 +13,7 @@ $bN = 0;
 $exactDF = 0;
 $robust = 'FALSE';
 $usecg = 'FALSE';
+$accel = 0;
 while(<>) {
   chomp($_);
   # strip comments
@@ -58,6 +59,8 @@ while(<>) {
       $analyze = 1;
   } elsif($cmd eq 'merge') {
       $merge = 1;
+  } elsif($cmd eq 'accel') {
+      $accel = 1;
   } elsif($cmd eq 'complim') {
       $complim = 0+shift(@line);
   } elsif($cmd eq 'splitcomp') {
@@ -124,7 +127,7 @@ if($#dummies >=0) {
 print "
 require('lfe')
 options(lfe.usecg=$usecg)
-
+options(lfe.accel=$accel)
 # read the datafile, with correct types, numeric for covariates,
 # character for categories
 

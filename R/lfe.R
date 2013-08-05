@@ -8,6 +8,8 @@
     options(lfe.eps=1e-8)
   if(is.null(getOption('lfe.pint')))
     options(lfe.pint=300)
+  if(is.null(getOption('lfe.accel')))
+    options(lfe.accel=0)
   if(is.null(getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
@@ -49,7 +51,8 @@ numcores <- function() {
 
 demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
                        threads=getOption('lfe.threads'),
-		       progress=getOption('lfe.pint')) {
+		       progress=getOption('lfe.pint'),
+                       accel=getOption('lfe.accel')) {
   if(is.null(threads)) threads <- 1
   islist <- is.list(mtx)
   if(!islist) mtx <- list(mtx)
@@ -59,7 +62,8 @@ demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
      as.integer(icpt),               
      as.double(eps),
      as.integer(threads),
-     as.integer(progress))
+     as.integer(progress),
+     as.integer(accel))
 
   if(!islist) res <- res[[1]]
   names(res) <- names(mtx)
@@ -384,31 +388,35 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
   step2form <- origform
   ivarg <- list()
   vars <- NULL
+  step1 <- list()
+  mf[['iv']] <- NULL
   for(ivv in iv) {
-     formula <- update(baseform, substitute(Z ~ . + V,list(Z=ivv[[2]],V=ivv[[3]])))
-     sep <- flfromformula(formula,data)
+     fformula <- update(baseform, substitute(Z ~ . + V,list(Z=ivv[[2]],V=ivv[[3]])))
+     sep <- flfromformula(fformula,data)
      fl <- sep[['fl']]
      formula <- sep[['formula']]
      mf[['formula']] <- formula
-     
      psys <- project(mf,fl,data,clustervar)
      z <- doprojols(psys)
+     mf[['formula']] <- fformula
+     z$call <- mf
      rm(psys)
      gc()
+     step1 <- c(step1,list(z))
      # then we lift the fitted variable and create a new name
      ivz <- z
      evar <- as.character(ivv[[2]])
      new.var <- paste(evar,'(fit)',sep='')
      assign(new.var,ivz$fitted,envir=parent.frame())
      vars <- c(vars,new.var)
-     # keep the residuals, they are need in doprojols below
+     # keep the residuals, they are needed in doprojols below
      ivarg[[paste('`',new.var,'`',sep='')]] <- ivz$residuals
      # and add it to the equation
      step2form <- update(step2form,substitute(. ~ X - IV + FIT,
                                          list(X=step2form[[3]],IV=ivv[[2]],FIT=as.name(new.var))))
 
   }
-
+  names(step1) <- names(iv)
 
   # now we have a formula in step2form with all the iv-variables
   # it's just to project it
@@ -419,6 +427,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
   psys <- project(mf,fl,data,clustervar)
   rm(list=vars,envir=parent.frame())
   z <- doprojols(psys,ivresid=ivarg,exactDOF=exactDOF)
+  z$step1 <- step1
   rm(psys)
 #  z$ivz <- ivz
   z$call <- match.call()

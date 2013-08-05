@@ -3,7 +3,7 @@
 # Licence: Artistic 2.0
 
 
-summary.felm <- function(object,...,robust=FALSE) {
+summary.felm <- function(object,...,robust=!is.null(object$cse)) {
   z <- object
   res <- list()
   res$p <- z$p
