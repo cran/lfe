@@ -13,7 +13,7 @@ $bN = 0;
 $exactDF = 0;
 $robust = 'FALSE';
 $usecg = 'FALSE';
-$accel = 0;
+$accel = 1;
 while(<>) {
   chomp($_);
   # strip comments
@@ -132,9 +132,11 @@ options(lfe.accel=$accel)
 # character for categories
 
 model <- formula($model)
-tm <- terms(model,specials='G')
-fefrm <- paste('~',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse='+'))
-fvars <- all.vars(parse(text=fefrm))
+trm <- terms(model,specials='G')
+feidx <- attr(trm,'specials')\$G+1
+va <- attr(trm,'variables')
+festr <- paste(sapply(feidx,function(i) deparse(va[[i]])),collapse='+')
+fvars <- all.vars(parse(text=festr))
 
 if(dformat == 'dta') {
     library(foreign)
@@ -157,7 +159,8 @@ if(dformat == 'dta') {
   ";
   print "varnames <- all.vars(model)\n";
   if(defined($iv)) {
-     print "varnames <- unique(c(varnames,all.vars($iv)))\n";
+     print "ivspec <- $iv
+     varnames <- unique(c(varnames,if(is.list(ivspec)) unlist(lapply(ivspec,all.vars)) else all.vars(ivspec)))"
   }
   print "
   typelist <- vector('list',length(filevars))
@@ -193,7 +196,7 @@ if(!inherits(tab,'data.frame')) {
   attr(tab,'row.names') <- NULL
 }
 
-festr <- paste('list(',paste(labels(tm)[attr(tm,'specials')\$G-1],collapse=','),')')
+festr <- paste('list(',paste(sapply(feidx,function(i) deparse(va[[i]])),collapse=','),')')
 factors <- local({G <- as.factor;'*'<-interaction;eval(parse(text=festr),tab,environment())})
 nm <- unlist(eval(parse(text=festr),list(G=function(t) as.character(substitute(t)))))
 names(factors) <- nm
@@ -225,7 +228,7 @@ if(defined($iv)) {
 if(defined($iv)) {
 print "
 cat('First step estimation:\\n')
-print(summary(est\$ivz,robust=$robust$cvar))
+invisible(lapply(est\$step1,function(z) print(summary(z,robust=$robust$cvar))))
 cat('Second step estimation:\\n')
 ";
 }
@@ -271,7 +274,7 @@ print "
 
 # We need to save some memory by ditching the large parts of est
 # (the qr and stuff, keep only what's needed)
-est <- est[c('fe','residuals','refnames','full.residuals','cfactor')]
+est <- est[c('fe','residuals','refnames','r.residuals','cfactor')]
 invisible(gc())
 class(est) <- NULL
 ";

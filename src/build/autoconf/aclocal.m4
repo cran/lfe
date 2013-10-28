@@ -1,8 +1,7 @@
-# generated automatically by aclocal 1.11.6 -*- Autoconf -*-
+# generated automatically by aclocal 1.11.1 -*- Autoconf -*-
 
 # Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-# 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation,
-# Inc.
+# 2005, 2006, 2007, 2008, 2009  Free Software Foundation, Inc.
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -96,7 +95,7 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 17
+#serial 14
 
 AU_ALIAS([ACX_PTHREAD], [AX_PTHREAD])
 AC_DEFUN([AX_PTHREAD], [
@@ -270,14 +269,7 @@ if test "x$ax_pthread_ok" = xyes; then
         flag=no
         case "${host_cpu}-${host_os}" in
             *-aix* | *-freebsd* | *-darwin*) flag="-D_THREAD_SAFE";;
-            *-osf* | *-hpux*) flag="-D_REENTRANT";;
-            *solaris*)
-            if test "$GCC" = "yes"; then
-                flag="-D_REENTRANT"
-            else
-                flag="-mt -D_REENTRANT"
-            fi
-            ;;
+            *solaris* | *-osf* | *-hpux*) flag="-D_REENTRANT";;
         esac
         AC_MSG_RESULT(${flag})
         if test "x$flag" != xno; then
@@ -286,8 +278,8 @@ if test "x$ax_pthread_ok" = xyes; then
 
         AC_CACHE_CHECK([for PTHREAD_PRIO_INHERIT],
             ax_cv_PTHREAD_PRIO_INHERIT, [
-                AC_LINK_IFELSE([
-                    AC_LANG_PROGRAM([[#include <pthread.h>]], [[int i = PTHREAD_PRIO_INHERIT;]])],
+                AC_LINK_IFELSE(
+                    AC_LANG_PROGRAM([[#include <pthread.h>]], [[int i = PTHREAD_PRIO_INHERIT;]]),
                     [ax_cv_PTHREAD_PRIO_INHERIT=yes],
                     [ax_cv_PTHREAD_PRIO_INHERIT=no])
             ])

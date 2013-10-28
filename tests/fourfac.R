@@ -35,12 +35,12 @@ for(ef in c('ln','ref','zm','zm2')) {
   if(ef %in% c('zm','zm2')) {
     icpt <- fe[paste('icpt',1:nlevels(est$cfactor),sep='.'),'effect'][est$cfactor]
     lmres <- lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff + icpt-1)
-    acc <- coef(lmres)[c('ideff','firmeff','shoeeff','shirteff','icpt')]-1
+    acc <- coef(lmres)[c('ideff','firmeff','shoeeff','shirteff','icpt')]
   } else {
     lmres <- lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff +shirteff-1)
-    acc <- coef(lmres)[c('ideff','firmeff','shoeeff','shirteff')]-1
+    acc <- coef(lmres)[c('ideff','firmeff','shoeeff','shirteff')]
   }
   print(summary(lmres,digits=8))	
-  cat('accuracy:',sprintf('%.2e',acc),'\n')
+  cat('accuracy:',sprintf('%.8e',acc),'\n')
 }
 

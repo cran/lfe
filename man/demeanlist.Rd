@@ -54,7 +54,10 @@ than 2 billion entries, it is possible to create a list of
 column-vectors instead (provided the vector-length is smaller than 2
 billion).  \code{demeanlist} will be able to centre these vectors.
 
-The \code{accel} argument may or may not accelerate convergence.
+The \code{accel} argument enables Gearhart-Koshy acceleration as
+symmetrized by Bauschke, Deutsch, Hundal and Park in "Accelerating the
+convergence of the method of alternating projections",
+Trans. Amer. Math. Soc. 355 (2003).
 }
 
 \examples{

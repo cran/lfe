@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-07-27 r63426) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-08-20 r63635) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -54,11 +54,10 @@ In chol.default(mat, pivot = TRUE) :
 > firmeff <- alpha[paste('firm',firm,sep='.'),'effect']
 > 
 > ## verify that id and firm coefficients are 1
-> cat('accuracy:',coef(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + ideff + firmeff-1))[7:8]-1,'\n')
-accuracy: 6.417089e-14 -5.206946e-14 
-> 
+> cat('accuracy:',sprintf('%.8e',coef(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + ideff + firmeff-1))[7:8],'\n'))
+accuracy: 1.00000000e+00 1.00000000e+00> 
 > 
 > 
 > proc.time()
    user  system elapsed 
-  5.616   0.140   5.725 
+  4.420   0.096   4.480 

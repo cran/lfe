@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-06-09 r62918) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-08-20 r63635) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -44,7 +44,7 @@ Call:
 
 Residuals:
        Min         1Q     Median         3Q        Max 
--3.065e+00 -4.110e-01 -8.815e-11  4.128e-01  2.712e+00 
+-3.065e+00 -4.110e-01 -5.427e-18  4.128e-01  2.712e+00 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
@@ -86,7 +86,7 @@ Residuals:
 Coefficients:
           Estimate Std. Error  t value Pr(>|t|)    
 x       1.00645375 0.00002685 37487.87   <2e-16 ***
-x2      0.25538162 0.00294778    86.64   <2e-16 ***
+x2      0.25538161 0.00294778    86.64   <2e-16 ***
 x3      0.50996080 0.00292743   174.20   <2e-16 ***
 ideff   1.00000000 0.00244566   408.89   <2e-16 ***
 firmeff 1.00000000 0.00251321   397.90   <2e-16 ***
@@ -109,7 +109,7 @@ Residuals:
 Coefficients:
           Estimate Std. Error  t value Pr(>|t|)    
 x       1.00645375 0.00006269 16055.57   <2e-16 ***
-x2      0.25538162 0.00294778    86.64   <2e-16 ***
+x2      0.25538161 0.00294778    86.64   <2e-16 ***
 x3      0.50996080 0.00292743   174.20   <2e-16 ***
 ideff   1.00000000 0.00244179   409.54   <2e-16 ***
 firmeff 1.00000000 0.00250572   399.09   <2e-16 ***
@@ -130,4 +130,4 @@ Warning messages:
 > 
 > proc.time()
    user  system elapsed 
- 12.012   0.148  11.781 
+ 12.980   0.148  12.415 

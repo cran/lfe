@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-06-09 r62918) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-07-27 r63426) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -40,32 +40,32 @@ Loading required package: numDeriv
 > y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 > 
 > ## estimate and print result
-> est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3, R ~ x4))
+> est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3+x4, R ~ x3+x4))
 > summary(est,robust=TRUE)
 
 Call:
-   felm(formula = y ~ x + x2 + G(id) + G(firm) + Q + R, iv = list(Q ~      x3, R ~ x4)) 
+   felm(formula = y ~ x + x2 + G(id) + G(firm) + Q + R, iv = list(Q ~      x3 + x4, R ~ x3 + x4)) 
 
 Residuals:
-      Min        1Q    Median        3Q       Max 
--3.082877 -0.672341 -0.009618  0.647237  3.238941 
+     Min       1Q   Median       3Q      Max 
+-3.39149 -0.71961  0.02099  0.69218  3.76684 
 
 Coefficients:
          Estimate Robust s.e t value Pr(>|t|)    
-x         0.84894    0.10638    7.98 4.05e-15 ***
-x2        0.45964    0.04719    9.74  < 2e-16 ***
-`Q(fit)`  1.10497    0.10540   10.48  < 2e-16 ***
-`R(fit)`  0.97849    0.05639   17.35  < 2e-16 ***
+x         0.85967    0.10670   8.057 2.25e-15 ***
+x2        0.45966    0.04732   9.713  < 2e-16 ***
+`Q(fit)`  1.09306    0.10565  10.346  < 2e-16 ***
+`R(fit)`  0.98367    0.05649  17.413  < 2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 0.9715 on 984 degrees of freedom
-Multiple R-squared: 0.9349   Adjusted R-squared: 0.9338 
-F-statistic: 942.1 on 15 and 984 DF, p-value: < 2.2e-16 
+Residual standard error: 1.071 on 984 degrees of freedom
+Multiple R-squared: 0.9208   Adjusted R-squared: 0.9195 
+F-statistic: 762.9 on 15 and 984 DF, p-value: < 2.2e-16 
 
 
 > 
 > 
 > proc.time()
    user  system elapsed 
-  6.080   0.128   6.094 
+  8.444   0.136   8.469 

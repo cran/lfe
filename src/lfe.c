@@ -68,8 +68,8 @@ int checkInterrupt() {
    thread-safe.  So set up a message stack.  This is pushed in the threads
    and popped in the main thread. */
 
-#define msglim 256
-static char *msgstack[msglim];
+#define MSGLIM 256
+static char *msgstack[MSGLIM];
 static int msgptr;
 /* Craft our own strdup, it's not supported everywhere */
 static char *mystrdup(char *s) {
@@ -82,7 +82,7 @@ static void pushmsg(char *s, LOCK_T lock) {
   REprintf(s);
 #else
   LOCK(lock);
-  if(msgptr < msglim) {
+  if(msgptr < MSGLIM) {
     msgstack[msgptr++] = mystrdup(s);
   }
   UNLOCK(lock);
@@ -119,10 +119,6 @@ typedef struct {
   int *ii;  /* indices into gpl */
 } FACTOR;
 
-#if __GNUC__ > 3 && __GNUC_MINOR__ > 3
-/*#pragma GCC optimize ("O3", "loop-block", "unroll-loops")*/
-/*#pragma GCC optimize ("O3", "unroll-loops")*/
-#endif
 
 /* 
    I've seen a couple of datasets which don't converge.
@@ -137,13 +133,10 @@ typedef struct {
   Centre on all factors in succession.  Vector v. In place.
  */
 
-static R_INLINE double centre(double *v, int N, 
+static R_INLINE void centre(double *v, int N, 
 		   FACTOR *factors[], int e, double *means) {
 
-  int i;
-  double sum = 0.0;
-  
-  for(i=0; i < e; i++) {
+  for(int i=0; i < e; i++) {
     FACTOR *f = factors[i];
     const int *gp = f->group;
     int j=0;
@@ -156,16 +149,12 @@ static R_INLINE double centre(double *v, int N,
 
     for(j = 0; j < f->nlevels; j++) {
       means[j] *= f->invgpsize[j];
-      sum += means[j]*means[j];
     }
 
     for(j = 0; j < N; j++) {
-      /*      sum +=  means[gp[j]-1]*means[gp[j]-1];*/
       v[j] -= means[gp[j]-1];
     }
   }
-
-  return sqrt(sum);
 }
 
 
@@ -185,7 +174,7 @@ static int demean(double *v, int N, double *res,
   double neps;
   int iter;
   int okconv = 1;
-  FACTOR *factors[e];
+  FACTOR *factors[2*e];
   time_t last, now;
   int lastiter;
 
@@ -198,63 +187,75 @@ static int demean(double *v, int N, double *res,
     return(1);
   }
 
+
+
+  // symmetrize the projections, as in Corr. 3.21, Bauschke, Deutsch, Hundal and S-H Park, 2003, Trans AMS 355
+  // And Lemma 3.14.2.  Though it may speed up things in theory, it doesn't seem to do in practice
+  if(gkacc && 0) {
+    for(int i = 1; i < e; i++) {
+      factors[e+i-1] = infactors[e-i-1];
+    }
+    e += e-1;
+  }
+
+
+  // Initialize
+  centre(res, N, factors, e, means);
+  memcpy(prev2, res, N*sizeof(double));
+
+  norm2 = 1.0;
   for(i = 0; i < N; i++) norm2 += res[i]*res[i];
   norm2 = sqrt(norm2);
-  prevdelta = 2*norm2;
+  delta = prevdelta = 2*norm2;
   neps = norm2*eps;
   iter = 0;
   last = time(NULL);
   lastiter = 0;
+
   double target;
-
   if(gkacc) target = 1e-4*neps;
-
-  memcpy(prev2, res, N*sizeof(double));
 
   do {
     double t;
     iter++;
-    if(gkacc) {
-      if(e > 2) {  
-        // hmm, seems this doesn't go well with GK acceleration...
-	// Perhaps we should shuffle only once in a while?
-	/* shuffle factors, Knuth */
-	LOCK(lock);  /* protect unif_rand */
-	for(i = e-1; i > 0; i--) {
-	  FACTOR *tmp;
-	  int k,j;
-	  j = (int) floor((i+1) * unif_rand());
-	  if(j == i) continue;
-	  tmp = factors[j];
-	  factors[j] = factors[i];
-	  factors[i] = tmp;
-	}
-	UNLOCK(lock);
-      }
-
-      memcpy(prev, res, N*sizeof(double));
-    }
-    delta = centre(res,N,factors,e,means);
+    if(gkacc) memcpy(prev, res, N*sizeof(double));
+    centre(res,N,factors,e,means);
 
     if(gkacc) {
       // Try the Gearhart-Koshy acceleration, AS 3.2
-      // The result vector is a convex combination of the previous x and the centred vector Px
+      // The result vector is an affine combination of the previous x and the centred vector Px
       // tPx + (1-t) x
       // where t = (x, x-Px)/|x - Px|^2   (t can be > 1).
       // It's quite much faster for some datasets (factor 2-3), perhaps more.
-      // our convergence failure test below suffers from it, as well as ETA computation, we need to fix it
-      // right now we run 'til machine precision.
-      double ip = 0, nm2 = 0;
+      // Though this seems to be related to lower precision.
+      double ip = 0, nm=0, nm2=0;
       for(int i = 0; i < N; i++) {
+	nm += prev[i]*prev[i];
 	ip += prev[i]*(prev[i]-res[i]);
 	nm2 += (prev[i]-res[i])*(prev[i] - res[i]);
       }
-      if(nm2 <= 0) break;
-      t = ip/nm2;
-      for(int i = 0; i < N; i++) {
-	res[i] = t*res[i] + (1.0-t)*prev[i];
+      if(nm2 > 1e-18*nm) {
+	t = ip/nm2;
+
+	// By Lemma 3.9, t >= 0.5. If we're below zero we're numerically out of whack
+	// Or does it mean we have converged? 
+	if(t < 0.49) {
+	  char buf[256];
+	  if(nm2 > 1e-16*nm) {
+	    sprintf(buf,"Demeaning of vec %d failed after %d iterations, t=%.0e, nm2=%.1enm\n",
+		    vecnum,iter,t,nm2/nm);
+	    pushmsg(buf,lock);
+	    okconv = 0;
+	  }
+	  break;
+	}
+	
+	for(int i = 0; i < N; i++) {
+	  res[i] = t*res[i] + (1.0-t)*prev[i];
+	}
       }
     }
+
     // make this a power of two, so we don't have to do integer division
 #define IBATCH 128
     if((iter & (IBATCH-1)) == 0) {
@@ -276,15 +277,7 @@ static int demean(double *v, int N, double *res,
        beginning.  This is to be expected due to Deutsch and Hundal's result 
     */
 
-      if(gkacc && t <=0 && iter > 100) {
-	char buf[256];
-	sprintf(buf,"Demeaning of vec %d failed after %d iterations, t=%.0e, delta=%.1e\n",
-		vecnum,iter,t,delta);
-	pushmsg(buf,lock);
-	okconv = 0;
-	break;
-      }
-      if(c >= 1.0 && iter > 100) {
+      if(!gkacc && c >= 1.0 && iter > 100) {
 	char buf[256];
 	sprintf(buf,"Demeaning of vec %d failed after %d iterations, c-1=%.0e, delta=%.1e\n",
 		vecnum,iter,c-1.0,delta);
@@ -531,7 +524,7 @@ static int demeanlist(double **vp, int N, int K, double **res,
     threads[thr] = CreateThread(NULL,0,demeanlist_thr,&arg,0,&threadids[thr]);
     if(0 == threads[thr]) error("Failed to create thread");
 #else
-    int stat = pthread_create(&threads[thr],NULL,demeanlist_thr,&arg);
+    int stat = pthread_create(&threads[thr],NULL, demeanlist_thr,&arg);
     if(0 != stat) error("Failed to create thread, stat=%d",stat);
 #endif
   }
@@ -563,22 +556,23 @@ static int demeanlist(double **vp, int N, int K, double **res,
       if(arg.stop == 0) nanosleep(&atmo,NULL);
       if(arg.stop == 1 || arg.running == 0) {
 #else
-      struct timespec tmo = {time(NULL)+3,0};
-      if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
+	struct timespec tmo = {time(NULL)+3,0};
+	if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
 #endif
-	for(thr = 0; thr < numthr; thr++) {
-	  (void)pthread_join(threads[thr], NULL);
-	}
+	  for(thr = 0; thr < numthr; thr++) {
+	    (void)pthread_join(threads[thr], NULL);
+	  }
 #ifdef HAVE_SEM
-	sem_destroy(&arg.finished);
+	  sem_destroy(&arg.finished);
 #endif
-	pthread_mutex_destroy(arg.lock);
-	break;
+	  pthread_mutex_destroy(arg.lock);
+	  break;
+	}
       }
+#endif
     }
 #endif
-  }
-#endif
+
     /* print remaining messages */
   printmsg(arg.lock);
   if(arg.stop == 1) error("centering interrupted");

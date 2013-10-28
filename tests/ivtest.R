@@ -19,6 +19,6 @@ R <- 0.5*x4 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
 y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 
 ## estimate and print result
-est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3, R ~ x4))
+est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3+x4, R ~ x3+x4))
 summary(est,robust=TRUE)
 

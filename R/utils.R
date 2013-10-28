@@ -72,6 +72,7 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
   res$fstat <- fstat
   res$pval <- pval
   res$fe <- z$fe
+  res$na.action <- z$na.action
   class(res) <- 'summary.felm'
   res
 }
@@ -94,6 +95,8 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   else {
     printCoefmat(x$coefficients,digits=digits)
     cat('\nResidual standard error:',format(signif(x$rse,digits)),'on',x$rdf,'degrees of freedom\n')
+    if (nzchar(mess <- naprint(x$na.action)))
+      cat("  (", mess, ")\n", sep = "")
     cat('Multiple R-squared:',formatC(x$r2,digits=digits),'  Adjusted R-squared:',
         formatC(x$r2adj,digits=digits),'\n')
     cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
@@ -102,6 +105,43 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   }
   cat('\n\n')
   
+}
+
+vcov.felm <- function(object,...) return(object$vcv)
+
+mkgraph <- function(f1,f2) {
+  graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)
+#  graph.edgelist(cbind(500000000+as.integer(f1),f2), directed=FALSE)
+#  graph.adjacency(tcrossprod(do.call('rBind',
+#                                     lapply(flist, as, 'sparseMatrix')))>0,
+#                  'undirected', diag=FALSE)
+}
+
+diamgraph <- function(flist,approx=TRUE) {
+  gr <- mkgraph(flist[[1]],flist[[2]])
+# find largest cluster
+  cl <- clusters(gr)$membership
+  lcl <- which(cl == which.max(table(cl)))
+  if(approx) 
+    max(shortest.paths(gr,v=sample(lcl,10),to=sample(lcl,10)))
+  else
+    diameter(induced.subgraph(gr,lcl))
+}
+
+diammatrix <- function(flist, approx=TRUE) {
+  flen <- length(flist)
+  if(flen < 2) return(0)
+  val <- matrix(0,flen,flen)
+  colnames(val) <- names(flist)
+  rownames(val) <- names(flist)
+  for(if1 in 1:(flen-1))
+    for(if2 in (if1+1):flen) {
+      val[if1,if2] <- diamgraph(flist[c(if1,if2)])
+    }
+
+# fill in lower triangle:
+  val[row(val) > col(val)] <- t(val)[row(val) > col(val)]
+  val
 }
 
 print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {

@@ -9,7 +9,7 @@
   if(is.null(getOption('lfe.pint')))
     options(lfe.pint=300)
   if(is.null(getOption('lfe.accel')))
-    options(lfe.accel=0)
+    options(lfe.accel=1)
   if(is.null(getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
@@ -84,13 +84,14 @@ compfactor <- function(fl, WW=FALSE) {
 # a function for group fixed effect lm, i.e. first complete centering
 # on category variables, then ols
 
+# parse our formula
 flfromformula <- function(formula,data) {
 
   trm <- terms(formula,special='G')
-  feidx <- attr(trm,'specials')$G-1
-  festr <- paste(labels(trm)[feidx],collapse='+')
+  feidx <- attr(trm,'specials')$G+1
+  va <- attr(trm,'variables')
+  festr <- paste(sapply(feidx,function(i) deparse(va[[i]])),collapse='+')
 
-#  print(formula)
   if(festr == '') return(list(formula=formula,fl=NULL))
   # remove the G-terms from formula
   formula <- update(formula,paste('. ~ . -(',festr,')'))
@@ -117,6 +118,41 @@ flfromformula <- function(formula,data) {
   return(list(formula=formula,fl=fl))
 }
 
+# parse 
+# use 2-part Formulas without G() syntax, like
+# y ~ x1 + x2 | f1+f2
+# or 3-part or more Formulas with iv-specification like
+# y ~ x1 + x2 | f1+f2 | (q+w ~ x3+x4) | (z+v ~x5+x6)
+
+## fl3fromformula <- function(form, data) {
+##   f <- as.Formula(form)
+##   opart <- formula(f,rhs=1)
+##   gpart <- formula(f,lhs=0,rhs=2)
+##   ivpart <- NULL
+##   if(length(f)[[2]] > 2) {
+##     ividx <- 3:(length(f)[[2]])
+##     ivparts <- as.Formula(formula(f,lhs=0,rhs=ividx))
+##   # Now, make a list of the iv-formulas where we split the lhs in each
+##   # to obtain q ~ x3+x4, w ~x3+x4, z~x5+x6, v ~x5+x6
+##     numivp <- length(ivparts)[2]
+##     ivpart <- lapply(1:numivp,
+##            function(i) {
+##              ivf <- as.Formula(formula(ivparts,rhs=i))
+##              # here we have something like q+w ~x3+x4
+##              # loop through the lhs variables and make formulas
+##              ff <- as.Formula(ivf[[2]][[2]])
+##              lh <- formula(ff,rhs=0,drop=FALSE)
+##              lapply(all.vars(lh), function(v) {
+##                # we update the lhs of ff with v
+##                update(ff,as.formula(substitute(L ~ .,list(L=as.name(v)))))
+##              })
+##            })
+##   }
+##   list(opart=opart,gpart=gpart,ivpart=unlist(ivpart,FALSE))
+## }
+
+
+
 # compute weighted cross product of M, i.e. where each row of M
 # is scaled by the corresponding weight in w
 # we're a bit lazy here, using a copy of the 
@@ -141,7 +177,9 @@ ccrossprod <- function(M,w,f) {
 doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   if(is.null(psys$xz)) {
     # No covariates
-    z <- list(r.residuals=psys$y,fe=psys$fl,p=0,cfactor=compfactor(psys$fl),residuals=psys$yz,call=match.call())
+    z <- list(r.residuals=psys$y,fe=psys$fl,p=0,cfactor=compfactor(psys$fl),
+              na.action=psys$na.action,
+              residuals=psys$yz,call=match.call())
     class(z) <- 'felm'
     return(z)
 
@@ -222,8 +260,8 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
     ivbeta <- nabeta[[ivnam]]
     ivrp <- ivresid[[ivnam]] * ivbeta
     # subtract these to get the fit with the original variable
-    z$residuals <- z$residuals - ivrp
-    z$r.residuals <- z$r.residuals - ivrp
+#    z$residuals <- z$residuals - ivrp
+#    z$r.residuals <- z$r.residuals - ivrp
     z$ivresid <- z$ivresid + ivrp
   }
 
@@ -231,19 +269,32 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 
   z$cfactor <- compfactor(fl)
 
-  if(exactDOF && length(fl) > 2) {
-    numrefs <- rankDefic(fl)
+  
+  totlev <- sum(unlist(lapply(fl,nlevels)))
+  if(is.numeric(exactDOF)) {
+    z$df <- exactDOF
+    numdum <- z$N - z$p - z$df
+    z$numrefs <- totlev - numdum
   } else {
-    numrefs <- nlevels(z$cfactor) + max(length(fl)-2,0)
+    if(identical(exactDOF,'rM') && length(fl) > 2) {
+      numrefs <- totlev - as.integer(rankMatrix(t(do.call('rBind',
+                                     lapply(fl, as, 'sparseMatrix')))))
+
+    } else  if(length(fl) > 2 && exactDOF) {
+      numrefs <- rankDefic(fl)
+    } else {
+      numrefs <- nlevels(z$cfactor) + max(length(fl)-2,0)
+    }
+    numdum <- totlev - numrefs
+    z$numrefs <- numrefs
+    z$df <- z$N - z$p - numdum
   }
-  numdum <- sum(unlist(lapply(fl,nlevels))) - numrefs
-  z$numrefs <- numrefs
-  z$df <- z$N - z$p - numdum
   z$exactDOF <- exactDOF
   res <- z$residuals
+  if(!is.null(ivresid)) res <- res - z$ivresid
   vcvfactor <- sum(res**2)/z$df
   z$vcv <- z$inv * vcvfactor
-  
+  dimnames(z$vcv) <- list(names(beta),names(beta))
   # We should make the robust covariance matrix too.
   # it's inv * sum (X_i' u_i u_i' X_i) * inv
   # where u_i are the (full) residuals (Wooldridge, 10.5.4 (10.59))
@@ -254,6 +305,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   # it seems stata does not do the small-sample adjustment
   dfadj <- (z$N-1)/z$df
   z$robustvcv <- dfadj * inv %*% wcrossprod(xz,res) %*% inv
+  dimnames(z$robustvcv) <- dimnames(z$vcv)
   cluster <- psys$cluster
 
   # then the clustered covariance matrix, these do agree with stata, except that
@@ -262,6 +314,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
     M <- nlevels(cluster)
     dfadj <- M/(M-1)*(z$N-1)/z$df
     z$clustervcv <- dfadj * inv %*% ccrossprod(xz,res,cluster) %*% inv
+    dimnames(z$clustervcv) <- dimnames(z$vcv)
     z$cse <- sqrt(diag(z$clustervcv))
     z$ctval <- z$coefficients/z$cse
     z$cpval <- 2*pt(abs(z$ctval),z$df,lower.tail=FALSE)
@@ -282,31 +335,47 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 # a similar adjustment is done in summary.felm when computing rdf
   z$p <- z$p + numdum - 1  
   z$xp <- z$p
-
+  z$na.action <- psys$na.action
   class(z) <- 'felm'
   return(z)
 }
 
-project <- function(mf,fl,data,clustervar=NULL) {
+project <- function(mf,fl,data,clustervar=NULL,pf=NULL) {
 
   if(!is.list(fl)) stop('need at least one factor')
   gc()
 
 
-  m <- match(c("formula", "data"), names(mf), 0L)
+  m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- as.name("model.frame")
-  mf <- eval(mf, parent.frame())
+  subspec <- mf[['subset']]
+  mf <- eval(mf, pf)
   mt <- attr(mf,'terms')
+  naact <- attr(mf,'na.action')
+  if(!is.null(naact))
+    naclass <- attr(naact,'na.omit')
   gc()
   if(!is.null(clustervar)) {
     if(!is.factor(clustervar)) {
       if(missing(data))
-        clustervar <- as.factor(eval(as.name(clustervar),parent.frame()))
+        clustervar <- as.factor(eval(as.name(clustervar),pf))
       else
         clustervar <- as.factor(data[,clustervar])
     }
+  }
+  # we need to change clustervar and factor list to reflect
+  # subsetting and na.action. na.action is ok, it's set as an attribute in mf
+  # but subset must be done manually. It's done before na handling
+  if(!is.null(subspec)) {
+    subs <- eval(subspec,pf)
+    clustervar <- clustervar[subs]
+    fl <- lapply(fl, function(fac) factor(fac[subs]))
+  }
+  if(!is.null(naact)) {
+    clustervar <- clustervar[-naact]
+    fl <- lapply(fl,function(fac) factor(fac[-naact]))
   }
   y <- model.response(mf,'numeric')
 
@@ -327,7 +396,7 @@ project <- function(mf,fl,data,clustervar=NULL) {
   if(length(icpt) == 0) icpt <- 0
   ncov <- ncol(x) - (icpt > 0)
   if(ncov == 0) {
-    return(list(y=y,yz=demeanlist(list(y=y),fl=fl)[[1]],fl=fl))
+    return(list(y=y,yz=demeanlist(list(y=y),fl=fl)[[1]],fl=fl,na.action=naact))
   }
 
   # here we need to demean things
@@ -345,18 +414,14 @@ project <- function(mf,fl,data,clustervar=NULL) {
   else 
     colnames(xz) <- colnames(x)[-icpt]
   attributes(yz) <- attributes(y)
-  list(yz=yz,xz=xz,y=y,x=x,fl=fl,icpt=icpt,badconv=badconv,terms=mt,cluster=clustervar)  
+  list(yz=yz,xz=xz,y=y,x=x,fl=fl,na.action=naact,icpt=icpt,badconv=badconv,terms=mt,cluster=clustervar)  
 }
 
-felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
+felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset, na.action) {
+
   mf <- match.call(expand.dots = FALSE)
 
-
-# If it's an iv-model, we should do as follows:
-# take the 2. stage formula in 'formula', replace the
-# rhs with the rhs of the iv-formula, remove this variable
-# from the lhs and add the lhs of the iv-formula
-
+  pf <- parent.frame()
   if(is.null(iv)) {
     # no iv, just do the thing
     sep <- flfromformula(formula,data)
@@ -364,7 +429,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
     formula <- sep[['formula']]
     mf[['formula']] <- formula
     
-    psys <- project(mf,fl,data,clustervar)
+    psys <- project(mf,fl,data,clustervar,pf)
     z <- doprojols(psys,exactDOF=exactDOF)
     rm(psys)
     gc()
@@ -396,7 +461,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
      fl <- sep[['fl']]
      formula <- sep[['formula']]
      mf[['formula']] <- formula
-     psys <- project(mf,fl,data,clustervar)
+     psys <- project(mf,fl,data,clustervar,pf)
      z <- doprojols(psys)
      mf[['formula']] <- fformula
      z$call <- mf
@@ -424,7 +489,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) {
   fl <- sep[['fl']]
   formula <- sep[['formula']]
   mf[['formula']] <- formula
-  psys <- project(mf,fl,data,clustervar)
+  psys <- project(mf,fl,data,clustervar,pf)
   rm(list=vars,envir=parent.frame())
   z <- doprojols(psys,ivresid=ivarg,exactDOF=exactDOF)
   z$step1 <- step1

@@ -13,30 +13,46 @@ results in a manageable number of coefficients, you are probably better
 off by using \code{\link{lm}}.
 }
 
-\usage{ felm(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE) }
+\usage{ felm(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE,
+subset, na.action) }
 
 \arguments{
   \item{formula}{an object of class '"formula"' (or one that can be
   coerced to that class: a symbolic description of the model to be
-  fitted. Similarly to 'lm'.  Grouping factors are coded as G(f) (with a
-  capital \code{G}).}
+  fitted. Similarly to 'lm'.  Grouping factors \code{f} are coded as G(f).
+}
 
   \item{data}{a data frame containing the variables of the model}
 
   \item{iv}{a formula describing an instrumented variable. Estimated via two step OLS}
   
-  \item{clustervar}{a string or factor.  Either the name of a variable or a factor. Used for
-        computing clustered standard errors.}
-  \item{exactDOF}{logical. If more than two factors, the degrees of
-        freedom used to scale the covariance matrix (and the standard
+  \item{clustervar}{a string or factor.  Either the name of a variable
+        or a factor. Used for computing clustered standard errors.}
+
+  \item{exactDOF}{logical. If more than two factors, the degrees
+        of freedom used to scale the covariance matrix (and the standard
         errors) is normally estimated. Setting \code{exactDOF=TRUE}
-        causes \code{felm} to compute it, but this may fail if there are
-        too many levels in the factors.}
+        causes \code{felm} to attempt to compute it, but this may fail if there are
+        too many levels in the factors.  \code{exactDOF='rM'} will use
+        the exact method in Matrix::rankMatrix(), but this is slower. If
+        the degrees of freedom for some reason are known, they can be
+        specified like \code{exactDOF=342772}} 
+
+ \item{subset}{an optional vector specifying a subset of observations to
+   be used in the fitting process.}
+ 
+ \item{na.action}{a function which indicates what should happen when the
+        data contain \code{NA}s.  The default is set by the
+        \code{na.action} setting of \code{options}, and is
+        \code{na.fail} if that is unset.  The 'factory-fresh' default is
+        \code{na.omit}.  Another possible value is \code{NULL}, no
+        action. \code{na.exclude} is currently not supported.}
+
 }
 
 \value{
   \code{felm} returns an object of \code{class} \code{"felm"}.  It is
-  quite similar to en \code{"lm"} object, but not entirely compatible.
+  quite similar to an \code{"lm"} object, but not entirely compatible.
 
   The \code{"felm"} object is a list containing the following fields:
 
@@ -55,13 +71,20 @@ off by using \code{\link{lm}}.
   \item{vcv}{a matrix. The variance-covariance matrix.}
   \item{fe}{list of factors. A list of the \code{G()} terms in the model.}
 
+  \item{step1}{list of '\code{felm}' objects for the IV 1. step(s), if
+    used}
+  
   The generic \code{summary}-method will yield a summary which may be \code{print}'ed.
   The object has some resemblance to the an \code{lm} object, and some
   postprocessing methods designed for \code{lm} may happen to work. It
   may however be necessary to coerce the object to succeed with this.
 }
 
-\note{
+\details{
+The \code{G()} is not a function in itself, it is just syntax to
+distinguish the grouping factors. It does, however, translate to
+\code{as.factor()} inside \code{felm()}.
+
 The standard errors are adjusted for the reduced degrees of freedom
 coming from the dummies which are implicitly present.  In the case of
 two factors, the exact number of implicit dummies is easy to compute.  If there
@@ -73,12 +96,15 @@ computes the exact degrees of freedom with methods in package \pkg{Matrix}.
 For the IV-option, it is only necessary to include the instruments on the
 right hand side.  The other covariates, from \code{formula}, are added automatically
 in the first step.  See the examples. \code{iv} can also be a list of
-formulas if more than one variable is instrumented.
+formulas if more than one variable is instrumented.  However, all
+instruments should then be specified in all the formulas.  A more
+consise syntax for multiple instruments will probably be implemented in
+the future.
 
 Ideally, the \code{clustervar} should have been an option to the \code{summary}-function instead.
-However, this would require keeping a copy of the data-matrix in the returned
+However, this would require keeping a copy of the model matrix in the returned
 structure.  Since this function is intended for very large datasets, we discard
-the data-matrix to save memory, keeping only residuals and other summary statistics.
+the model matrix to save memory, keeping only residuals and other summary statistics.
 
 Note that the syntax of the \code{felm}-function has changed, it does no longer
 allow a separate specification of the group factors, they must be specified
@@ -114,12 +140,24 @@ summary(lm(y ~ x + x2 + id + firm-1))
   getfe(est)
 }
 
-## make an iv-example, Q is instrumented by x3, report robust s.e.
+
+# make a weird example with 'reverse causation'
+# Q and W are instrumented by x3 and G(x4), report robust s.e.
 x3 <- rnorm(length(x))
-Q <- 0.3*x3 + x + 0.2*x2 + id.eff[id] + 0.7*u + rnorm(length(x),sd=0.3)
-y <- y + Q
-ivest <- felm(y ~ x + x2 + G(id)+G(firm) + Q, iv=Q ~ x3)
+x4 <- sample(12,length(x),replace=TRUE)
+
+Q <- 0.3*x3 + x + 0.2*x2 + id.eff[id] + 0.3*log(x4) - 0.3*y + rnorm(length(x),sd=0.3)
+W <- 0.7*x3 - 2*x + 0.1*x2 - 0.7*id.eff[id] + 0.8*cos(x4) - 0.2*y+ rnorm(length(x),sd=0.6)
+
+# add them to the outcome
+y <- y + Q + W
+
+ivest <- felm(y ~ x + x2 + G(id)+G(firm) + Q + W, iv=list(Q ~ x3+G(x4), W ~x3+G(x4)))
 summary(ivest,robust=TRUE)
+\dontrun{
+# compare with the not instrumented fit:
+summary(felm(y ~ x + x2 + G(id)+G(firm) + Q + W))
+}
 }
 \keyword{regression}
 \keyword{models}
