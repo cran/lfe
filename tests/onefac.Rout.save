@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-08-20 r63635) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-09-25 r63993) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -17,7 +17,6 @@ Type 'q()' to quit R.
 
 > library(lfe)
 Loading required package: Matrix
-Loading required package: lattice
 Loading required package: Rcgmin
 Loading required package: numDeriv
 > options(lfe.threads=2)
@@ -61,9 +60,16 @@ F-statistic: 5.144 on 11015 and 8984 DF, p-value: < 2.2e-16
 
 > 
 > ## extract the group fixed effects
-> fe <- getfe(est)
+> fe <- getfe(est, se=TRUE)
 > ## merge back
-> 
+> head(fe)
+        effect obs comp fe idx        se
+id.1 -50.70244   1    1 id   1 0.7674618
+id.4 -50.97861   1    1 id   4 0.7714376
+id.5 -54.46227   1    1 id   5 0.7188041
+id.6 -50.37281   1    1 id   6 0.7395673
+id.7 -49.83292   2    1 id   7 0.5200804
+id.8 -51.59752   2    1 id   8 0.5201728
 > ideff <- fe[paste('id',id,sep='.'),'effect']
 > 
 > ## verify that id and firm coefficients are 1
@@ -93,4 +99,4 @@ F-statistic: 4.413e+10 on 4 and 19996 DF,  p-value: < 2.2e-16
 > 
 > proc.time()
    user  system elapsed 
-  5.176   0.076   5.212 
+  8.112   0.164   8.189 

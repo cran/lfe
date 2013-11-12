@@ -141,6 +141,7 @@ efactory <- function(obj, opt='ref', ...) {
   noadd <- fef != otherf[comp]
   refsuba <- refsub
   refsuba[noadd] <- NA
+
   extrarefs <- refno[extra]
 
   # now, what if we should centre on the means?
@@ -311,16 +312,15 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   sefact <- sqrt((length(R)-1)/obj$df)
   sm <- mean(obj$residuals) # ought to be zero
   sefact <- 1  # do it at end instead
-  # need a factor into R assigning component number
-  if(length(obj$fe) == 1) ac <- rep(1,length(R))
-  else
+  if(length(obj$fe) > 1) {
+    # need a factor into R assigning component number
     ac <- factor(unlist(lapply(obj$fe[1:2], function(f) obj$cfactor[match(levels(f),f)])))
-#  ac <- alpha[,'comp']
-  numpar <- table(ac)[ac]-1
-  numobs <- table(obj$cfactor)[ac]
-  o <- options(warn=-1)
-  sefact <- as.vector(sqrt(length(R)/(numobs-numpar)))
-  options(o)
+    numpar <- table(ac)[ac]-1
+    numobs <- table(obj$cfactor)[ac]
+    o <- options(warn=-1)
+    sefact <- as.vector(sqrt(length(R)/(numobs-numpar)))
+    options(o)
+  }
 
   # add extra factors
   if(length(obj$fe) > 2) {

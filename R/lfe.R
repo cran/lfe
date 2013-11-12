@@ -278,7 +278,8 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   } else {
     if(identical(exactDOF,'rM') && length(fl) > 2) {
       numrefs <- totlev - as.integer(rankMatrix(t(do.call('rBind',
-                                     lapply(fl, as, 'sparseMatrix')))))
+                                     lapply(fl, as, 'sparseMatrix'))),
+                                                method='qrLINPACK'))
 
     } else  if(length(fl) > 2 && exactDOF) {
       numrefs <- rankDefic(fl)

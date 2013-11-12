@@ -18,9 +18,9 @@ y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + rnorm(length(x))
 summary(est <- felm(y ~ x+x2 + x3 + G(id)))
 
 ## extract the group fixed effects
-fe <- getfe(est)
+fe <- getfe(est, se=TRUE)
 ## merge back
-
+head(fe)
 ideff <- fe[paste('id',id,sep='.'),'effect']
 
 ## verify that id and firm coefficients are 1
