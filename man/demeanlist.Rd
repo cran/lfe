@@ -12,7 +12,8 @@
 demeanlist(mtx, fl, icpt=0, eps=getOption('lfe.eps'),
            threads=getOption('lfe.threads'),
            progress=getOption('lfe.pint'),
-           accel=getOption('lfe.accel'))
+           accel=getOption('lfe.accel'),
+           randfact=TRUE)
 }
 
 \arguments{
@@ -26,6 +27,8 @@ demeanlist(mtx, fl, icpt=0, eps=getOption('lfe.eps'),
 \item{progress}{integer. If positive, make progress reports (whenever a
   vector is centered, but not more often than every \code{progress} minutes)}
 \item{accel}{integer. Set to 1 if Gearhart-Koshy acceleration should be done.}
+\item{randfact}{logical. Should the order of the factors be randomized?
+  This may improve convergence.}
 }
 
 \details{
@@ -35,9 +38,16 @@ following centering is performed, with \code{cy} as the result.
 cy <- y; oldy <- y-1
 while(sqrt(sum((cy-oldy)**2)) >= eps) {
   oldy <- cy
-  for(f in fl) cy <- cy - tapply(cy,f,mean)[f]
+  for(f in fl) cy <- cy - ave(cy,f)
 }
 }
+
+Beginning with version 1.6, each factor in \code{fl} may contain an
+attribute \code{'x'} which is a numeric vector of the same length as
+the factor. The centering is then not done on the means of each group,
+but on the projection onto the covariate in each group.  That is, with a
+covariate \code{x} and a factor \code{f}, it is like projecting out the
+interaction \code{x:f}.
 }
 
 
@@ -55,9 +65,9 @@ column-vectors instead (provided the vector-length is smaller than 2
 billion).  \code{demeanlist} will be able to centre these vectors.
 
 The \code{accel} argument enables Gearhart-Koshy acceleration as
-symmetrized by Bauschke, Deutsch, Hundal and Park in "Accelerating the
+described in theorem 3.16 by Bauschke, Deutsch, Hundal and Park in "Accelerating the
 convergence of the method of alternating projections",
-Trans. Amer. Math. Soc. 355 (2003).
+Trans. Amer. Math. Soc. 355 pp 3433-3461 (2003).
 }
 
 \examples{

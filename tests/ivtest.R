@@ -6,7 +6,6 @@ x2 <- rnorm(length(x))
 
 id <- factor(sample(10,length(x),replace=TRUE))
 firm <- factor(sample(3,length(x),replace=TRUE,prob=c(2,1,1)))
-
 id.eff <- rnorm(nlevels(id))
 firm.eff <- rnorm(nlevels(firm))
 
@@ -21,4 +20,6 @@ y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 ## estimate and print result
 est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3+x4, R ~ x3+x4))
 summary(est,robust=TRUE)
-
+clu <- factor(sample(10,length(x), replace=TRUE))
+est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3+x4, R ~ x3+x4), cluster=clu)
+summary(est, robust=TRUE)

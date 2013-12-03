@@ -68,7 +68,7 @@ function.
 }
 
 \details{
-  For the case with two factors (the \code{fl}-argument to
+  For the case with two factors (the \code{G()}-terms in
   \code{\link{felm}}), one reference in each connected component is
   adequate when interpreting the results.
 

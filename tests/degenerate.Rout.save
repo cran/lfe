@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-08-20 r63635) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-11-30 r64358) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -17,9 +17,6 @@ Type 'q()' to quit R.
 
 > library(lfe)
 Loading required package: Matrix
-Loading required package: lattice
-Loading required package: Rcgmin
-Loading required package: numDeriv
 > set.seed(127)
 > options(lfe.threads=1)
 > x <- rnorm(2000,mean=2000)
@@ -60,4 +57,4 @@ accuracy: 1.00000000e+00 1.00000000e+00>
 > 
 > proc.time()
    user  system elapsed 
-  4.420   0.096   4.480 
+  5.344   0.192   5.512 

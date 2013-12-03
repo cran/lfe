@@ -283,6 +283,24 @@ is harder, \pkg{lfe} uses a pivoted Cholesky-method to find linear dependencies
 in \(D'D\), and removes them, but the resulting interpretation of the coefficients
 are in general not well understood.  (This, of course, applies to the Kaczmarz method as well).
 
+\section{Interactions}
+The above discussion about the method, indeed the discussion in \cite{GS13}, does not
+use anywhere that the matrix \(D\) contains only zeros and ones, except in the
+concrete computation of projections. If we interact
+one or more factors with some continuous covariates, the entire theory goes through
+unchanged.
+The centring is slightly different, involving covariates; likewise the
+Kaczmarz step. Beginning with version 1.6, \code{lfe} supports projecting out such 
+interactions, e.g.
+<<eval=FALSE>>=
+Y ~ X1 + X2 + G(X3:D1) + G(D2) + G(D3)
+@ 
+
+The estimability analysis discards interaction terms, i.e. it assumes that all coefficients
+for \code{G(X3:D1)} are identified.  Note that the term inside \code{G()} is not
+expanded like a \code{formula}, i.e. expressions like \code{G(X3*D1)} are not supported. \code{X}
+must be numeric vector, matrix or factor.
+
 \section{Optimization potential}
 Profiling with the tool ``perf'' on linux, reveals that there is some potential for optimizations 
 in both the centering process and the Kaczmarz-solver.  Both suffer from memory-bandwidth

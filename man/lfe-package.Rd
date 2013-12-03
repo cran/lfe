@@ -30,6 +30,10 @@ them.  The package may optionally compute standard errors for the group
 effects by bootstrapping, but this is a very time- and memory-consuming process compared
 to finding the point estimates.
 
+As of version 1.6, projecting out interactions between continuous
+covariates and factors is also supported. I.e. individual slopes, not
+only individual intercepts.
+
 The estimation is done in two steps.  First the other coefficients are
 estimated with the function \code{\link{felm}} by centering on all the
 group means, followed by an OLS (similar to lm).  Then the group effects

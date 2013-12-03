@@ -5,7 +5,7 @@
   Verify that a function you have written is indeed estimable.
 }
 \usage{
-is.estimable(ef, fe, R=NULL, nowarn=FALSE)
+is.estimable(ef, fe, R=NULL, nowarn=FALSE, keepdiff=FALSE, threshold=1e-5)
 }
 
 
@@ -15,10 +15,24 @@ is.estimable(ef, fe, R=NULL, nowarn=FALSE)
 \item{R}{numeric.  Vector of residuals, if \code{NULL}, a random one is created.}
 \item{nowarn}{logical. Set to \code{TRUE} if \code{is.estimable} should not
   throw a warning for non-estimable functions.}
+\item{keepdiff}{logical. Return differences between two different runs
+  of the Kaczmarz method.}
+\item{threshold}{numeric. Threshold for determining estimability.}
 }
 
 \value{
 Returns a logical.  
+}
+\details{
+\code{is.estimable()} solves the sparse residual system with the
+Kaczmarz method, using two different initial values. Then \code{ef()} is
+applied to the two solutions. If the value of \code{ef()} differs by
+more than \code{1e-5} in any coordinate, \code{FALSE} is returned,
+otherwise \code{TRUE} is returned.  If \code{keepdiff=TRUE}, the vector
+of differences is attached as an attribute \code{'diff'} to the returned
+logical value.  If you have problems with estimability, it is a fair
+guess that those entries with a difference in absolute values smaller
+than, say, \code{1e-5} are estimable, whereas the others are not.
 }
 
 \examples{
@@ -43,6 +57,6 @@ ef <- function(v,addnames) {
   if(addnames) names(w) <-c('id6-id5','f2k+id5','f2k-f1k')
   w
 }
-is.estimable(ef,list(id=id,firm=firm))
+is.estimable(ef, list(id=id,firm=firm), keepdiff=TRUE)
 
 }

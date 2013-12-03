@@ -1,0 +1,20 @@
+
+Nov. 29, 2013. 1.6 -- Support for G(x:f) with x matrix.
+     Fixed a one-off error in df for the one-factor case.
+     Several bug-fixes and memory optimization pertaining to large model matrices.
+     Some of them in R.
+
+Nov. 25, 2013. 1.6 -- Matrix::rankMatrix bug has been fixed. We can
+     use the sparse method qrLINPACK as soon as a new version of Matrix is released.  Bug #5031:
+     https://r-forge.r-project.org/tracker/index.php?func=detail&aid=5031&group_id=61&atid=294
+     Added contrasts-argument to felm. It applies to factors outside G().
+     Fixed efactory() for G(x:f) interactions.
+
+Nov. 14, 2013. 1.6 -- Added G(x:f) syntax for estimation similar to
+     x:f, i.e. interaction between a covariate and a factor. felm()
+     and getfe() are ok, but efactory() does not always produce
+     estimable functions.
+
+Nov. 12, 2013. 1.5-1118 -- On CRAN. Fixed a bug which prevented bootstrapping in some cases.
+
+Oct. 28, 2013. 1.5-1107 -- On CRAN. Version presented in R journal article.

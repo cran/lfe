@@ -22,6 +22,8 @@ summary(est <- felm(y ~ x+x2+x3+G(id)+G(firm)+G(year), exactDOF=TRUE))
 getfe(est)
 print(alpha <- getfe(est,ef='ln'))
 # get the names to use below, just to make it easier
+# lower precision in output
+options(digits=5)
 nm <- rownames(alpha)
 getfe(est,ef='zm',se=TRUE)
 getfe(est,ef='zm2',se=TRUE)

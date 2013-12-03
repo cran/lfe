@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-07-27 r63426) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-11-30 r64358) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -17,9 +17,6 @@ Type 'q()' to quit R.
 
 > library(lfe)
 Loading required package: Matrix
-Loading required package: lattice
-Loading required package: Rcgmin
-Loading required package: numDeriv
 > options(lfe.threads=2)
 > set.seed(42)
 > x <- rnorm(1000)
@@ -27,7 +24,6 @@ Loading required package: numDeriv
 > 
 > id <- factor(sample(10,length(x),replace=TRUE))
 > firm <- factor(sample(3,length(x),replace=TRUE,prob=c(2,1,1)))
-> 
 > id.eff <- rnorm(nlevels(id))
 > firm.eff <- rnorm(nlevels(firm))
 > 
@@ -64,8 +60,32 @@ Multiple R-squared: 0.9208   Adjusted R-squared: 0.9195
 F-statistic: 762.9 on 15 and 984 DF, p-value: < 2.2e-16 
 
 
-> 
+> clu <- factor(sample(10,length(x), replace=TRUE))
+> est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3+x4, R ~ x3+x4), cluster=clu)
+> summary(est, robust=TRUE)
+
+Call:
+   felm(formula = y ~ x + x2 + G(id) + G(firm) + Q + R, iv = list(Q ~      x3 + x4, R ~ x3 + x4), clustervar = clu) 
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-3.39149 -0.71961  0.02099  0.69218  3.76684 
+
+Coefficients:
+         Estimate Cluster s.e. t value Pr(>|t|)    
+x         0.85967      0.10671   8.056 2.27e-15 ***
+x2        0.45966      0.03293  13.958  < 2e-16 ***
+`Q(fit)`  1.09306      0.10364  10.547  < 2e-16 ***
+`R(fit)`  0.98367      0.02499  39.362  < 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.071 on 984 degrees of freedom
+Multiple R-squared: 0.9208   Adjusted R-squared: 0.9195 
+F-statistic: 762.9 on 15 and 984 DF, p-value: < 2.2e-16 
+
+
 > 
 > proc.time()
    user  system elapsed 
-  8.444   0.136   8.469 
+ 12.932   0.204  12.965 

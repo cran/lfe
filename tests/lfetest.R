@@ -15,8 +15,10 @@ firm.eff <- rnorm(nlevels(firm))
 ## left hand side
 y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
+# make a data frame
+fr <- data.frame(y,x,x2,id,firm)
 ## estimate and print result
-summary(est <- felm(y ~ x+x2+G(id)+G(firm)))
+summary(est <- felm(y ~ x+x2+G(id)+G(firm), data=fr))
 
 ## extract the group fixed effects
 getfe(est)

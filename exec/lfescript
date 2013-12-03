@@ -114,9 +114,8 @@ dformat = '$format';
 oldopts <- options(warn=1)
 version <- packageDescription('lfe',fields='Version')
 packdata <- packageDescription('lfe',fields='Packaged')
-cat('******* This is the LFE',version,'software at the Frisch Centre
-******* estimating linear models with multiple fixed effects.
-******* By courtesy of Simen Gaure, 2011.  Have a nice day!\\n\\n')
+cat('******* This is the lfe',version,packdata,'\\n')
+citation('lfe')
 ";
 if($tol > 0) {print "options(lfe.eps=$tol)\n";}
 print "forcefact <- c()\n";
@@ -132,10 +131,18 @@ options(lfe.accel=$accel)
 # character for categories
 
 model <- formula($model)
-trm <- terms(model,specials='G')
+trm <- terms(model,special='G')
 feidx <- attr(trm,'specials')\$G+1
 va <- attr(trm,'variables')
 festr <- paste(sapply(feidx,function(i) deparse(va[[i]])),collapse='+')
+felist <- parse(text=paste('list(',gsub('+',',',festr,fixed=TRUE),')',sep=''))
+nm <- eval(felist,list(G=function(arg) deparse(substitute(arg))))
+
+#trm <- terms(model,specials='G')
+#feidx <- attr(trm,'specials')\$G+1
+#va <- attr(trm,'variables')
+#festr <- paste(sapply(feidx,function(i) deparse(va[[i]])),collapse='+')
+
 fvars <- all.vars(parse(text=festr))
 
 if(dformat == 'dta') {
@@ -196,10 +203,12 @@ if(!inherits(tab,'data.frame')) {
   attr(tab,'row.names') <- NULL
 }
 
-festr <- paste('list(',paste(sapply(feidx,function(i) deparse(va[[i]])),collapse=','),')')
-factors <- local({G <- as.factor;'*'<-interaction;eval(parse(text=festr),tab,environment())})
-nm <- unlist(eval(parse(text=festr),list(G=function(t) as.character(substitute(t)))))
-names(factors) <- nm
+factors <- lfe:::flfromformula(model,tab)[[2]]
+
+#festr <- paste('list(',paste(sapply(feidx,function(i) deparse(va[[i]])),collapse=','),')')
+#factors <- local({G <- as.factor;'*'<-interaction;eval(parse(text=festr),tab,environment())})
+#nm <- unlist(eval(parse(text=festr),list(G=function(t) as.character(substitute(t)))))
+#names(factors) <- nm
 
 for(i in seq_along(factors)) {
   cat(date(),'There are',nlevels(factors[[i]]),names(factors)[[i]],'effects\\n')
@@ -220,6 +229,7 @@ $edf = '';
 if($exactDF == 1) {
     $edf = ", exactDOF=TRUE";
 }
+#print "print('felm($model,data=tab$cvar$edf)');print(names(tab))\n";
 if(defined($iv)) {
     print "est <- felm($model,data=tab,iv=$iv$cvar$edf)\n";
 } else {

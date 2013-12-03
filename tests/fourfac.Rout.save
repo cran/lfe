@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-08-20 r63635) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-11-30 r64358) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -17,9 +17,6 @@ Type 'q()' to quit R.
 
 > library(lfe)
 Loading required package: Matrix
-Loading required package: lattice
-Loading required package: Rcgmin
-Loading required package: numDeriv
 > options(lfe.threads=1)
 > set.seed(655320)
 > x <- rnorm(50000,mean=200)
@@ -46,7 +43,7 @@ Call:
 
 Residuals:
        Min         1Q     Median         3Q        Max 
--3.043e+00 -4.090e-01  9.558e-18  4.134e-01  2.889e+00 
+-3.043e+00 -4.090e-01  1.928e-18  4.134e-01  2.889e+00 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
@@ -195,12 +192,11 @@ F-statistic: 5.908e+08 on 8 and 49992 DF,  p-value: < 2.2e-16
 accuracy: 1.00000000e+00 1.00000000e+00 1.00000000e+00 1.00000000e+00 1.00000000e+00 
 Warning messages:
 1: In is.estimable(ef, obj$fe) :
-  non-estimable function, largest error 0.7 in coordinate 18811 ("firm.4450")
+  non-estimable function, largest error 0.6 in coordinate 3134 ("id.3272")
 2: In getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
   Supplied function seems non-estimable
-
 > 
 > 
 > proc.time()
    user  system elapsed 
- 22.584   0.168  22.728 
+ 27.961   0.292  28.269 

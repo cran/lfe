@@ -2,7 +2,7 @@ library(lfe)
 options(lfe.threads=2)
 set.seed(6553)
 # single fixed effect, special case which we risk destroying when we optimize, so check it
-x <- rnorm(20000,mean=2000)
+x <- rnorm(20000,mean=2)
 x2 <- rnorm(length(x))
 x3 <- rexp(length(x))
 ## create individual and firm
@@ -26,3 +26,12 @@ ideff <- fe[paste('id',id,sep='.'),'effect']
 ## verify that id and firm coefficients are 1
 options(scipen=8)
 summary(lm(y ~ x + x2 + x3 + ideff -1),digits=8)
+
+# no factor
+summary(felm(y ~ x + x2 + x3))
+summary(lm(y ~ x + x2 + x3))
+
+# no covariate
+summary(est <- felm(y ~ G(id)))
+head(getfe(est, se=TRUE))
+

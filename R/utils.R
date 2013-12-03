@@ -100,7 +100,7 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
     cat('Multiple R-squared:',formatC(x$r2,digits=digits),'  Adjusted R-squared:',
         formatC(x$r2adj,digits=digits),'\n')
     cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
-    if(length(x$fe) > 2 && !x$exactDOF)
+    if(length(x$fe) > 2 && !identical(x$exactDOF,'rM') && !x$exactDOF)
       cat('*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE\n')
   }
   cat('\n\n')
@@ -205,9 +205,52 @@ fixef.felm <- function(object,...) {
 # if(!exists('fixef')) fixef <- function(object,...) UseMethod('fixef')
 
 # compute rank deficiency of D-matrix
-rankDefic <- function(fl) {
+rankDefic <- function(fl,method='cholesky') {
   eps <- sqrt(.Machine$double.eps)
-  Ch <- as(Cholesky(tcrossprod(do.call('rBind',lapply(fl,as,Class='sparseMatrix'))),
-                  super=TRUE,perm=TRUE,Imult=eps),'sparseMatrix')
-  sum(diag(Ch)^2 < eps^(1/3))
+ # Ch <- as(Cholesky(tcrossprod(do.call('rBind',lapply(fl,as,Class='sparseMatrix'))),
+#                  super=TRUE,perm=TRUE,Imult=eps),'sparseMatrix')
+  D <- makeDmatrix(fl)
+  if(method == 'cholesky') {
+    Ch <- as(Cholesky(crossprod(D), super=TRUE, perm=TRUE, Imult=eps), 'sparseMatrix')
+    sum(diag(Ch)^2 < eps^(1/3))
+  } else {
+    as.integer(ncol(D) - rankMatrix(D,method='qrLINPACK'))
+  }
+}
+
+
+makeDmatrix <- function(fl) {
+  # make the D matrix
+  # for pure factors f, it's just the t(as(f,'sparseMatrix'))
+  # if there's a covariate vector x, it's t(as(f,'sparseMatrix'))*x
+  # for a covariate matrix x, it's the cbinds of the columns with the factor-matrix
+  do.call('cBind',lapply(fl, function(f) {
+    x <- attr(f,'x')
+    fm <- t(as(f,'sparseMatrix'))
+    if(is.null(x)) return(fm)
+    if(!is.matrix(x)) return(fm*x)
+    do.call('cBind',apply(x,2,'*',fm))
+  }))
+}
+
+# total number of variables projected out
+totalpvar <- function(fl) {
+  if(length(fl) == 0) return(0)
+  sum(sapply(fl, function(f) {
+    x <- attr(f,'x')
+    if(is.null(x) || !is.matrix(x)) return(nlevels(f))
+    return(ncol(x)*nlevels(f))
+  }))
+}
+
+nrefs <- function(fl, cf, exactDOF=FALSE) {
+  if(length(fl) == 0) return(0)
+  numpure <- sum(sapply(fl,function(f) is.null(attr(f,'x'))))
+  if(identical(exactDOF,'rM')) {
+    return(rankDefic(fl, method='qr'))
+  } else  if(exactDOF) {
+    return(rankDefic(fl, method='cholesky'))
+  } else {
+    return((if(numpure>1) nlevels(cf) else 0) + max(numpure-2, 0))
+  }
 }

@@ -14,38 +14,36 @@ kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('
 
 cgsol <- function(fl,R,eps=getOption('lfe.eps'), init=NULL,threads=NULL) {
   if(is.list(R)) stop("cgsol can't handle list R")
-
   # create matrix
-  mat <- as(fl[[1]],'sparseMatrix')
-  for(f in fl[-1]) {
-    mat <- rBind(mat,as(f,'sparseMatrix'))
-  }
-  mat <- t(mat)
-
+  mat <- t(do.call('rBind',lapply(fl,as,'sparseMatrix')))
+  if(is.null(dim(R))) dim(R) <- c(length(R),1)
 # target function
-  fn <- function(p) sum((mat %*% p - R)^2)
+  fn <- function(p,R) sum((mat %*% p - R)^2)
 # its gradient
-  gr <- function(p) {
-      a <- 2*(mat%*%p-R)
+  gr <- function(p,R) {
+      a <- 2*((mat %*% p) - R)
       dim(a) <- c(1,nrow(mat))
       as.vector(a %*% mat)
   }
-  if(is.null(init)) init <- rep(0,ncol(mat))
-  cg <- Rcgmin(init,fn,gr,control=list(eps=eps))
-  if(cg$convergence != 0) warning(cg$message)
-  cg$par
+  if(is.null(init)) init <- rnorm(ncol(mat))
+  library(Rcgmin)
+
+  apply(R,2,function(vec) {
+    cg <- Rcgmin(init,fn,gr,control=list(eps=eps),R=vec)
+    if(cg$convergence != 0) warning(cg$message)
+    cg$par
+  })
 }
 
 getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100) {
 
   R <- obj$r.residuals-obj$residuals
   v <- kaczmarz(obj$fe,R,eps)
-  nm <- names(v)
   if(is.character(ef)) {
     ef <- efactory(obj,opt=ef)
   }
-  if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef,obj$fe)) {
-    warning('Supplied function seems non-estimable\n')
+  if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef, obj$fe)) {
+    warning('Supplied function seems non-estimable')
   }
   v <- ef(v,TRUE)
   res <- data.frame(effect=v)
@@ -70,26 +68,71 @@ getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100
 # function.  I.e. with a reference in each factor in each component
 # from compfactor(...,WW=TRUE). This may be what many people want.
 
+# return level names in appropriate order
+# the G(x:f) with x a matrix makes it slightly complicated
+xlevels <- function(n,f,sep='.') {
+  x <- attr(f,'x')
+  plev <- paste(n,levels(f),sep=sep)
+  if(is.null(x) || !is.matrix(x)) return(plev)
+  nam <- attr(f,'xnam')
+  if(!is.matrix(x)) return(paste(nam,plev,sep=sep))
+  matnam <- colnames(x)
+  if(is.null(matnam)) matnam <- paste(nam,1:ncol(x),sep='') else matnam <- paste(nam,matnam,sep='')
+  plev <- sub('.*:','',plev)
+  return(as.vector(t(outer(matnam,plev,paste,sep=':'))))
+}
+
+nxlevels <- function(n,f) {
+  x <- attr(f,'x')
+  plev <- rep(n,nlevels(f))
+  if(is.null(x) || !is.matrix(x)) return(plev)
+  nam <- attr(f,'xnam')
+  matnam <- colnames(x)
+  if(is.null(matnam)) matnam <- paste(nam,1:ncol(x),sep='') else matnam <- paste(nam,matnam,sep='')
+  plev <- sub('.*:','',plev)
+  return(as.vector(t(outer(matnam,plev,paste,sep=':'))))
+}
+
+
 efactory <- function(obj, opt='ref', ...) {
 
-# the names of the dummies, e.g. id.4 firm.23
-  nm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='\003')))
+  # only factors without covariates are relevant to analyze
+  purefes <- sapply(obj$fe, function(f) is.null(attr(f,'x')))
+  pfe <- obj$fe[purefes]
 
+#  allnm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='\003')))
+  allnm <- unlist(lapply(names(obj$fe),function(n) xlevels(n,obj$fe[[n]],sep='\003')))
+  
+# the names of the dummies, e.g. id.4 firm.23
+#  nm <- unlist(lapply(names(pfe),function(n) paste(n,levels(pfe[[n]]),sep='\003')))
+  nm <- unlist(lapply(names(pfe),function(n) xlevels(n,pfe[[n]],sep='\003')))
+  # create an index where the pure fe's belong in the full array
+  allpos <- match(nm,allnm)
+  mkallvec <- function(x) {res <- rep(NA,length(allnm)); res[allpos] <- allpos[x]; res;}
 # how many obervations for each level
-  lobs <- lapply(obj$fe,table)
+  lobs <- lapply(pfe,table)
   obs <- unlist(lobs)  
   names(obs) <- unlist(lapply(names(lobs), function(n) paste(n,'\003',names(lobs[[n]]),sep='')))
-  if(length(obj$fe) == 2) {
+
+#  allobs <- unlist(lapply(obj$fe,table))
+  allobs <- unlist(lapply(obj$fe,function(f) {
+    x <- attr(f,'x')
+    if(is.null(x)) return(table(f))
+    if(!is.matrix(x)) return(table(f))
+    return(rep(table(f), ncol(x)))
+  }))  
+
+  if(length(pfe) == 2) {
     # now, find the component of each parameter, i.e. each level.  We do this
     # by finding the first occurence of each level, i.e. match(levels(f),f)
-    comp <- factor(unlist(lapply(obj$fe, function(f) obj$cfactor[match(levels(f),f)])))
+    comp <- factor(unlist(lapply(pfe, function(f) obj$cfactor[match(levels(f),f)])))
     ncomp <- nlevels(comp)
-  } else if(length(obj$fe) > 2) {
+  } else if(length(pfe) > 2) {
     # we should formally assign unique component numbers for factors beyond the second
-    comp <- factor(unlist(lapply(obj$fe[1:2], function(f) obj$cfactor[match(levels(f),f)])))
+    comp <- factor(unlist(lapply(pfe[1:2], function(f) obj$cfactor[match(levels(f),f)])))
     ncomp <- nlevels(comp)
-    exlvls <- (nlevels(comp)+1):(nlevels(comp)+1 + length(obj$fe)-3)
-    comp <- as.factor(c(comp,unlist(mapply(rep,exlvls,unlist(lapply(obj$fe[3:length(obj$fe)],nlevels))))))
+    exlvls <- (nlevels(comp)+1):(nlevels(comp)+1 + length(pfe)-3)
+    comp <- as.factor(c(comp,unlist(mapply(rep,exlvls,unlist(lapply(pfe[3:length(pfe)],nlevels))))))
   } else {
     comp <- factor(rep(1,length(obs)))
     ncomp <- 1
@@ -112,24 +155,32 @@ efactory <- function(obj, opt='ref', ...) {
   # so which ones belong to which factor?
   # make a factor to decide
 
-  fef <- factor(unlist(lapply(names(obj$fe),function(n) rep(n,nlevels(obj$fe[[n]])))))
+  fef <- factor(unlist(lapply(names(pfe),function(n) rep(n,nlevels(pfe[[n]])))))
+#  allfef <- factor(unlist(lapply(names(obj$fe),function(n) rep(n,nlevels(obj$fe[[n]])))))
+  allfef <- factor(unlist(lapply(names(obj$fe),function(n) nxlevels(n,obj$fe[[n]]))))
+
   # level of the factor
-  idx <- factor(unlist(lapply(obj$fe,function(f) levels(f))))
+#  idx <- factor(unlist(lapply(obj$fe,function(f) levels(f))))
+  idx <- factor(unlist(lapply(obj$fe,function(f) {
+    x <- attr(f,'x')
+    if(is.null(x) || !is.matrix(x)) return(levels(f))
+    return(rep(levels(f), ncol(x)))
+  })))
   # then figure out in which factor the reference is
   # make sure to allow '.' in factor names
   rf <- sub('(^.*)\003..*$','\\1',refnames)
   # now, create a refsubs which is the ones to be subtracted
   # each refsub belonging to somthing else than the reference factor
   # should be NA'ed.
-  if(length(obj$fe) > 2) {
-    extra <- (length(refno)-length(obj$fe)+3):length(refno)
-    sw <- c(names(obj$fe)[c(2,1)],rep('.NA',length(obj$fe)-2))
+  if(length(pfe) > 2) {
+    extra <- (length(refno)-length(pfe)+3):length(refno)
+    sw <- c(names(pfe)[c(2,1)],rep('.NA',length(pfe)-2))
   } else {
-    swap <- if(length(obj$fe) == 2) c(2,1) else 1
-    sw <- names(obj$fe)[swap]
+    swap <- if(length(pfe) == 2) c(2,1) else 1
+    sw <- names(pfe)[swap]
     extra <- integer(0)
   }
-  names(sw) <- names(obj$fe)
+  names(sw) <- names(pfe)
   otherf <- sw[rf]
   # which should we not subtract?  
   # Those which are 
@@ -152,7 +203,18 @@ efactory <- function(obj, opt='ref', ...) {
 
   
   # create a minimal environment for a function
-  nm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='.')))
+
+  extrarefs <- allpos[extrarefs]
+  refsubs <- mkallvec(refsubs)
+  refsuba <- mkallvec(refsuba)
+  obs <- allobs
+  fef <- allfef
+#  nm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='.')))
+  nm <- unlist(lapply(names(obj$fe),function(n) xlevels(n,obj$fe[[n]],sep='.')))
+#  allcomp <- rep(0,sum(sapply(obj$fe,nlevels)))
+  allcomp <- rep(0,length(allnm))
+  allcomp[allpos] <- comp
+  comp <- allcomp
   fenv <- list(extrarefs=extrarefs,refsubs=refsubs,refsuba=refsuba,fef=fef,nm=nm)
 
 
@@ -169,6 +231,7 @@ efactory <- function(obj, opt='ref', ...) {
          # one reference in each component
          ref={
            fenv$comp <- comp
+           fenv$mkallvec <- mkallvec
            local(function(v,addnames) {
              esum <- sum(v[extrarefs])
              df <- v[refsubs]
@@ -272,7 +335,7 @@ efactory <- function(obj, opt='ref', ...) {
   options(o)
   if(exists('cmpfun'))
     ef <- cmpfun(ef,list(optimize=3))
-  if(length(obj$fe) <= 2 && as.character(opt) != 'ln') 
+  if(length(pfe) <= 2 && as.character(opt) != 'ln' && all(purefes)) 
     attr(ef,'verified') <- TRUE
   ef
 } 
@@ -299,7 +362,6 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
     if(!is.null(attr(v,'extra'))) alpha <- cbind(alpha,attr(v,'extra'))
   }
   R <- obj$r.residuals-obj$residuals
-  j <- 0 #avoid warning from check
 
   # We use the variance in PY-PXbeta to generate variation V (i.e. the full.residuals),
   # this is the outcome residuals, so the correct way to do it.
@@ -309,27 +371,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # Then we adjust for the degrees of freedom, that's component specific
   # this may as well be done after kaczmarz solution, it makes no difference
   
-  sefact <- sqrt((length(R)-1)/obj$df)
-  sm <- mean(obj$residuals) # ought to be zero
-  sefact <- 1  # do it at end instead
-  if(length(obj$fe) > 1) {
-    # need a factor into R assigning component number
-    ac <- factor(unlist(lapply(obj$fe[1:2], function(f) obj$cfactor[match(levels(f),f)])))
-    numpar <- table(ac)[ac]-1
-    numobs <- table(obj$cfactor)[ac]
-    o <- options(warn=-1)
-    sefact <- as.vector(sqrt(length(R)/(numobs-numpar)))
-    options(o)
-  }
-
-  # add extra factors
-  if(length(obj$fe) > 2) {
-    numex <- sum(unlist(lapply(obj$fe[3:length(obj$fe)],nlevels)))
-    sefact <- c(sefact,rep(sqrt(length(R)/obj$df),numex))
-  }
-  # now, set those which we can't get standard error for to NA
-  nose <- is.na(sefact)|is.infinite(sefact)
-  sefact <- ifelse(nose,NA,sefact)
+  sefact <- sqrt(length(R)/obj$df)
   smpdraw <- as.vector(obj$residuals)
 
   # Now, we want to do everything in parallel, so we should allocate up a set
@@ -338,7 +380,8 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # an opportunity to control-c too.
   # hmm, up to 500 MB of vectors, we say, but no less than two per thread
   # (one per thread is bad for balance, if time to completion varies)
-  maxB <- 500e6
+  # divide by two because we use a copy in the demeanlist step.
+  maxB <- getOption('lfe.bootmem')*1e6/2
   vpt <- max(2,as.integer(min(maxB/(length(R)*8),N)/threads))
   vpb <- vpt*threads
   blks <- as.integer(ceiling(N / vpb))
@@ -346,18 +389,20 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   vsum <- 0
   vsq <- 0
   start <- last <- as.integer(Sys.time())
-  Rdup <- matrix(rep(R,vpb),length(smpdraw),vpb)
   gc()
-
-
+#  Rdup <- matrix(rep(R,vpb),length(smpdraw),vpb)
+  Rdup <- as.vector(R)
+#  print(dim(Rdup))
 
   for(i in 1:blks) {
     rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
+#    rsamp <- rnorm(vpb*length(smpdraw),sd=resse)
     dim(rsamp) <- c(length(smpdraw),vpb)
     newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rdup
+    rm(rsamp)
     v <- kaczmarz(obj$fe,newR,eps,threads=threads)*sefact
+    rm(newR)
     efv <- apply(v,2,ef,addnames=FALSE)
-    rm(v,rsamp,newR); gc()
     vsum <- vsum + rowSums(efv)
     vsq <- vsq + rowSums(efv**2)
     now <- as.integer(Sys.time())
@@ -374,27 +419,35 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
 
 
 # check whether a function is estimable
-is.estimable <- function(ef,fe,R=NULL,nowarn=FALSE) {
+is.estimable <- function(ef,fe,R=NULL,nowarn=FALSE,keepdiff=FALSE, threshold=1e-5) {
   if(!is.function(ef)) stop('ef must be a function')
-  N <- sum(unlist(lapply(fe,nlevels)))
+  
+  N <- sum(unlist(lapply(fe,function(f) {
+    x <- attr(f,'x')
+    if(is.matrix(x)) nlevels(f)*ncol(x) else nlevels(f)
+  })))
   if(is.null(R)) {
     # make a suitable residual
     nr <- length(fe[[1]])
-    nc <- length(fe)
-    vec <- unlist(lapply(fe,function(f) rnorm(nlevels(f))[f]))
-    dim(vec) <- c(nr,nc)
+    vec <- unlist(lapply(fe,function(f) {
+      x <- attr(f,'x')
+      if(is.matrix(x)) return(unlist(apply(x,2,function(cl) cl*runif(nlevels(f))[f])))
+      r <- runif(nlevels(f))[f]
+      if(is.null(x)) r else unlist(r*x)
+    }))
+    dim(vec) <- c(nr, length(vec)/nr)
     R <- rowSums(vec)
   }
   v1 <- ef(kaczmarz(fe,R,init=runif(N)),TRUE)
   v2 <- ef(kaczmarz(fe,R,init=runif(N)),TRUE)
   df <- max(abs(v1-v2))
-  if(df > 1e-6) {
+  if(df > threshold) {
     bad <- which.max(abs(v1-v2))
     badname <- names(bad)
     if(!nowarn)
       warning('non-estimable function, largest error ',
               format(df,digits=1),' in coordinate ',bad, ' ("',badname,'")')
-    return(FALSE)
+    return(structure(FALSE,diff=if(!keepdiff) NULL else v1-v2))
   }
-  TRUE
+  structure(TRUE,diff=if(!keepdiff) NULL else v1-v2)
 }

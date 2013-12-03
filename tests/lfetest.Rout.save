@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-08-20 r63635) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-11-30 r64358) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -17,9 +17,6 @@ Type 'q()' to quit R.
 
 > library(lfe)
 Loading required package: Matrix
-Loading required package: lattice
-Loading required package: Rcgmin
-Loading required package: numDeriv
 > options(lfe.threads=2)
 > set.seed(655318)
 > x <- rnorm(500)
@@ -39,11 +36,13 @@ In sample.int(x, size, replace, prob) :
 > ## left hand side
 > y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 > 
+> # make a data frame
+> fr <- data.frame(y,x,x2,id,firm)
 > ## estimate and print result
-> summary(est <- felm(y ~ x+x2+G(id)+G(firm)))
+> summary(est <- felm(y ~ x+x2+G(id)+G(firm), data=fr))
 
 Call:
-   felm(formula = y ~ x + x2 + G(id) + G(firm)) 
+   felm(formula = y ~ x + x2 + G(id) + G(firm), data = fr) 
 
 Residuals:
        Min         1Q     Median         3Q        Max 
@@ -602,4 +601,4 @@ firm.300 -3.01417206   5    1 firm 300
 > 
 > proc.time()
    user  system elapsed 
-  4.472   0.112   4.524 
+  5.204   0.192   5.344 

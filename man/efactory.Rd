@@ -48,6 +48,12 @@ length \code{N} which may be used to code additional information.
   single dimension in each.  Both \code{"ref"} and \code{"zm"} keep one
   such reference at zero in each of these factors.  This is the common
   method when using dummies.
+
+  In the case that interactions are specified in the model,
+  i.e. with \code{G(x:f)}, these terms are not analyzed to create an
+  estimable function. Only the pure \code{G(f)} terms are used for this purpose.
+  It is assumed that the \code{G(x:f)} terms are all identified. Note
+  that in this case, all the levels of \code{f} are included.
 }
 
 \note{
