@@ -35,7 +35,7 @@ cgsol <- function(fl,R,eps=getOption('lfe.eps'), init=NULL,threads=NULL) {
   })
 }
 
-getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100) {
+getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100, robust=FALSE, cluster=NULL) {
 
   R <- obj$r.residuals-obj$residuals
   v <- kaczmarz(obj$fe,R,eps)
@@ -51,7 +51,7 @@ getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100
   rownames(res) <- names(v)
   attr(res,'ef') <- ef
   if(se) {
-    res <- btrap(res,obj,bN,eps=eps)
+    res <- btrap(res,obj,bN,eps=eps, robust=robust, cluster=cluster)
   }
   res
 }
@@ -341,7 +341,8 @@ efactory <- function(obj, opt='ref', ...) {
 } 
 
 
-btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOption('lfe.threads')) {
+btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOption('lfe.threads'), robust=FALSE,
+                  cluster=NULL) {
   # bootstrap the stuff
   # bootstrapping is really to draw residuals over again, i.e. to change
   # the outcome.  Predictions of the estimated system are adjusted by
@@ -349,7 +350,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # the current (I-P)(Y-Xbeta), i.e. (I-P)(Y-Xbeta+delta) where delta is resampled from
   # the residuals PY-PXbeta.  Then we adjust for degrees of freedom, which is component specific.
 
-
+  if(!is.null(cluster) && is.logical(cluster) && cluster) cluster <- obj$clustervar
   if(is.null(ef))  {
     # use the one used with alpha
     ef <- attr(alpha,'ef')
@@ -370,10 +371,10 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # variation for the factors?  (This doesn't sound right, that's the coefficients...)
   # Then we adjust for the degrees of freedom, that's component specific
   # this may as well be done after kaczmarz solution, it makes no difference
-  
+  Rvec <- as.vector(R)  
   sefact <- sqrt(length(R)/obj$df)
+#  if(!is.null(cluster)) sefact <- table(cluster)[cluster]/obj$df
   smpdraw <- as.vector(obj$residuals)
-
   # Now, we want to do everything in parallel, so we should allocate up a set
   # of vectors, but we don't want to blow the memory.  Stick to allocating two
   # vectors per thread.  The threaded stuff can't be interrupted, so this is
@@ -391,14 +392,28 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   start <- last <- as.integer(Sys.time())
   gc()
 #  Rdup <- matrix(rep(R,vpb),length(smpdraw),vpb)
-  Rdup <- as.vector(R)
-#  print(dim(Rdup))
 
+#  print(dim(Rdup))
+  if(!is.null(cluster)) sefact <- sefact*sqrt(nlevels(cluster)/(nlevels(cluster)-1))
   for(i in 1:blks) {
-    rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
-#    rsamp <- rnorm(vpb*length(smpdraw),sd=resse)
+    if(robust) {
+      # robust residuals, variance is each squared residual
+      rsamp <- rnorm(vpb*length(smpdraw))*abs(smpdraw)
+    } else if(!is.null(cluster)) {
+      #clustered residuals, draw clusters with replacement
+      # but we can't do that, so we draw inside cluster
+      rsamp <- as.vector(replicate(vpb, {
+        r <- smpdraw
+        split(r,cluster) <- tapply(smpdraw,cluster, function(g) {g*rnorm(1)})
+        r
+      }))
+      # hmm, yields too high standard se?
+    } else {
+      # IID residuals
+      rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
+    }
     dim(rsamp) <- c(length(smpdraw),vpb)
-    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rdup
+    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rvec
     rm(rsamp)
     v <- kaczmarz(obj$fe,newR,eps,threads=threads)*sefact
     rm(newR)

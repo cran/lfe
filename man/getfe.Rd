@@ -8,8 +8,8 @@
   an estimation with \code{\link{felm}}.
 }
 \usage{
-getfe(obj,references=NULL,se=FALSE,
-      method='kaczmarz',ef='ref',bN=100) 
+getfe(obj, references=NULL, se=FALSE,
+      method='kaczmarz', ef='ref', bN=100, robust=FALSE, cluster=NULL) 
 }
 
 \arguments{
@@ -46,7 +46,14 @@ getfe(obj,references=NULL,se=FALSE,
   in one of the factors, and a reference in the other.}
 
 \item{bN}{integer.  The number of bootstrap runs when standard errors
-  are requested} }
+  are requested.}
+
+\item{robust}{logical. Should heteroskedastic standard errors be
+  estimated?}
+
+\item{cluster}{logical or factor. Estimate clustered standard errors.}
+
+}
 
 \value{
 The function \code{getfe} computes and returns a data frame containing
@@ -87,6 +94,10 @@ function.
   keeping the other coefficients (from \code{\link{felm}}) constant,
   i.e. they are from the variance when resampling the
   residuals. 
+  If \code{robust=TRUE}, heteroskedastic robust standard errors are
+  estimated. If \code{robust=FALSE} and \code{cluster=TRUE}, clustered
+  standard errors with the cluster specified to \code{felm()} are
+  estimated. If \code{cluster} is a factor, it is used for the cluster definition.
 }
 
 \examples{

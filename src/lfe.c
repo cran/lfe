@@ -29,15 +29,22 @@
 /* Need sprintf */
 #include <stdio.h>  
 #include <R.h>
+#include <Rversion.h>
 #include <Rdefines.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
 
+#if defined(R_VERSION) && R_VERSION >= R_Version(3, 0, 0)
+typedef R_xlen_t mybigint_t;
+#else
+typedef int mybigint_t;
+#endif
 /* If the the number of G() terms times the number of observations
    exceeds the 2^31 4-byte integer limit, define mysize_t as size_t
    This will increase the memory usage, so we wait until it's needed.
 */
-#ifdef HUGE_INT
+
+#ifdef HUGE_INT 
 typedef R_xlen_t mysize_t;
 #else
 typedef unsigned int mysize_t;
@@ -654,7 +661,6 @@ static FACTOR** makefactors(SEXP flist) {
   factors[numfac] = NULL;
   int truefac = 0;
   for(int i = 0; i < LENGTH(flist); i++) {
-    int j;
     int len;
     FACTOR *f;
     len = LENGTH(VECTOR_ELT(flist,i));
@@ -681,7 +687,7 @@ static FACTOR** makefactors(SEXP flist) {
 	  FACTOR *g = factors[truefac++] = (FACTOR*) R_alloc(1,sizeof(FACTOR));
 	  g->group = f->group;
 	  g->nlevels = f->nlevels;
-	  g->x = &REAL(xattr)[(R_xlen_t)nrows(xattr)*j];
+	  g->x = &REAL(xattr)[(mybigint_t)nrows(xattr)*j];
 	}
       } else {
 	if(LENGTH(xattr) != len) {
@@ -750,7 +756,7 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
   double prevdiff,neweps;
   double c,sd;
   int iter=0;
-  int i;
+
   int ie;
   int newN;
 
@@ -813,7 +819,7 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
   LOCK(lock);
   if(e > 1) {
     for(mysize_t i = newN-1; i > 0; i--) {
-      mysize_t k,j;
+      mysize_t j;
       /* Pick j between 0 and i inclusive */
       j = (mysize_t) floor((i+1) * unif_rand());
       if(j == i) continue;
@@ -1302,8 +1308,8 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       rcols = 0;
       for(j = 0; j < cols; j++) {
 	if(j == icpt) continue;
-	vectors[cnt] = REAL(elt) + j * (R_xlen_t)N;
-	target[cnt] = REAL(mtx) + (rcols++) * (R_xlen_t)N;
+	vectors[cnt] = REAL(elt) + j * (mybigint_t)N;
+	target[cnt] = REAL(mtx) + (rcols++) * (mybigint_t)N;
 	cnt++;
       }
     }
@@ -1377,7 +1383,7 @@ static SEXP R_scalecols(SEXP mat, SEXP vec) {
   double *cmat = REAL(mat);
   double *cvec = REAL(vec);
   for(int j = 0; j < col; j++) {
-    double *cc = &cmat[j*(R_xlen_t) row];
+    double *cc = &cmat[j*(mybigint_t) row];
     for(int i = 0; i < row; i++)
       cc[i] *= cvec[i];
   }

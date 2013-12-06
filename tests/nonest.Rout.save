@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-11-30 r64358) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-12-03 r64376) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -82,7 +82,7 @@ Components: 1 largest: 10000
 + }
 Warning in is.estimable(ef, obj$fe) :
   non-estimable function, largest error 0.1 in coordinate 1759 ("id.1770")
-Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
   Supplied function seems non-estimable
 
 Call:
@@ -111,7 +111,7 @@ F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16
 
 Warning in is.estimable(ef, obj$fe) :
   non-estimable function, largest error 0.3 in coordinate 7164 ("shirt.1209")
-Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
   Supplied function seems non-estimable
 
 Call:
@@ -140,7 +140,7 @@ F-statistic: 2.763e+08 on 7 and 9993 DF,  p-value: < 2.2e-16
 
 Warning in is.estimable(ef, obj$fe) :
   non-estimable function, largest error 0.1 in coordinate 7165 ("shirt.1209")
-Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
   Supplied function seems non-estimable
 
 Call:
@@ -170,7 +170,7 @@ F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16
 
 Warning in is.estimable(ef, obj$fe) :
   non-estimable function, largest error 0.2 in coordinate 7165 ("shirt.1209")
-Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN) :
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
   Supplied function seems non-estimable
 
 Call:
@@ -202,4 +202,4 @@ F-statistic: 2.417e+08 on 8 and 9992 DF,  p-value: < 2.2e-16
 > 
 > proc.time()
    user  system elapsed 
-  9.844   0.252   9.831 
+ 10.500   0.160  10.403 

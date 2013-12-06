@@ -391,7 +391,8 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   if(!is.null(cluster)) {
     M <- nlevels(cluster)
     dfadj <- M/(M-1)*(z$N-1)/z$df
-#    z$clustervcv <- dfadj * inv %*% ccrossprod(xz,res,cluster) %*% inv
+
+##    z$clustervcv <- dfadj * inv %*% ccrossprod(xz,res,cluster) %*% inv
     cM <- rowsum(xz,cluster)
     rm(xz); gc()
 #    z$clustervcv <- dfadj * inv %*% crossprod(cM) %*% inv
@@ -788,7 +789,7 @@ felm.old <- function(formula,fl,data) {
 }
 
 # return a data-frame with the group fixed effects, including zeros for references
-getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100) {
+getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100, robust=FALSE, cluster=NULL) {
 
   if(length(obj$fe) == 0) return(NULL)
   if(method == 'kaczmarz') {
@@ -797,7 +798,7 @@ getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100
     if(is.null(ef)) ef <- 'ln'
     if(!is.character(ef) && !is.function(ef))
       stop('ef must be a function when using the Kaczmarz method')
-    return(getfe.kaczmarz(obj,se,ef=ef,bN=bN))
+    return(getfe.kaczmarz(obj,se,ef=ef,bN=bN, robust=robust, cluster=cluster))
   }
   if(method != 'cholesky') stop('method must be either kaczmarz or cholesky')
   attr(se,'sefactor') <- obj$sefactor

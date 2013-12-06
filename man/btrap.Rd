@@ -8,7 +8,8 @@
 }
 \usage{
 btrap(alpha, obj, N=100, ef=NULL,
-      eps=getOption('lfe.eps'), threads=getOption('lfe.threads'))
+      eps=getOption('lfe.eps'), threads=getOption('lfe.threads'),
+      robust=FALSE, cluster=NULL)
 }
 
 
@@ -21,6 +22,9 @@ btrap(alpha, obj, N=100, ef=NULL,
    \code{\link{getfe}}. The default is to use the one used on \code{alpha}}
 \item{eps}{double. Tolerance for centering, as in getfe}
 \item{threads}{integer.  The number of threads to use}
+\item{robust}{logical. Should heteroskedastic standard errors be
+  estimated?}
+\item{cluster}{logical or factor. Estimate clustered standard errors.}
 }
 
 \value{
@@ -32,6 +36,11 @@ filled in.
   The bootstrapping is done in parallel if \code{threads > 1}.  
   \code{\link{btrap}} is run automatically from \code{\link{getfe}} if
   \code{se=TRUE} is specified.
+
+  If \code{robust=TRUE}, heteroskedastic robust standard errors are
+  estimated. If \code{robust=FALSE} and \code{cluster=TRUE}, clustered
+  standard errors with the cluster specified to \code{felm()} are
+  estimated. If \code{cluster} is a factor, it is used for the cluster definition.
 }
 
 \examples{

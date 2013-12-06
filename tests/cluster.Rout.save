@@ -1,0 +1,213 @@
+
+R Under development (unstable) (2013-12-03 r64376) -- "Unsuffered Consequences"
+Copyright (C) 2013 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(lfe)
+Loading required package: Matrix
+> # From http://diffuseprior.wordpress.com/2012/06/15/standard-robust-and-clustered-standard-errors-computed-in-r/
+> set.seed(42)
+> ols <- function(form, data, robust=FALSE, cluster=NULL,digits=3){
++     r1 <- lm(form, data)
++       if(length(cluster)!=0){
++             data <- na.omit(data[,c(colnames(r1$model),cluster)])
++                 r1 <- lm(form, data)
++           }
++       X <- model.matrix(r1)
++       n <- dim(X)[1]
++       k <- dim(X)[2]
++       if(robust==FALSE & length(cluster)==0){
++             se <- sqrt(diag(solve(crossprod(X)) * as.numeric(crossprod(resid(r1))/(n-k))))
++                 res <- cbind(coef(r1),se)
++           }
++       if(robust==TRUE){
++             u <- matrix(resid(r1))
++                 meat1 <- t(X) %*% diag(diag(crossprod(t(u)))) %*% X
++                 dfc <- n/(n-k)
++                 se <- sqrt(dfc*diag(solve(crossprod(X)) %*% meat1 %*% solve(crossprod(X))))
++                 res <- cbind(coef(r1),se)
++           }
++       if(length(cluster)!=0){
++             clus <- cbind(X,data[,cluster],resid(r1))
++                 colnames(clus)[(dim(clus)[2]-1):dim(clus)[2]] <- c(cluster,"resid")
++                 m <- dim(table(clus[,cluster]))
++                 dfc <- (m/(m-1))*((n-1)/(n-k))
++                 uclust  <- apply(resid(r1)*X,2, function(x) tapply(x, clus[,cluster], sum))
++                 se <- sqrt(diag(solve(crossprod(X)) %*% (t(uclust) %*% uclust) %*% solve(crossprod(X)))*dfc)
++                 res <- cbind(coef(r1),se)
++           }
++       res <- cbind(res,res[,1]/res[,2],(1-pnorm(abs(res[,1]/res[,2])))*2)
++       res1 <- matrix(as.numeric(sprintf(paste("%.",paste(digits,"f",sep=""),sep=""),res)),nrow=dim(res)[1])
++       rownames(res1) <- rownames(res)
++       colnames(res1) <- c("Estimate","Std. Error","t value","Pr(>|t|)")
++       return(res1)
++   }
+> 
+> 
+> 
+> x <- rnorm(100)
+> f1 <- sample(10,length(x), repl=T)
+> f2 <- sample(10,length(x), repl=T)
+> 
+> y <- x +  log(f1) + cos(f2) + rnorm(length(x), sd=0.5)
+> dat1 <- data.frame(y, x, f1=factor(f1), f2=factor(f2))
+> #print(summary(lm(y ~ x + f1 + f2, dat1)))
+> dat2 <- rbind(dat1,dat1)
+> #summary(lm(y ~ x + f1 + f2, dat2))
+> #clu <- factor(rep(1:length(x),2))
+> clu <- factor(sample(8,length(x)*2,T))
+> dat2[,'cluster'] <- clu
+> summary(est <- felm(y ~x + G(f1) + G(f2), dat2, clustervar='cluster'))
+
+Call:
+   felm(formula = y ~ x + G(f1) + G(f2), data = dat2, clustervar = "cluster") 
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.96807 -0.27689 -0.01115  0.26709  0.91292 
+
+Coefficients:
+  Estimate Cluster s.e. t value Pr(>|t|)    
+x  0.93189      0.03455   26.97   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.4262 on 180 degrees of freedom
+Multiple R-squared: 0.9157   Adjusted R-squared: 0.9064 
+F-statistic:   103 on 19 and 180 DF, p-value: < 2.2e-16 
+
+
+> summary(est <- felm(y ~x + G(f1) + G(f2), dat2), robust=TRUE)
+
+Call:
+   felm(formula = y ~ x + G(f1) + G(f2), data = dat2) 
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.96807 -0.27689 -0.01115  0.26709  0.91292 
+
+Coefficients:
+  Estimate Robust s.e t value Pr(>|t|)    
+x  0.93189    0.03054   30.52   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.4262 on 180 degrees of freedom
+Multiple R-squared: 0.9157   Adjusted R-squared: 0.9064 
+F-statistic:   103 on 19 and 180 DF, p-value: < 2.2e-16 
+
+
+> 
+> # then the fixed effects.
+> ef <- function(gamma, addnames) {
++   ref1 <- gamma[[1]]
++   ref2 <- gamma[[11]]
++   icpt <- ref1+ref2
++   res <- c(icpt,gamma[2:10]-ref1,gamma[12:20]-ref2)
++   if(addnames) {
++     names(res) <- c('icpt',paste('f1',2:10),paste('f2',2:10))
++   }
++   res
++ }
+> ols(y ~x + f1 + f2, dat2, robust=TRUE)
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)    0.637      0.138   4.622    0.000
+x              0.932      0.031  30.441    0.000
+f12            0.822      0.119   6.899    0.000
+f13            1.212      0.165   7.354    0.000
+f14            1.609      0.123  13.061    0.000
+f15            1.969      0.143  13.719    0.000
+f16            1.880      0.139  13.514    0.000
+f17            2.684      0.212  12.677    0.000
+f18            2.176      0.101  21.551    0.000
+f19            2.226      0.115  19.313    0.000
+f110           1.928      0.163  11.825    0.000
+f22           -1.640      0.174  -9.407    0.000
+f23           -1.561      0.177  -8.803    0.000
+f24           -1.401      0.149  -9.404    0.000
+f25           -0.870      0.141  -6.185    0.000
+f26            0.466      0.140   3.337    0.001
+f27            0.143      0.165   0.862    0.389
+f28           -0.690      0.174  -3.972    0.000
+f29           -1.721      0.148 -11.663    0.000
+f210          -1.657      0.145 -11.438    0.000
+> getfe(est,ef=ef,se=T,bN=2000, robust=TRUE)
+          effect        se
+icpt   0.6365716 0.1384790
+f1 2   0.8222991 0.1166491
+f1 3   1.2122248 0.1638033
+f1 4   1.6087534 0.1191894
+f1 5   1.9686371 0.1398741
+f1 6   1.8800493 0.1372608
+f1 7   2.6835840 0.2097697
+f1 8   2.1762015 0.1014788
+f1 9   2.2264939 0.1118032
+f1 10  1.9277491 0.1572246
+f2 2  -1.6400422 0.1779030
+f2 3  -1.5611695 0.1831456
+f2 4  -1.4006447 0.1516816
+f2 5  -0.8699333 0.1437915
+f2 6   0.4661532 0.1423438
+f2 7   0.1425749 0.1686188
+f2 8  -0.6901662 0.1744910
+f2 9  -1.7206603 0.1482237
+f2 10 -1.6566993 0.1446226
+> ols(y ~x + f1 + f2, dat2, cluster="cluster")
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)    0.637      0.115   5.543    0.000
+x              0.932      0.035  26.968    0.000
+f12            0.822      0.167   4.913    0.000
+f13            1.212      0.131   9.251    0.000
+f14            1.609      0.118  13.683    0.000
+f15            1.969      0.137  14.368    0.000
+f16            1.880      0.142  13.242    0.000
+f17            2.684      0.139  19.369    0.000
+f18            2.176      0.120  18.140    0.000
+f19            2.226      0.138  16.128    0.000
+f110           1.928      0.143  13.459    0.000
+f22           -1.640      0.130 -12.610    0.000
+f23           -1.561      0.156 -10.025    0.000
+f24           -1.401      0.067 -21.017    0.000
+f25           -0.870      0.090  -9.717    0.000
+f26            0.466      0.081   5.783    0.000
+f27            0.143      0.135   1.053    0.292
+f28           -0.690      0.210  -3.285    0.001
+f29           -1.721      0.118 -14.557    0.000
+f210          -1.657      0.106 -15.595    0.000
+> getfe(est,ef=ef,se=T,bN=2000, cluster=clu)
+          effect         se
+icpt   0.6365716 0.11664994
+f1 2   0.8222991 0.17214317
+f1 3   1.2122248 0.12583703
+f1 4   1.6087534 0.12143239
+f1 5   1.9686371 0.14047210
+f1 6   1.8800493 0.15365764
+f1 7   2.6835840 0.13801010
+f1 8   2.1762015 0.12638745
+f1 9   2.2264939 0.13382493
+f1 10  1.9277491 0.14174845
+f2 2  -1.6400422 0.12519979
+f2 3  -1.5611695 0.15788496
+f2 4  -1.4006447 0.06427495
+f2 5  -0.8699333 0.08749895
+f2 6   0.4661532 0.08020026
+f2 7   0.1425749 0.13306629
+f2 8  -0.6901662 0.20631154
+f2 9  -1.7206603 0.11507389
+f2 10 -1.6566993 0.10489439
+> 
+> proc.time()
+   user  system elapsed 
+ 11.508   0.268   9.848 
