@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2013-11-30 r64358) -- "Unsuffered Consequences"
-Copyright (C) 2013 The R Foundation for Statistical Computing
+R Under development (unstable) (2014-01-01 r64612) -- "Unsuffered Consequences"
+Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -32,7 +32,7 @@ Loading required package: Matrix
 > x3 <- rnorm(length(x))
 > x4 <- rnorm(length(x))
 > Q <- 0.3*x3 + x + 0.2*x2 + id.eff[id] + 0.15*u + rnorm(length(x),sd=0.2)
-> R <- 0.5*x4 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
+> R <- 0.001*x3 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
 > y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 > 
 > ## estimate and print result
@@ -48,16 +48,17 @@ Residuals:
 
 Coefficients:
          Estimate Robust s.e t value Pr(>|t|)    
-x         0.85967    0.10670   8.057 2.25e-15 ***
-x2        0.45966    0.04732   9.713  < 2e-16 ***
-`Q(fit)`  1.09306    0.10565  10.346  < 2e-16 ***
-`R(fit)`  0.98367    0.05649  17.413  < 2e-16 ***
+x          1.1242     0.8260   1.361    0.174    
+x2         1.1606     2.1775   0.533    0.594    
+`Q(fit)`   1.1141     0.1180   9.444   <2e-16 ***
+`R(fit)`  -0.4132     4.3413  -0.095    0.924    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 1.071 on 984 degrees of freedom
-Multiple R-squared: 0.9208   Adjusted R-squared: 0.9195 
-F-statistic: 762.9 on 15 and 984 DF, p-value: < 2.2e-16 
+Residual standard error: 0.8711 on 984 degrees of freedom
+Multiple R-squared: 0.947   Adjusted R-squared: 0.9461 
+F-statistic(normal s.e.): 1138 on 15 and 984 DF, p-value: < 2.2e-16 
+F-statistic(proj):   535 on 15 and 984 DF, p-value: < 2.2e-16 
 
 
 > clu <- factor(sample(10,length(x), replace=TRUE))
@@ -73,19 +74,71 @@ Residuals:
 
 Coefficients:
          Estimate Cluster s.e. t value Pr(>|t|)    
-x         0.85967      0.10671   8.056 2.27e-15 ***
-x2        0.45966      0.03293  13.958  < 2e-16 ***
-`Q(fit)`  1.09306      0.10364  10.547  < 2e-16 ***
-`R(fit)`  0.98367      0.02499  39.362  < 2e-16 ***
+x          1.1242       0.5090   2.209   0.0274 *  
+x2         1.1606       1.2675   0.916   0.3601    
+`Q(fit)`   1.1141       0.1131   9.846   <2e-16 ***
+`R(fit)`  -0.4132       2.5367  -0.163   0.8706    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 1.071 on 984 degrees of freedom
-Multiple R-squared: 0.9208   Adjusted R-squared: 0.9195 
-F-statistic: 762.9 on 15 and 984 DF, p-value: < 2.2e-16 
+Residual standard error: 0.8711 on 984 degrees of freedom
+Multiple R-squared: 0.947   Adjusted R-squared: 0.9461 
+F-statistic(normal s.e.): 1138 on 15 and 984 DF, p-value: < 2.2e-16 
+F-statistic(proj):  1250 on 15 and 984 DF, p-value: < 2.2e-16 
+
+
+> for(s1 in est$step1) print(summary(s1))
+
+Call:
+   felm(formula = Q ~ x + x2 + G(id) + G(firm) + x3 + x4, clustervar = clu) 
+
+Residuals:
+      Min        1Q    Median        3Q       Max 
+-0.715606 -0.156940 -0.007132  0.177618  0.813783 
+
+Coefficients:
+    Estimate Cluster s.e. t value Pr(>|t|)    
+x   0.991349     0.008575 115.613   <2e-16 ***
+x2  0.206463     0.004395  46.975   <2e-16 ***
+x3  0.299036     0.006677  44.783   <2e-16 ***
+x4 -0.002241     0.008347  -0.268    0.788    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.2458 on 984 degrees of freedom
+Multiple R-squared: 0.9711   Adjusted R-squared: 0.9706 
+F-statistic(normal s.e.): 2203 on 15 and 984 DF, p-value: < 2.2e-16 
+F-statistic(proj):  3254 on 15 and 984 DF, p-value: < 2.2e-16 
+F-stat (excl i.v. n.s.e):760.4 on 2 and 984 DF, p-value: < 2.2e-16 
+F-stat (excl i.v. proj):  4823 on 2 and 984 DF, p-value: < 2.2e-16 
+
+
+
+Call:
+   felm(formula = R ~ x + x2 + G(id) + G(firm) + x3 + x4, clustervar = clu) 
+
+Residuals:
+       Min         1Q     Median         3Q        Max 
+-0.7144784 -0.1539333 -0.0002041  0.1527118  0.8051611 
+
+Coefficients:
+   Estimate Cluster s.e. t value Pr(>|t|)    
+x  0.204303     0.007265  28.123   <2e-16 ***
+x2 0.504912     0.007239  69.745   <2e-16 ***
+x3 0.004490     0.005007   0.897    0.370    
+x4 0.005813     0.006815   0.853    0.394    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.2267 on 984 degrees of freedom
+Multiple R-squared: 0.9329   Adjusted R-squared: 0.9318 
+F-statistic(normal s.e.):912.2 on 15 and 984 DF, p-value: < 2.2e-16 
+F-statistic(proj): 472.3 on 15 and 984 DF, p-value: < 2.2e-16 
+F-stat (excl i.v. n.s.e):0.5822 on 2 and 984 DF, p-value: 0.5589 
+F-stat (excl i.v. proj): 1.686 on 2 and 984 DF, p-value: 0.1858 
 
 
 > 
 > proc.time()
    user  system elapsed 
- 12.932   0.204  12.965 
+ 17.604   0.072  12.439 

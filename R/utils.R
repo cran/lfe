@@ -1,6 +1,46 @@
 # Author: Simen Gaure
 # Copyright: 2011, Simen Gaure
 # Licence: Artistic 2.0
+# pseudo-inverse, snatched from MASS
+
+
+pinv <- function (X, tol = sqrt(.Machine$double.eps)) {
+  if (length(dim(X)) > 2L || !(is.numeric(X) || is.complex(X)))
+    stop("'X' must be a numeric or complex matrix")
+  if (!is.matrix(X))
+    X <- as.matrix(X)
+  Xsvd <- svd(X)
+  badvars <- integer(0)
+  Positive <- Xsvd$d > max(tol * Xsvd$d[1L], 0)
+  Positive <- ifelse(is.na(Positive),FALSE,Positive)
+  badvars <- which(!Positive)
+  if (all(Positive))
+    res <- Xsvd$v %*% (1/Xsvd$d * t(Xsvd$u))
+  else if (!any(Positive)) 
+    res <- array(0, dim(X)[2L:1L])
+  else
+    res <- Xsvd$v[, Positive, drop = FALSE] %*% ((1/Xsvd$d[Positive]) *
+                            t(Xsvd$u[, Positive, drop = FALSE]))
+  structure(res,badvars=badvars)
+}
+
+ftest <- function(z, zr=NULL, vcov=z$vcv) {
+  rdf <- z$df #z$N - z$p - 1
+  if(is.null(zr)) {
+# we should do F-test vs. model with intercept.
+# but the intercept in z is implicit.
+    F <- (t(coef(z)) %*% pinv(vcov) %*% coef(z))/z$p
+    return( c(F=F, p=pf(F, z$p, rdf, lower.tail=FALSE), df1=z$p, df2=rdf))
+  }
+#  df1 <- length(coef(z)) - length(coef(zr))
+  df1 <- z$p - zr$p
+  c1 <- coef(z)
+  c2 <- rep(0,length(c1))
+  names(c2) <- names(c1)
+  c2[names(coef(zr))] <- coef(zr)
+  F <- (t(c1-c2) %*% pinv(vcov) %*% (c1-c2))/df1
+  return(c(F=F, p=pf(F,df1, rdf, lower.tail=FALSE), df1=df1,df2=rdf))
+}
 
 
 summary.felm <- function(object,...,robust=!is.null(object$cse)) {
@@ -14,13 +54,16 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
   }
   res$terms <- z$terms
   res$call <- z$call
+  res$badF <- FALSE
   if(is.logical(robust) && robust) {
     if(!is.null(object$cse)) {
       coefficients <- cbind(z$coefficients,z$cse,z$ctval,z$cpval)
       sdnam <- 'Cluster s.e.'
+      res$badF <- TRUE
     } else {
       coefficients <- cbind(z$coefficients,z$rse,z$rtval,z$rpval)
       sdnam <- 'Robust s.e'
+      res$badF <- TRUE
     }
   } else {
     sdnam <- 'Std. Error'
@@ -52,37 +95,73 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
   rdf <- z$N - p - 1
   rss <- sum(z$residuals^2)
 
-  resvar <- rss/rdf
-  sigma <- sqrt(resvar)
 
   tss <- sum( (z$response - mean(z$response))^2)
   mss <- tss - rss
 
-  r2 <- mss/tss
-  r2adj <- 1-(1-r2)*(z$N/rdf)
-  fstat <- (mss/p)/resvar
+# things for 2. stage iv is different
+  if(!is.null(z$ivresid)) {
+    # residual from observed instrumented variables
+    # residuals from null model - residuals from full model
+    rs <- z$residuals - z$ivresid
+    resvar <- sum(rs^2)/rdf
+    r2 <- (tss-sum(rs^2))/tss
+  } else {
+    r2 <- mss/tss
+    resvar <- rss/rdf
+  }
 
-  pval <- pf(fstat,p,rdf,lower.tail=FALSE)
+  # hmm, fstat should be computed differently when s.e. are robust or clustered.
+  
+
+  res$fstat <- (mss/p)/resvar
+  res$pval <- pf(res$fstat,p,rdf,lower.tail=FALSE)
+
+
+  # use wald test if robust or clustered
+  if(robust) {
+    if(is.null(z$cse)) {
+      F <- ftest(z,vcov=z$robustvcv)
+    } else {
+      F <- ftest(z,vcov=z$clustervcv)    
+    }
+    res$rob.fstat <- F[['F']]
+    res$rob.pval  <- F[['p']]
+  }
+
+  sigma <- sqrt(resvar)  
+  r2adj <- 1-(1-r2)*(z$N/rdf)
+
+
   res$exactDOF <- z$exactDOF
+  if(!is.null(z$iv1fstat)) {
+    res$iv1fstat <- z$iv1fstat
+    res$iv1pval <- z$iv1fstat[['p']]
+    if(robust) {
+      if(is.null(z$cse))
+        if1 <- z$rob.iv1fstat
+      else
+        if1 <- z$clu.iv1fstat
+      res$rob.iv1fstat <- if1
+      res$rob.iv1pval <- if1[['p']]
+    }
+  }
+
   res$df <- c(rdf,rdf)
   res$rse <- sigma
   res$rdf <- rdf
   res$r2 <- r2
   res$r2adj <- r2adj
-  res$fstat <- fstat
-  res$pval <- pval
+#  res$fstat <- fstat
+#  res$pval <- pval
   res$fe <- z$fe
+  res$N <- z$N
   res$na.action <- z$na.action
   class(res) <- 'summary.felm'
   res
 }
 
 print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
-#  if(x$p == 0) {
-#    cat('(No coefficients)')
-#    return()
-#  }
-
   cat('\nCall:\n  ',deparse(x$call),'\n\n')
   qres <- quantile(x$residuals)
   cat('Residuals:\n')
@@ -99,7 +178,35 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
       cat("  (", mess, ")\n", sep = "")
     cat('Multiple R-squared:',formatC(x$r2,digits=digits),'  Adjusted R-squared:',
         formatC(x$r2adj,digits=digits),'\n')
-    cat('F-statistic:',formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
+
+    if(x$badF)
+      cat('F-statistic(normal s.e.):')
+    else
+      cat('F-statistic:')
+    cat(formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
+    if(x$badF) {
+      cat('F-statistic(proj):',formatC(x$rob.fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$rob.pval,digits=digits),'\n')
+    }
+
+    if(!is.null(x$iv1fstat)) {
+      if1 <- x$iv1fstat
+      if(x$badF)
+        cat('F-stat (excl i.v. n.s.e):')
+      else
+        cat('F-stat (excl i.v.):')
+
+      cat(formatC(if1[['F']],digits=digits),'on',
+          if1[['df1']],'and',if1[['df2']],'DF, p-value:',
+          format.pval(if1[['p']],digits=digits),'\n')      
+
+      if(x$badF) {
+        if1 <- x$rob.iv1fstat
+        cat('F-stat (excl i.v. proj):',formatC(if1[['F']],digits=digits),'on',
+          if1[['df1']],'and',if1[['df2']],'DF, p-value:',
+          format.pval(if1[['p']],digits=digits),'\n')
+      }
+    }
+
     if(length(x$fe) > 2 && !identical(x$exactDOF,'rM') && !x$exactDOF)
       cat('*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE\n')
   }
@@ -151,47 +258,6 @@ print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
     return()
   }
   print(coef(x),digits=digits)
-  return()
-  ans <- z[c('call','terms')]
-  ans$residuals <- z$residuals
-  rdf <- z$df
-  ans$coefficients <- cbind(z$coefficients,z$se,z$tval,z$pval)
-  dimnames(ans$coefficients) <- list(names(z$coefficients),
-                                     c('Estimate','Std. Error','t value','Pr(>|t|)'))
-  cat('\nCall:\n  ',deparse(z$call),'\n\n')
-  cat('Residuals:\n')
-  qres <- quantile(ans$residuals)
-  names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
-  print(qres,digits=digits)
-
-  cat('\nCoefficients:\n')
-  printCoefmat(ans$coefficients,digits=digits)
-
-
-  # compute
-  # residual se, df
-  # mrsq, adj rsq
-  # fstat, p-value
-  p <- z$p
-  rdf <- z$N - p
-  rss <- sum(z$residuals^2)
-  f <- z$fitted
-  resvar <- rss/rdf
-  sigma <- sqrt(resvar)
-#  mss <- sum( (f - mean(f))^2)
-  mss <- sum(f^2)
-  r2 <- mss/(mss+rss)
-  r2adj <- 1-(1-r2)*(z$N/rdf)
-  fstat <- (mss/p)/resvar
-  pval <- pf(fstat,p,rdf,lower.tail=FALSE)
-  cat('\nResidual standard error:',format(signif(sigma,digits)),'on',rdf,'degrees of freedom\n')
-  cat('Multiple R-squared:',formatC(r2,digits=digits),'  Adjusted R-squared:',
-      formatC(r2adj,digits=digits),'\n')
-  cat('F-statistic:',formatC(fstat,digits=digits),'on',p,'and',rdf,'DF, p-value:',format.pval(pval,digits=digits),'\n')
-  if(length(z$fe) > 2)
-    cat('*** Standard errors are slightly too high due to more than 2 groups\n')
-  cat('\n\n')
-
 }
 
 fixef.felm <- function(object,...) {

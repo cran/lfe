@@ -3,16 +3,14 @@ citEntry(entry="article",
          title="lfe: Linear group fixed effects",
          author=as.person("Simen Gaure"),
          journal="The R Journal",
-         pages="",
+         pages="104-117",
          year="2013",
          volume="5",
          number="2",
-         month="december",
-         url="http://cran.r-project.org/package=lfe",
-         textVersion=paste("S. Gaure. lfe: Linear group fixed effects.",
-           "The R Journal, 5(2), (to appear)")
-         )
-#           "The R Journal, 5(2):n-n, dec 2013 (to appear)")
+         month="Dec",
+         url="http://journal.r-project.org/archive/2013-2/gaure.pdf",
+	 textVersion="Simen Gaure. lfe: Linear group fixed effects. The R Journal, 5(2):104-117, Dec 2013"
+)
 
 citEntry(entry="article",
 	title = "OLS with multiple high dimensional category variables",
@@ -41,11 +39,3 @@ citEntry(entry='manual',
 
 
 
-#vers <- paste("R package version", meta$Version)
-
-#citEntry(entry="Manual",
-#	title="lfe: Linear Group Fixed Effects",
-#	author=as.person("Simen Gaure"),
-#	year=year,
-#	note=vers,
-#	textVersion=paste("Simen Gaure (",year,") lfe: Linear Group Fixed Effects. ",vers,".",sep=""))

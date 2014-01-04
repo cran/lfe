@@ -373,8 +373,9 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # this may as well be done after kaczmarz solution, it makes no difference
   Rvec <- as.vector(R)  
   sefact <- sqrt(length(R)/obj$df)
-#  if(!is.null(cluster)) sefact <- table(cluster)[cluster]/obj$df
   smpdraw <- as.vector(obj$residuals)
+  if(!is.null(obj$ivresid)) smpdraw <- smpdraw - obj$ivresid
+
   # Now, we want to do everything in parallel, so we should allocate up a set
   # of vectors, but we don't want to blow the memory.  Stick to allocating two
   # vectors per thread.  The threaded stuff can't be interrupted, so this is
@@ -401,13 +402,8 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
       rsamp <- rnorm(vpb*length(smpdraw))*abs(smpdraw)
     } else if(!is.null(cluster)) {
       #clustered residuals, draw clusters with replacement
-      # but we can't do that, so we draw inside cluster
-      rsamp <- as.vector(replicate(vpb, {
-        r <- smpdraw
-        split(r,cluster) <- tapply(smpdraw,cluster, function(g) {g*rnorm(1)})
-        r
-      }))
-      # hmm, yields too high standard se?
+      # but we can't do that, so we draw inside cluster, keeping correlations
+      rsamp <- as.vector(replicate(vpb, {ave(smpdraw,cluster,FUN=function(g) {g*rnorm(1)})}))
     } else {
       # IID residuals
       rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)

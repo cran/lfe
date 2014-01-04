@@ -23,8 +23,9 @@ y <- x + 0.25*x2 + 0.5*x3 + 0.17*x4 + 0.8*x5 -0.3*x6 + id.eff[id] + firm.eff[fir
 est <- felm(y ~ x+x2 + x3 + x4 + x5 + x6 + G(id) + G(firm))
 ## extract the group fixed effects
 alpha <- getfe(est)
-#summary(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + id + firm-1))
-
+#summary(est)  # remove from cran
+#alpha
+#summary(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + id + firm)) # remove from cran
 # merge back
 ideff <- alpha[paste('id',id,sep='.'),'effect']
 firmeff <- alpha[paste('firm',firm,sep='.'),'effect']

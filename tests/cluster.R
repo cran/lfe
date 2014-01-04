@@ -1,6 +1,7 @@
 library(lfe)
 # From http://diffuseprior.wordpress.com/2012/06/15/standard-robust-and-clustered-standard-errors-computed-in-r/
 set.seed(42)
+options(lfe.threads=1, digits=3)
 ols <- function(form, data, robust=FALSE, cluster=NULL,digits=3){
     r1 <- lm(form, data)
       if(length(cluster)!=0){
@@ -44,13 +45,13 @@ f1 <- sample(10,length(x), repl=T)
 f2 <- sample(10,length(x), repl=T)
 
 y <- x +  log(f1) + cos(f2) + rnorm(length(x), sd=0.5)
-dat1 <- data.frame(y, x, f1=factor(f1), f2=factor(f2))
+dat1 <- data.frame(y, x, f1=factor(f1), f2=factor(f2),cluster=factor(1:length(x)))
 #print(summary(lm(y ~ x + f1 + f2, dat1)))
 dat2 <- rbind(dat1,dat1)
 #summary(lm(y ~ x + f1 + f2, dat2))
 #clu <- factor(rep(1:length(x),2))
-clu <- factor(sample(8,length(x)*2,T))
-dat2[,'cluster'] <- clu
+clu <- dat2[,'cluster']
+summary(est <- felm(y ~x + G(f1) + G(f2), dat1))
 summary(est <- felm(y ~x + G(f1) + G(f2), dat2, clustervar='cluster'))
 summary(est <- felm(y ~x + G(f1) + G(f2), dat2), robust=TRUE)
 
@@ -65,6 +66,7 @@ ef <- function(gamma, addnames) {
   }
   res
 }
+
 ols(y ~x + f1 + f2, dat2, robust=TRUE)
 getfe(est,ef=ef,se=T,bN=2000, robust=TRUE)
 ols(y ~x + f1 + f2, dat2, cluster="cluster")

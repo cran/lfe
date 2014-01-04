@@ -34,6 +34,8 @@
   \item{fstat}{F-statistic.}
   \item{pval}{P-values.}
   \item{fe}{list of factors. A list of the \code{G()} terms in the model.}
+  \item{iv1fstat}{F-statistic for excluded instruments in 1. step IV, see \code{\link{felm}}.}
+  \item{iv1pval}{P-value for \code{iv1fstat}.}
 
 }
 
@@ -47,5 +49,18 @@ contain ordinary standard errors. If the \code{robust} parameter is
 \code{TRUE}, clustered standard errors are reported if a
 \code{clustervar} was specified in the call to \code{felm}; if not,
 heteroskedastic robust standard error are reported.
+The F-statistic is not reliable for robust and clustered errors, the
+reason being that the author has not yet figured out how to compute it
+without the full covariance matrix for the dummies that have been
+projected out.  In this case, the \code{print} method will report the F-statistic
+under the assumption of normally distributed residuals (which can be
+computed from the residuals only), and an
+F-statistic (via a Wald-statistic) for robust/clustered errors which does not take into account
+the covariates which have been projected out.
+
+For a 1st stage IV-regression, an F-statistic against the model with
+omitted instruments is also computed, but this one also assumes that the
+coefficient for the absorbed dummies are equal for the two dummies, so
+that the covariance comes from the ordinary covariates only.
 }
 

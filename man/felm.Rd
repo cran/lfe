@@ -83,6 +83,10 @@ subset, na.action, contrasts=NULL) }
   \item{step1}{list of '\code{felm}' objects for the IV 1. step(s), if
     used.}
   
+  \item{iv1fstat}{numerical vector. For IV 1. steps, F-value for
+    excluded instruments, the number of parameters in restricted model
+    and in the unrestricted model.}
+    
 }
 
 \details{

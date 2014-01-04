@@ -815,6 +815,8 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
      The unif_rand isn't concurrency-safe, so protect with mutex.
      The Get/PutRNGstate is done in the main thread.
      Knuth-Fisher-Yates shuffle.
+     The randomization done here should not have consequences for the result
+     of the routine, only the speed.
   */
   LOCK(lock);
   if(e > 1) {

@@ -252,12 +252,13 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 # the diagonal for standard errors.  We could use the cholesky inversion
 # chol2inv(chol(crossprod(xz)))
   cp <- crossprod(xz)
+  b <- crossprod(xz,yz)
+  if(FALSE) {
   ch <- cholx(cp)
 #  ch <- chol(cp)
 #  beta <- drop(inv %*% (t(xz) %*% yz))
   # remove multicollinearities
   badvars <- attr(ch,'badvars')
-  b <- crossprod(xz,yz)
 
   if(is.null(badvars)) {
     beta <- as.vector(backsolve(ch,backsolve(ch,b,transpose=TRUE)))
@@ -268,7 +269,16 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
     inv <- matrix(NaN,nrow(cp),ncol(cp))
     inv[-badvars,-badvars] <- chol2inv(ch)
   }
-  rm(b,cp,ch)
+  rm(ch)
+  } else {
+    # try svd pseudo-inverse instead
+    inv <- pinv(cp)
+    badvars <- attr(inv,'badvars')
+    beta <- as.vector(inv %*% b)
+    inv[badvars,] <- NA
+    inv[,badvars] <- NA
+  }
+  rm(b,cp)
   gc()
 
   if(length(fl) > 0 && icpt > 0) 
@@ -276,6 +286,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 
 #  cat(date(),'projected system finished\n')
   z <- list(coefficients=beta,badconv=psys$badconv)
+
   z$N <- nrow(xz)
   z$p <- ncol(xz) - length(badvars)
   z$inv <- inv
@@ -286,7 +297,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 # resulting from the full model.
 
 # for the 2. step in the 2sls, we should replace 
-# the instrumental variable with the real ones (in ivresid)
+# the instrumental variable with the real ones (the difference is in ivresid)
 # when predicting, but only for the purpose of computing
 # residuals.
 
@@ -310,46 +321,30 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 
   gc()
   
-  z$ivresid <- rep(0,length(z$r.residuals))
-  for(ivnam in names(ivresid)) {
-#  if(!is.null(ivresid)) {
-#    ivnam <- names(ivresid)[[1]]
+  if(!is.null(ivresid)) {
+    z$ivresid <- rep(0,length(z$r.residuals))
+    for(ivnam in names(ivresid)) {
     # fitted difference
     # predict the residuals from the first step
-    ivbeta <- nabeta[[ivnam]]
-    ivrp <- ivresid[[ivnam]] * ivbeta
-    # subtract these to get the fit with the original variable
-#    z$residuals <- z$residuals - ivrp
-#    z$r.residuals <- z$r.residuals - ivrp
-    z$ivresid <- z$ivresid + ivrp
+      ivbeta <- nabeta[[ivnam]]
+      ivrp <- ivresid[[ivnam]] * ivbeta
+    # use this to subtract from residuals to get the residuals with the original variable
+      z$ivresid <- z$ivresid + ivrp
+    }
   }
-
+  
   z$terms <- psys$terms
 
   z$cfactor <- compfactor(fl)
 
-
   totlev <- totalpvar(fl)
-#  totlev <- sum(unlist(lapply(fl,function(f) {
-#    x <- attr(f,'x')
-#    if(is.null(x) || !is.matrix(x)) return(nlevels(f))
-#    nlevels(f)*ncol(x)
-#  })))
 
-#  numpure <- sum(sapply(fl,function(f) is.null(attr(f,'x'))))
   if(is.numeric(exactDOF)) {
     z$df <- exactDOF
     numdum <- z$N - z$p - z$df
     z$numrefs <- totlev - numdum
   } else {
     numrefs <- nrefs(fl, z$cfactor, exactDOF)
-#    if(identical(exactDOF,'rM')) {
-#      numrefs <- rankDefic(fl, method='qr')
-#    } else  if(exactDOF) {
-#      numrefs <- rankDefic(fl, method='cholesky')
-#    } else {
-#      numrefs <- (if(numpure>1) nlevels(z$cfactor) else 0) + max(numpure-2, 0)
-#    }
     numdum <- totlev - numrefs
     z$numrefs <- numrefs
     z$df <- z$N - z$p - numdum
@@ -372,7 +367,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   # rank k updates, i.e. the dsyrk blas routine, we make an R-version of it.
   # need to check this computation, the SE's are slightly numerically different from Stata's.
   # it seems stata does not do the small-sample adjustment
-  dfadj <- (z$N-1)/z$df
+  dfadj <- (z$N)/z$df
   # Now, here's an optimzation for very large xz. If we use the wcrossprod and ccrossprod
   # functions, we can't get rid of xz, we end up with a copy of it which blows away memory.
   # we need to scale xz with the residuals in xz, but we don't want to expand res to a full matrix,
@@ -529,6 +524,7 @@ setdimnames <- function(obj, nm) {
   .Call(C_setdimnames,obj,nm)
 }
   
+
 felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset, na.action, contrasts=NULL) {
 
   mf <- match.call(expand.dots = FALSE)
@@ -571,31 +567,52 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   step1 <- list()
   mf[['iv']] <- NULL
   for(ivv in iv) {
+    # Now, make the full instrumental formula, i.e. with the rhs expanded with the
+    # instruments, and the lhs equal to the instrumented variable
      fformula <- update(baseform, substitute(Z ~ . + V,list(Z=ivv[[2]],V=ivv[[3]])))
      sep <- flfromformula(fformula,data)
      fl <- sep[['fl']]
-     formula <- sep[['formula']]
-     mf[['formula']] <- formula
+     mf[['formula']] <- sep[['formula']]
      psys <- project(mf,fl,data,contrasts,clustervar,pf)
      gc()
-     z <- doprojols(psys)
+     z <- doprojols(psys, exactDOF=exactDOF)
      mf[['formula']] <- fformula
      z$call <- mf
      rm(psys)
      gc()
+
+     # now, we need an ftest between the first step with and without the instruments(null-model)
+     # We need the residuals with and without the
+     # instruments. We have them with the instruments, but must do another estimation
+     # for the null-model
+
+     mfnull <- mf
+     nullform <- update(baseform, substitute(Z ~ ., list(Z=ivv[[2]])))
+     sepnull <- flfromformula(nullform, data)
+     mfnull[['formula']] <- sepnull[['formula']]
+     znull <- doprojols(project(mfnull, sepnull[['fl']], data, contrasts, clustervar, pf),
+                        exactDOF=exactDOF)
+     
+
+     z$iv1fstat <- ftest(z,znull)
+     z$rob.iv1fstat <- ftest(z,znull,vcov=z$robustvcv)
+     if(!is.null(clustervar))
+       z$clu.iv1fstat <- ftest(z,znull,vcov=z$clustervcv)
      step1 <- c(step1,list(z))
+
      # then we lift the fitted variable and create a new name
      ivz <- z
      evar <- as.character(ivv[[2]])
      new.var <- paste(evar,'(fit)',sep='')
      assign(new.var,ivz$fitted.values,envir=parent.frame())
      vars <- c(vars,new.var)
-     # keep the residuals, they are needed in doprojols below
+     # keep the residuals, they are needed to reconstruct the residuals for the
+     # original variables in the 2. stage
      ivarg[[paste('`',new.var,'`',sep='')]] <- ivz$residuals
      # and add it to the equation
      step2form <- update(step2form,substitute(. ~ X - IV + FIT,
                                          list(X=step2form[[3]],IV=ivv[[2]],FIT=as.name(new.var))))
-
+     
   }
   names(step1) <- names(iv)
 
@@ -610,7 +627,6 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   z <- doprojols(psys,ivresid=ivarg,exactDOF=exactDOF)
   z$step1 <- step1
   rm(psys)
-#  z$ivz <- ivz
   z$call <- match.call()
   return(z)
 }

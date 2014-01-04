@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2013-11-30 r64358) -- "Unsuffered Consequences"
+R Under development (unstable) (2013-12-03 r64376) -- "Unsuffered Consequences"
 Copyright (C) 2013 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -73,42 +73,42 @@ firm.3 -0.1887462  74    1 firm   3
 firm.4  1.5127268  66    1 firm   4
 firm.5  1.4467863  72    1 firm   5
 firm.6 -0.7879367  87    1 firm   6
-> summary(lm(y ~ x + x2 + id + firm -1))
+> summary(lm(y ~ x + x2 + id + firm))
 
 Call:
-lm(formula = y ~ x + x2 + id + firm - 1)
+lm(formula = y ~ x + x2 + id + firm)
 
 Residuals:
      Min       1Q   Median       3Q      Max 
 -2.96264 -0.73549  0.00793  0.77495  2.68092 
 
 Coefficients:
-      Estimate Std. Error t value Pr(>|t|)    
-x      0.96251    0.04843  19.875  < 2e-16 ***
-x2     0.22600    0.04828   4.681 3.71e-06 ***
-id1    1.31012    0.18078   7.247 1.70e-12 ***
-id2   -0.56315    0.16511  -3.411 0.000702 ***
-id3   -2.56594    0.14576 -17.604  < 2e-16 ***
-id4    0.14085    0.16284   0.865 0.387492    
-id5   -0.18059    0.18756  -0.963 0.336113    
-id6    0.43119    0.18941   2.277 0.023249 *  
-id7   -0.64938    0.15560  -4.173 3.56e-05 ***
-id8   -0.36522    0.17210  -2.122 0.034335 *  
-id9    0.95288    0.17475   5.453 7.93e-08 ***
-id10  -0.71179    0.16307  -4.365 1.56e-05 ***
-firm2  0.57816    0.15694   3.684 0.000256 ***
-firm3 -0.18875    0.15251  -1.238 0.216469    
-firm4  1.51273    0.15811   9.568  < 2e-16 ***
-firm5  1.44679    0.15325   9.441  < 2e-16 ***
-firm6 -0.78794    0.14579  -5.404 1.02e-07 ***
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  1.31012    0.18078   7.247 1.70e-12 ***
+x            0.96251    0.04843  19.875  < 2e-16 ***
+x2           0.22600    0.04828   4.681 3.71e-06 ***
+id2         -1.87327    0.21842  -8.576  < 2e-16 ***
+id3         -3.87606    0.20659 -18.762  < 2e-16 ***
+id4         -1.16927    0.21762  -5.373 1.21e-07 ***
+id5         -1.49071    0.23434  -6.361 4.65e-10 ***
+id6         -0.87893    0.23511  -3.738 0.000207 ***
+id7         -1.95950    0.21063  -9.303  < 2e-16 ***
+id8         -1.67534    0.22160  -7.560 2.04e-13 ***
+id9         -0.35724    0.23007  -1.553 0.121143    
+id10        -2.02191    0.21488  -9.409  < 2e-16 ***
+firm2        0.57816    0.15694   3.684 0.000256 ***
+firm3       -0.18875    0.15251  -1.238 0.216469    
+firm4        1.51273    0.15811   9.568  < 2e-16 ***
+firm5        1.44679    0.15325   9.441  < 2e-16 ***
+firm6       -0.78794    0.14579  -5.404 1.02e-07 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.043 on 483 degrees of freedom
-Multiple R-squared:  0.7213,	Adjusted R-squared:  0.7115 
-F-statistic: 73.53 on 17 and 483 DF,  p-value: < 2.2e-16
+Multiple R-squared:  0.7205,	Adjusted R-squared:  0.7113 
+F-statistic: 77.83 on 16 and 483 DF,  p-value: < 2.2e-16
 
 > 
 > proc.time()
    user  system elapsed 
-  5.216   0.172   5.361 
+  4.084   0.128   4.172 

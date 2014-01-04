@@ -1,6 +1,6 @@
 library(lfe)
 set.seed(65513)
-options(lfe.threads=1)
+options(lfe.threads=1, digits=5)
 x <- rnorm(52)
 x2 <- rnorm(length(x))
 x3 <- 0.2*x + 0.1*x2
@@ -23,7 +23,7 @@ getfe(est)
 print(alpha <- getfe(est,ef='ln'))
 # get the names to use below, just to make it easier
 # lower precision in output
-options(digits=5)
+
 nm <- rownames(alpha)
 getfe(est,ef='zm',se=TRUE)
 getfe(est,ef='zm2',se=TRUE)
