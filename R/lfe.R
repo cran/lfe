@@ -138,12 +138,12 @@ flfromformula <- function(formula,data) {
 #  }))
   # replace G with as.factor, eval with this, and the parent frame, or with data
   # allow interaction factors with '*'
-  Gfunc <- as.factor
+  Gfunc <- function(f) if(is.null(attr(f,'xnam'))) factor(f) else f
   Ginfunc <- function(x,f) {
     if(is.factor(x))
-      structure(interaction(as.factor(f),x,drop=TRUE),xnam=deparse(substitute(x)),fnam=deparse(substitute(f)))
+      structure(interaction(factor(f),factor(x),drop=TRUE),xnam=deparse(substitute(x)),fnam=deparse(substitute(f)))
     else
-      structure(as.factor(f),x=x,xnam=deparse(substitute(x)), fnam=deparse(substitute(f)))
+      structure(factor(f),x=x,xnam=deparse(substitute(x)), fnam=deparse(substitute(f)))
   }
 
   if(missing(data)) 
@@ -253,7 +253,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 # chol2inv(chol(crossprod(xz)))
   cp <- crossprod(xz)
   b <- crossprod(xz,yz)
-  if(FALSE) {
+  if(TRUE) {
   ch <- cholx(cp)
 #  ch <- chol(cp)
 #  beta <- drop(inv %*% (t(xz) %*% yz))
@@ -266,7 +266,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
   } else {
     beta <- rep(NaN,nrow(cp))
     beta[-badvars] <- backsolve(ch,backsolve(ch,b[-badvars],transpose=TRUE))
-    inv <- matrix(NaN,nrow(cp),ncol(cp))
+    inv <- matrix(NA,nrow(cp),ncol(cp))
     inv[-badvars,-badvars] <- chol2inv(ch)
   }
   rm(ch)
@@ -376,7 +376,8 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 #  z$robustvcv <- dfadj * inv %*% wcrossprod(xz,res) %*% inv
 
   .Call(C_scalecols, xz, res)
-  z$robustvcv <- dfadj * inv %*% crossprod(xz) %*% inv
+#  z$robustvcv <- dfadj * inv %*% crossprod(xz) %*% inv
+  z$robustvcv <- dfadj * crossprod(xz %*% ifelse(is.na(inv),0,inv))
   setdimnames(z$robustvcv, dimnames(z$vcv))
 #  dimnames(z$robustvcv) <- dimnames(z$vcv)
   cluster <- psys$cluster
@@ -442,9 +443,9 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=NULL) {
   if(!is.null(clustervar)) {
     if(!is.factor(clustervar)) {
       if(missing(data))
-        clustervar <- as.factor(eval(as.name(clustervar),pf))
+        clustervar <- factor(eval(as.name(clustervar),pf))
       else
-        clustervar <- as.factor(data[,clustervar])
+        clustervar <- factor(data[,clustervar])
     }
   }
   # we need to change clustervar and factor list to reflect
@@ -851,21 +852,3 @@ getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100
   return(res)
 }
 
-# Do a pivoted cholesky to detect multi-collinearities
-cholx <- function(mat,eps=1e-4) {
-  N <- dim(mat)[1]
-  nm <- colnames(mat)
-  o <- options(warn=-1)
-  ch <- try(chol(mat),silent=TRUE)
-  options(o)
-  if(!inherits(ch,'try-error') && all(diag(ch) > eps*sqrt(diag(mat)))) return(ch)
-
-  ch <- try(chol(mat,pivot=TRUE))
-  pivot <- attr(ch,'pivot')
-
-  rank <- min(which(c(diag(ch),-Inf) <= eps*c(sqrt(diag(mat)[pivot]),1)))-1
-  okcol=1:rank
-  badvars <- sort(pivot[-okcol])
-  ok <- sort(pivot[okcol])
-  return(structure(chol(mat[ok,ok]),badvars=badvars))
-}

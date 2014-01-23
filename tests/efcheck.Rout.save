@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2014-01-01 r64612) -- "Unsuffered Consequences"
+R Under development (unstable) (2014-01-05 r64665) -- "Unsuffered Consequences"
 Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -41,13 +41,13 @@ Call:
 
 Residuals:
       Min        1Q    Median        3Q       Max 
--1.38e+00 -3.70e-09  1.44e-10  6.63e-09  1.38e+00 
+-1.38e+00 -3.79e-09  1.44e-10  8.38e-09  1.38e+00 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)  
-x     1.123      0.454    2.47    0.069 .
-x2    0.318      0.515    0.62    0.570  
-x3    0.256         NA      NA       NA  
+x     1.174      0.473    2.48    0.068 .
+x2    0.344      0.521    0.66    0.545  
+x3       NA         NA      NA       NA  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
@@ -56,6 +56,9 @@ Multiple R-squared: 0.953   Adjusted R-squared: 0.385
 F-statistic:1.71 on 47 and 4 DF, p-value: 0.324 
 
 
+Warning message:
+In chol.default(mat, pivot = TRUE) :
+  the matrix is either rank-deficient or indefinite
 > 
 > ## extract the group fixed effects
 > getfe(est)
@@ -320,4 +323,4 @@ In is.estimable(efactory(est, n), est$fe, R) :
 > 
 > proc.time()
    user  system elapsed 
-  5.356   0.120   5.452 
+  5.272   0.120   5.639 

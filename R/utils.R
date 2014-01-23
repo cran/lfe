@@ -3,6 +3,34 @@
 # Licence: Artistic 2.0
 # pseudo-inverse, snatched from MASS
 
+pinvx <- function(X) {
+    ch <- cholx(X)
+    badvars <- attr(ch,'badvars')
+    if(is.null(badvars)) return(chol2inv(ch))
+    inv <- matrix(0,nrow(X),ncol(X))
+    inv[-badvars,-badvars] <- chol2inv(ch)
+    structure(inv,badvars=attr(ch,'badvars'))
+}
+
+# Do a pivoted cholesky to detect multi-collinearities
+cholx <- function(mat,eps=1e-4) {
+  N <- dim(mat)[1]
+  nm <- colnames(mat)
+  o <- options(warn=-1)
+  ch <- try(chol(mat),silent=TRUE)
+  options(o)
+  if(!inherits(ch,'try-error') && all(diag(ch) > eps*sqrt(diag(mat)))) return(ch)
+
+  ch <- try(chol(mat,pivot=TRUE))
+  pivot <- attr(ch,'pivot')
+
+  rank <- min(which(c(diag(ch),-Inf) <= eps*c(sqrt(diag(mat)[pivot]),1)))-1
+  okcol=1:rank
+  badvars <- sort(pivot[-okcol])
+  ok <- sort(pivot[okcol])
+  return(structure(chol(mat[ok,ok]),badvars=badvars))
+}
+
 
 pinv <- function (X, tol = sqrt(.Machine$double.eps)) {
   if (length(dim(X)) > 2L || !(is.numeric(X) || is.complex(X)))
@@ -29,7 +57,7 @@ ftest <- function(z, zr=NULL, vcov=z$vcv) {
   if(is.null(zr)) {
 # we should do F-test vs. model with intercept.
 # but the intercept in z is implicit.
-    F <- (t(coef(z)) %*% pinv(vcov) %*% coef(z))/z$p
+    F <- (t(coef(z)) %*% pinvx(vcov) %*% coef(z))/z$p
     return( c(F=F, p=pf(F, z$p, rdf, lower.tail=FALSE), df1=z$p, df2=rdf))
   }
 #  df1 <- length(coef(z)) - length(coef(zr))
@@ -38,7 +66,7 @@ ftest <- function(z, zr=NULL, vcov=z$vcv) {
   c2 <- rep(0,length(c1))
   names(c2) <- names(c1)
   c2[names(coef(zr))] <- coef(zr)
-  F <- (t(c1-c2) %*% pinv(vcov) %*% (c1-c2))/df1
+  F <- (t(c1-c2) %*% pinvx(vcov) %*% (c1-c2))/df1
   return(c(F=F, p=pf(F,df1, rdf, lower.tail=FALSE), df1=df1,df2=rdf))
 }
 

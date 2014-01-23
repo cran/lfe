@@ -1,3 +1,8 @@
+Jan 23, 2014.  1.6 -- Map G() to factor(), not as.factor(), so as to remove unused levels which
+     otherwise will mess up the computation of DOF.
+
+Jan. 4, 2014.  1.6-1180 -- On CRAN.
+
 Dec. 17, 2013. 1.6 -- Fixed a bug in computing F-test for IV. Added F-test in 1st stage for omitted i.v.
      Suppress F-test writing for robust and clustered errors. I can't compute it.
 

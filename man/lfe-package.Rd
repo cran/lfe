@@ -121,6 +121,9 @@ Gaure, S. (2013) \cite{OLS with Multiple High Dimensional Category
   Variables.} Computational Statistics and Data Analysis, 66:8--18, 2013
   \url{http://dx.doi.org/10.1016/j.csda.2013.03.024}
 
+Gaure, S. (2014) \code{lfe: Linear Group Fixed Effects.} The R
+  Journal, 5(2):104-117, Dec 2013. \url{http://journal.r-project.org/archive/2013-2/gaure.pdf}
+
 Guimaraes, P. and Portugal, P. (2010) \cite{A simple feasible
   procedure to fit models with high-dimensional fixed effects.}
   The Stata Journal, 10(4):629--649, 2010.
