@@ -14,31 +14,30 @@ off by using \code{\link{lm}}.
 }
 
 \usage{ felm(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE,
-subset, na.action, contrasts=NULL) }
+subset, na.action, contrasts=NULL, ...) }
 
 \arguments{
   \item{formula}{an object of class '"formula"' (or one that can be
   coerced to that class: a symbolic description of the model to be
-  fitted. Similarly to 'lm'.  Grouping factors \code{f} are coded as G(f).
-  Interactions between a covariate \code{x} and a factor \code{f} can be
-  projected out with the syntax \code{G(x:f)}.
-}
+  fitted. Similarly to 'lm'.  See Details.}
 
-  \item{data}{a data frame containing the variables of the model}
+  \item{data}{a data frame containing the variables of the model.}
 
-  \item{iv}{a formula describing an instrumented variable. Estimated via two step OLS}
+  \item{iv}{a formula describing an instrumented variable. Estimated via
+  two step OLS. Deprecated, replaced by multi part formula specification.}
   
   \item{clustervar}{a string or factor.  Either the name of a variable
-        or a factor. Used for computing clustered standard errors.}
+        or a factor, or a list thereof. Used for computing clustered
+        standard errors. Deprecated, replaced by multi part formula specification.}
 
   \item{exactDOF}{logical. If more than two factors, the degrees
         of freedom used to scale the covariance matrix (and the standard
         errors) is normally estimated. Setting \code{exactDOF=TRUE}
         causes \code{felm} to attempt to compute it, but this may fail if there are
         too many levels in the factors.  \code{exactDOF='rM'} will use
-        the exact method in Matrix::rankMatrix(), but this is slower. If
+        the exact method in \code{Matrix::rankMatrix()}, but this is slower. If
         the degrees of freedom for some reason are known, they can be
-        specified like \code{exactDOF=342772}} 
+        specified like \code{exactDOF=342772}.} 
 
  \item{subset}{an optional vector specifying a subset of observations to
    be used in the fitting process.}
@@ -50,8 +49,11 @@ subset, na.action, contrasts=NULL) }
         \code{na.omit}.  Another possible value is \code{NULL}, no
         action. \code{na.exclude} is currently not supported.}
 
+  \item{contrasts}{an optional list. See the \code{contrasts.arg} of \code{model.matrix.default}.}
 
-  \item{contrasts}{an optional list. See the \code{contrasts.arg} of \code{model.matrix.default}}
+  \item{...}{other arguments. Currently not used. The \code{clustervar}
+    and \code{iv} arguments will be removed from the argument list at a
+    later time, but will continue to be supported in this field.}
 }
 
 \value{
@@ -76,9 +78,10 @@ subset, na.action, contrasts=NULL) }
   \item{r.residuals}{a numerical vector. Reduced residuals, i.e. the residuals resulting from
   predicting \emph{without} the dummies.}
   \item{cfactor}{factor of length N. The factor describing the connected
-    components of the two first \code{G()} terms in the model.}
+    components of the two first terms in the second part of the model formula.}
   \item{vcv}{a matrix. The variance-covariance matrix.}
-  \item{fe}{list of factors. A list of the \code{G()} terms in the model.}
+  \item{fe}{list of factors. A list of the terms in the second part of
+  the model formula.}
 
   \item{step1}{list of '\code{felm}' objects for the IV 1. step(s), if
     used.}
@@ -90,49 +93,82 @@ subset, na.action, contrasts=NULL) }
 }
 
 \details{
-The \code{G()} is not a function in itself, it is just syntax to
-distinguish the grouping factors. It does, however, translate to
-\code{as.factor()} inside \code{felm()}.  For the \code{G(x:f)} syntax,
-the \code{x} must be numeric vector or matrix or factor, and \code{as.factor()} is
-applied to \code{f}.  The entity inside \code{G()} is not treated as an
-ordinary formula, in particular it is not possible with things like \code{G(x*f)}.
+The formula specification is a response variable followed by a four part
+formula. The first part consists of ordinary covariates, the second part
+consists of factors to be projected out. The third part is an
+IV-specification. The fourth part is a cluster specification for the
+standard errors.  I.e. something like \code{y ~ x1 + x2 | f1 + f2 |
+  (Q|W ~ x3+x4) | clu1 + clu2} where \code{y} is the response,
+\code{x1,x2} are ordinary covariates, \code{f1,f2} are factors to be
+projected out, \code{Q} and \code{W} are covariates which are
+instrumented by \code{x3} and \code{x4}, and \code{clu1,clu2} are
+factors to be used for computing cluster robust standard errors.
+Parts that are not used should be specified as \code{0}, except if it's
+at the end of the formula, where they can be omitted.  The parentheses
+are needed in the third part since \code{|} has higher precedence than \code{~}.
+
+Interactions between a covariate \code{x} and a factor \code{f} can be
+projected out with the syntax \code{x:f}. 
+The terms in the second and fourth parts are not treated as 
+ordinary formulas, in particular it is not possible with things like
+\code{y ~ x1 | x*f}, rather one would specify \code{y ~ x1 + x | x:f + f}.
+
+In older versions of \pkg{lfe} the syntax was \code{felm(y ~ x1 + x2 + G(f1)
+  + G(f2), iv=list(Q ~ x3+x4, W ~ x3+x4),
+  clustervar=c('clu1','clu2'))}. This syntax still works.
 
 The standard errors are adjusted for the reduced degrees of freedom
 coming from the dummies which are implicitly present.  In the case of
 two factors, the exact number of implicit dummies is easy to compute.  If there
 are more factors, the number of dummies is estimated by assuming there's
 one reference-level for each factor, this may be a slight over-estimation,
-leading to slightly too large standard errors. Setting \code{exactDOF}
+leading to slightly too large standard errors. Setting \code{exactDOF='rM'}
 computes the exact degrees of freedom with \code{rankMatrix()} in package \pkg{Matrix}.
-Note that version 1.1-0 og \pkg{Matrix} has a bug in \code{rankMatrix()}
-for sparse matrices which may cause cause it to return the wrong value. A fix is underway.
+Note that version 1.1-0 of \pkg{Matrix} has a bug in \code{rankMatrix()}
+for sparse matrices which may cause it to return the wrong value. A fix is underway.
 
-For the \code{iv}-argument, it is only necessary to include the instruments on the
-right hand side.  The other covariates, from \code{formula}, are added automatically
-in the first step.  See the examples. \code{iv} can also be a list of
-formulas if more than one variable is instrumented.  However, all
-instruments should then be specified in all the formulas.  A more
-consise syntax for multiple instruments will probably be implemented in
-the future.
+For the iv-part of the formula, it is only necessary to include the instruments on the
+right hand side.  The other explanatory covariates, from the first and
+second part of \code{formula}, are added automatically
+in the first stage regressions.  See the examples. 
 
 The \code{contrasts} argument is similar to the one in \code{lm()}, it
-is used for the factors outside the \code{G()} terms. The factors inside
-the \code{G()} terms are analyzed as part of a possible subsequent \code{getfe()} call.
+is used for factors in the first part of the formula. The factors in the
+second part are analyzed as part of a possible subsequent \code{getfe()} call.
 
-Ideally, the \code{clustervar} should have been an option to the
-\code{summary}-function instead.  However, this would require keeping a
-copy of the model matrix in the returned structure.  Since this function
-is intended for very large datasets, we discard the model matrix to save
-memory, keeping only residuals and other summary statistics.
+The old syntax with a single part formula with the \code{G()} syntax for the factors to transform
+away is still supported, as well as the \code{clustervar} and \code{iv}
+arguments, but users are encouraged to move to the new multi part
+formulas as described here.  In an upcoming version of \pkg{lfe}, the \code{clustervar}
+and \code{iv} arguments will be moved to the \code{...} argument list.
+In the event that you use these arguments, and rewriting to the new syntax
+is impractical, you should make sure to name them (i.e. not use them as
+positional arguments). \code{felm} will issue a warning if these two
+arguments are not named.
 
-Note that the syntax of the \code{felm}-function has changed, it does no longer
-allow a separate specification of the group factors, they must be specified
-with the \code{G()}-syntax.  The old felm is still available as \code{lfe:::felm.old}, but
-it will no longer be maintained.
+Note that the way missing values (NAs) in IV estimations are handled in
+\pkg{lfe} currently may
+lead to problems. Missing values are removed independently in the first
+and second stages. Thus, if the instruments have missing values where
+the other covariates have not, more
+observations are removed in the first stage than in the second, leading
+to problems, confusion and general havoc.
+
+An alternative to clustered standard errors is to project out the
+cluster factors (put them in the second part of the formula)
+and use heteroskedastic standard errors.
+
+Note that the F-test which is computed by \code{\link{summary.felm}} is
+unreliable for robust standard errors.
 }
 
-\seealso{\code{\link{getfe}}}
+\seealso{
+  \code{\link{getfe}}
+  \code{\link{summary.felm}}
+}
+
 \examples{
+oldopts <- options(lfe.threads=1)
 ## create covariates
 x <- rnorm(1000)
 x2 <- rnorm(length(x))
@@ -150,18 +186,14 @@ u <- rnorm(length(x))
 y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + u
 
 ## estimate and print result
-est <- felm(y ~ x+x2+G(id)+G(firm))
+est <- felm(y ~ x+x2| id + firm)
 summary(est)
 ## compare with lm
 summary(lm(y ~ x + x2 + id + firm-1))
-## alternatively
-\dontrun{felm(y ~ x + x2,fl=list(id=id,firm=firm))
-  getfe(est)
-}
 
 
 # make a weird example with 'reverse causation'
-# Q and W are instrumented by x3 and G(x4), report robust s.e.
+# Q and W are instrumented by x3 and the factor x4. Report robust s.e.
 x3 <- rnorm(length(x))
 x4 <- sample(12,length(x),replace=TRUE)
 
@@ -171,12 +203,18 @@ W <- 0.7*x3 - 2*x + 0.1*x2 - 0.7*id.eff[id] + 0.8*cos(x4) - 0.2*y+ rnorm(length(
 # add them to the outcome
 y <- y + Q + W
 
-ivest <- felm(y ~ x + x2 + G(id)+G(firm) + Q + W, iv=list(Q ~ x3+G(x4), W ~x3+G(x4)))
+ivest <- felm(y ~ x + x2 | id+firm | (Q|W ~x3|x4))
 summary(ivest,robust=TRUE)
 \dontrun{
 # compare with the not instrumented fit:
-summary(felm(y ~ x + x2 + G(id)+G(firm) + Q + W))
+summary(felm(y ~ x + x2 +Q + W |id+firm))
 }
+options(oldopts)
 }
-\keyword{regression}
-\keyword{models}
+
+\references{
+Cameron, A.C., J.B. Gelbach and  D.L. Miller (2011) \cite{Robust
+  inference with multiway clustering}, Journal of Business & Economic
+Statistics 29 (2011), no. 2, 238--249.
+\url{http://dx.doi.org/10.1198/jbes.2010.07136}
+}

@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2014-01-01 r64612) -- "Unsuffered Consequences"
+R Under development (unstable) (2014-02-11 r64969) -- "Unsuffered Consequences"
 Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -18,9 +18,9 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 > # From http://diffuseprior.wordpress.com/2012/06/15/standard-robust-and-clustered-standard-errors-computed-in-r/
-> set.seed(42)
-> options(lfe.threads=1, digits=3)
-> ols <- function(form, data, robust=FALSE, cluster=NULL,digits=3){
+> set.seed(123)
+> options(lfe.threads=2,digits=5,warn=1)
+> ols <- function(form, data, robust=FALSE, cluster=NULL,digits=getOption('digits')){
 +     r1 <- lm(form, data)
 +       if(length(cluster)!=0){
 +             data <- na.omit(data[,c(colnames(r1$model),cluster)])
@@ -58,179 +58,143 @@ Loading required package: Matrix
 > 
 > 
 > 
-> x <- rnorm(100)
-> f1 <- sample(10,length(x), repl=T)
-> f2 <- sample(10,length(x), repl=T)
-> 
-> y <- x +  log(f1) + cos(f2) + rnorm(length(x), sd=0.5)
-> dat1 <- data.frame(y, x, f1=factor(f1), f2=factor(f2),cluster=factor(1:length(x)))
-> #print(summary(lm(y ~ x + f1 + f2, dat1)))
-> dat2 <- rbind(dat1,dat1)
-> #summary(lm(y ~ x + f1 + f2, dat2))
-> #clu <- factor(rep(1:length(x),2))
-> clu <- dat2[,'cluster']
-> summary(est <- felm(y ~x + G(f1) + G(f2), dat1))
+> x <- rnorm(1000) 
+> f1 <- sample(8,length(x), repl=T)
+> clu <- factor(sample(15,length(x), replace=T))
+> cluerr <- rnorm(nlevels(clu))[clu]
+> err <- abs(x)*rnorm(length(x)) + cluerr
+> y <- x +rnorm(nlevels(clu),sd=0.3)[clu] +  log(f1) + err
+> dat <- data.frame(y, x, f1=factor(f1), cluster=clu)
+> summary(felm(y ~x |f1, dat))
 
 Call:
-   felm(formula = y ~ x + G(f1) + G(f2), data = dat1) 
+   felm(formula = y ~ x | f1, data = dat) 
 
 Residuals:
     Min      1Q  Median      3Q     Max 
--0.9681 -0.2769 -0.0111  0.2671  0.9129 
+-4.7297 -0.8238 -0.0626  0.7402  7.4096 
 
 Coefficients:
   Estimate Std. Error t value Pr(>|t|)    
-x   0.9319     0.0497    18.7   <2e-16 ***
+x   0.9347     0.0459    20.4   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 0.452 on 80 degrees of freedom
-Multiple R-squared: 0.916   Adjusted R-squared: 0.895 
-F-statistic:45.8 on 19 and 80 DF, p-value: <2e-16 
+Residual standard error: 1.43 on 991 degrees of freedom
+Multiple R-squared: 0.394   Adjusted R-squared: 0.388 
+F-statistic:80.4 on 8 and 991 DF, p-value: <2e-16 
 
 
-> summary(est <- felm(y ~x + G(f1) + G(f2), dat2, clustervar='cluster'))
+> # CGM clustering, i.e. one factor means standard one-way clustering
+> summary(felm(y ~x + f1, dat, clustervar='cluster'))
 
 Call:
-   felm(formula = y ~ x + G(f1) + G(f2), data = dat2, clustervar = "cluster") 
+   felm(formula = y ~ x + f1, data = dat, clustervar = "cluster") 
 
 Residuals:
     Min      1Q  Median      3Q     Max 
--0.9681 -0.2769 -0.0111  0.2671  0.9129 
+-4.7297 -0.8238 -0.0626  0.7402  7.4096 
+
+Coefficients:
+            Estimate Cluster s.e. t value Pr(>|t|)    
+(Intercept)   0.0161       0.2036    0.08   0.9371    
+x             0.9347       0.0606   15.44  < 2e-16 ***
+f12           0.6232       0.1952    3.19   0.0015 ** 
+f13           1.0016       0.1439    6.96  6.2e-12 ***
+f14           1.3696       0.1569    8.73  < 2e-16 ***
+f15           1.4896       0.2415    6.17  1.0e-09 ***
+f16           1.8059       0.1919    9.41  < 2e-16 ***
+f17           1.8152       0.2012    9.02  < 2e-16 ***
+f18           2.0672       0.2220    9.31  < 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.43 on 991 degrees of freedom
+Multiple R-squared: 0.394   Adjusted R-squared: 0.388 
+F-statistic(normal s.e.):80.4 on 8 and 991 DF, p-value: <2e-16 
+F-statistic(proj):  199 on 8 and 991 DF, p-value: <2e-16 
+*** F-test for robust/clustered standard errors is unreliable
+
+
+> # this will make my experimental clustered errors for f1, typically better for few groups
+> summary(felm(y ~x + f1|0|0|cluster, dat, cmeth='gaure'))
+
+Call:
+   felm(formula = y ~ x + f1 | 0 | 0 | cluster, data = dat, cmeth = "gaure") 
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-4.7297 -0.8238 -0.0626  0.7402  7.4096 
+
+Coefficients:
+            Estimate Cluster s.e. t value Pr(>|t|)    
+(Intercept)   0.0161       0.2194    0.07  0.94165    
+x             0.9347       0.0667   14.02  < 2e-16 ***
+f12           0.6232       0.1773    3.51  0.00046 ***
+f13           1.0016       0.1540    6.50  1.2e-10 ***
+f14           1.3696       0.1760    7.78  1.8e-14 ***
+f15           1.4896       0.2176    6.85  1.3e-11 ***
+f16           1.8059       0.1991    9.07  < 2e-16 ***
+f17           1.8152       0.1646   11.03  < 2e-16 ***
+f18           2.0672       0.1998   10.34  < 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.43 on 991 degrees of freedom
+Multiple R-squared: 0.394   Adjusted R-squared: 0.388 
+F-statistic(normal s.e.):80.4 on 8 and 991 DF, p-value: <2e-16 
+F-statistic(proj): 74.7 on 8 and 991 DF, p-value: <2e-16 
+*** F-test for robust/clustered standard errors is unreliable
+
+
+> # this will sample them for f1, also test having cluster in the third component
+> summary(estg <- felm(y ~x | f1|cluster, dat))
+
+Call:
+   felm(formula = y ~ x | f1 | cluster, data = dat) 
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-4.7297 -0.8238 -0.0626  0.7402  7.4096 
 
 Coefficients:
   Estimate Cluster s.e. t value Pr(>|t|)    
-x   0.9319       0.0434    21.5   <2e-16 ***
+x   0.9347       0.0606    15.4   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 0.426 on 180 degrees of freedom
-Multiple R-squared: 0.916   Adjusted R-squared: 0.906 
-F-statistic(normal s.e.): 103 on 19 and 180 DF, p-value: <2e-16 
-F-statistic(proj): 24.3 on 19 and 180 DF, p-value: <2e-16 
+Residual standard error: 1.43 on 991 degrees of freedom
+Multiple R-squared: 0.394   Adjusted R-squared: 0.388 
+F-statistic(normal s.e.):80.4 on 8 and 991 DF, p-value: <2e-16 
+F-statistic(proj): 29.8 on 8 and 991 DF, p-value: <2e-16 
+*** F-test for robust/clustered standard errors is unreliable
 
 
-> summary(est <- felm(y ~x + G(f1) + G(f2), dat2), robust=TRUE)
-
-Call:
-   felm(formula = y ~ x + G(f1) + G(f2), data = dat2) 
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--0.9681 -0.2769 -0.0111  0.2671  0.9129 
-
-Coefficients:
-  Estimate Robust s.e t value Pr(>|t|)    
-x   0.9319     0.0306    30.4   <2e-16 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: 0.426 on 180 degrees of freedom
-Multiple R-squared: 0.916   Adjusted R-squared: 0.906 
-F-statistic(normal s.e.): 103 on 19 and 180 DF, p-value: <2e-16 
-F-statistic(proj): 48.8 on 19 and 180 DF, p-value: <2e-16 
-
-
-> 
-> # then the fixed effects.
+> # Comparable estimable function
 > ef <- function(gamma, addnames) {
 +   ref1 <- gamma[[1]]
-+   ref2 <- gamma[[11]]
-+   icpt <- ref1+ref2
-+   res <- c(icpt,gamma[2:10]-ref1,gamma[12:20]-ref2)
++   res <- c(gamma[[1]],gamma[2:8]-gamma[[1]])
 +   if(addnames) {
-+     names(res) <- c('icpt',paste('f1',2:10),paste('f2',2:10))
++     names(res) <- c('icpt',paste('f1',2:8,sep='.'))
 +   }
 +   res
 + }
+> getfe(estg,ef=ef,se=T,bN=200)
+       effect clusterse
+icpt 0.016067   0.23801
+f1.2 0.623174   0.16709
+f1.3 1.001638   0.15172
+f1.4 1.369586   0.16456
+f1.5 1.489591   0.22089
+f1.6 1.805933   0.17977
+f1.7 1.815217   0.17555
+f1.8 2.067194   0.19654
 > 
-> ols(y ~x + f1 + f2, dat2, robust=TRUE)
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)    0.637      0.138   4.622    0.000
-x              0.932      0.031  30.441    0.000
-f12            0.822      0.119   6.899    0.000
-f13            1.212      0.165   7.354    0.000
-f14            1.609      0.123  13.061    0.000
-f15            1.969      0.143  13.719    0.000
-f16            1.880      0.139  13.514    0.000
-f17            2.684      0.212  12.677    0.000
-f18            2.176      0.101  21.551    0.000
-f19            2.226      0.115  19.313    0.000
-f110           1.928      0.163  11.825    0.000
-f22           -1.640      0.174  -9.407    0.000
-f23           -1.561      0.177  -8.803    0.000
-f24           -1.401      0.149  -9.404    0.000
-f25           -0.870      0.141  -6.185    0.000
-f26            0.466      0.140   3.337    0.001
-f27            0.143      0.165   0.862    0.389
-f28           -0.690      0.174  -3.972    0.000
-f29           -1.721      0.148 -11.663    0.000
-f210          -1.657      0.145 -11.438    0.000
-> getfe(est,ef=ef,se=T,bN=2000, robust=TRUE)
-      effect     se
-icpt   0.637 0.1353
-f1 2   0.822 0.1168
-f1 3   1.212 0.1625
-f1 4   1.609 0.1190
-f1 5   1.969 0.1399
-f1 6   1.880 0.1325
-f1 7   2.684 0.2088
-f1 8   2.176 0.0981
-f1 9   2.226 0.1099
-f1 10  1.928 0.1536
-f2 2  -1.640 0.1727
-f2 3  -1.561 0.1783
-f2 4  -1.401 0.1497
-f2 5  -0.870 0.1406
-f2 6   0.466 0.1382
-f2 7   0.143 0.1670
-f2 8  -0.690 0.1716
-f2 9  -1.721 0.1460
-f2 10 -1.657 0.1459
-> ols(y ~x + f1 + f2, dat2, cluster="cluster")
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)    0.637      0.195   3.260    0.001
-x              0.932      0.043  21.471    0.000
-f12            0.822      0.169   4.866    0.000
-f13            1.212      0.234   5.187    0.000
-f14            1.609      0.175   9.212    0.000
-f15            1.969      0.203   9.676    0.000
-f16            1.880      0.197   9.531    0.000
-f17            2.684      0.300   8.942    0.000
-f18            2.176      0.143  15.201    0.000
-f19            2.226      0.163  13.622    0.000
-f110           1.928      0.231   8.341    0.000
-f22           -1.640      0.247  -6.635    0.000
-f23           -1.561      0.251  -6.209    0.000
-f24           -1.401      0.211  -6.633    0.000
-f25           -0.870      0.199  -4.363    0.000
-f26            0.466      0.198   2.354    0.019
-f27            0.143      0.235   0.608    0.543
-f28           -0.690      0.246  -2.802    0.005
-f29           -1.721      0.209  -8.226    0.000
-f210          -1.657      0.205  -8.068    0.000
-> getfe(est,ef=ef,se=T,bN=2000, cluster=clu)
-      effect    se
-icpt   0.637 0.203
-f1 2   0.822 0.172
-f1 3   1.212 0.228
-f1 4   1.609 0.176
-f1 5   1.969 0.200
-f1 6   1.880 0.195
-f1 7   2.684 0.301
-f1 8   2.176 0.140
-f1 9   2.226 0.163
-f1 10  1.928 0.231
-f2 2  -1.640 0.243
-f2 3  -1.561 0.250
-f2 4  -1.401 0.217
-f2 5  -0.870 0.204
-f2 6   0.466 0.198
-f2 7   0.143 0.243
-f2 8  -0.690 0.255
-f2 9  -1.721 0.214
-f2 10 -1.657 0.211
+> #summary(estr <- felm(y ~x + G(f1) + G(f2), dat), robust=TRUE)
+> #ols(y ~x + f1 + f2, dat, robust=TRUE)
+> #getfe(estr,ef=ef,se=T,bN=2000, robust=TRUE)
+> #ols(y ~x + f1 + f2, dat, cluster="cluster")
 > 
 > proc.time()
    user  system elapsed 
- 12.016   0.112  10.873 
+  8.691   0.241   8.792 

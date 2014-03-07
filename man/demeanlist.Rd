@@ -13,7 +13,8 @@ demeanlist(mtx, fl, icpt=0, eps=getOption('lfe.eps'),
            threads=getOption('lfe.threads'),
            progress=getOption('lfe.pint'),
            accel=getOption('lfe.accel'),
-           randfact=TRUE)
+           randfact=TRUE,
+           means=FALSE)
 }
 
 \arguments{
@@ -29,6 +30,9 @@ demeanlist(mtx, fl, icpt=0, eps=getOption('lfe.eps'),
 \item{accel}{integer. Set to 1 if Gearhart-Koshy acceleration should be done.}
 \item{randfact}{logical. Should the order of the factors be randomized?
   This may improve convergence.}
+\item{means}{logical. Should the means instead of the demeaned matrix be
+  returned? Setting \code{means=TRUE} will return \code{mtx -
+    demeanlist(mtx,...)}, but without the extra copy.}
 }
 
 \details{
@@ -71,6 +75,7 @@ Trans. Amer. Math. Soc. 355 pp 3433-3461 (2003).
 }
 
 \examples{
+oldopts <- options(lfe.threads=1)
 ## create a 15x3 matrix
 mtx <- matrix(rnorm(45),15,3)
 
@@ -86,4 +91,5 @@ for(i in 1:ncol(mtx0))
    for(n in names(fl))
     cat('col',i,'group',n,'level sums:',tapply(mtx0[,i],fl[[n]],mean),'\n')
 
+options(oldopts)
 }

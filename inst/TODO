@@ -1,3 +1,8 @@
+20140203
+When doing IV, the first stage will remove NAs with na.action
+   indpendently from each other and the second stage. This may create
+   havoc since the number of observations may differ. A workaround is
+   to figure out which observations to use, and specify a subset to felm().
 
 20110331
 Look into writing OpenCL versions of the demeaning and Kaczmarz-code.  This could be a good

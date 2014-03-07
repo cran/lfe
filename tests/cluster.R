@@ -1,8 +1,8 @@
 library(lfe)
 # From http://diffuseprior.wordpress.com/2012/06/15/standard-robust-and-clustered-standard-errors-computed-in-r/
-set.seed(42)
-options(lfe.threads=1, digits=3)
-ols <- function(form, data, robust=FALSE, cluster=NULL,digits=3){
+set.seed(123)
+options(lfe.threads=2,digits=5,warn=1)
+ols <- function(form, data, robust=FALSE, cluster=NULL,digits=getOption('digits')){
     r1 <- lm(form, data)
       if(length(cluster)!=0){
             data <- na.omit(data[,c(colnames(r1$model),cluster)])
@@ -40,34 +40,32 @@ ols <- function(form, data, robust=FALSE, cluster=NULL,digits=3){
 
 
 
-x <- rnorm(100)
-f1 <- sample(10,length(x), repl=T)
-f2 <- sample(10,length(x), repl=T)
-
-y <- x +  log(f1) + cos(f2) + rnorm(length(x), sd=0.5)
-dat1 <- data.frame(y, x, f1=factor(f1), f2=factor(f2),cluster=factor(1:length(x)))
-#print(summary(lm(y ~ x + f1 + f2, dat1)))
-dat2 <- rbind(dat1,dat1)
-#summary(lm(y ~ x + f1 + f2, dat2))
-#clu <- factor(rep(1:length(x),2))
-clu <- dat2[,'cluster']
-summary(est <- felm(y ~x + G(f1) + G(f2), dat1))
-summary(est <- felm(y ~x + G(f1) + G(f2), dat2, clustervar='cluster'))
-summary(est <- felm(y ~x + G(f1) + G(f2), dat2), robust=TRUE)
-
-# then the fixed effects.
+x <- rnorm(1000) 
+f1 <- sample(8,length(x), repl=T)
+clu <- factor(sample(15,length(x), replace=T))
+cluerr <- rnorm(nlevels(clu))[clu]
+err <- abs(x)*rnorm(length(x)) + cluerr
+y <- x +rnorm(nlevels(clu),sd=0.3)[clu] +  log(f1) + err
+dat <- data.frame(y, x, f1=factor(f1), cluster=clu)
+summary(felm(y ~x |f1, dat))
+# CGM clustering, i.e. one factor means standard one-way clustering
+summary(felm(y ~x + f1, dat, clustervar='cluster'))
+# this will make my experimental clustered errors for f1, typically better for few groups
+summary(felm(y ~x + f1|0|0|cluster, dat, cmeth='gaure'))
+# this will sample them for f1, also test having cluster in the third component
+summary(estg <- felm(y ~x | f1|cluster, dat))
+# Comparable estimable function
 ef <- function(gamma, addnames) {
   ref1 <- gamma[[1]]
-  ref2 <- gamma[[11]]
-  icpt <- ref1+ref2
-  res <- c(icpt,gamma[2:10]-ref1,gamma[12:20]-ref2)
+  res <- c(gamma[[1]],gamma[2:8]-gamma[[1]])
   if(addnames) {
-    names(res) <- c('icpt',paste('f1',2:10),paste('f2',2:10))
+    names(res) <- c('icpt',paste('f1',2:8,sep='.'))
   }
   res
 }
+getfe(estg,ef=ef,se=T,bN=200)
 
-ols(y ~x + f1 + f2, dat2, robust=TRUE)
-getfe(est,ef=ef,se=T,bN=2000, robust=TRUE)
-ols(y ~x + f1 + f2, dat2, cluster="cluster")
-getfe(est,ef=ef,se=T,bN=2000, cluster=clu)
+#summary(estr <- felm(y ~x + G(f1) + G(f2), dat), robust=TRUE)
+#ols(y ~x + f1 + f2, dat, robust=TRUE)
+#getfe(estr,ef=ef,se=T,bN=2000, robust=TRUE)
+#ols(y ~x + f1 + f2, dat, cluster="cluster")

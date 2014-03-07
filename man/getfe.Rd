@@ -9,7 +9,7 @@
 }
 \usage{
 getfe(obj, references=NULL, se=FALSE,
-      method='kaczmarz', ef='ref', bN=100, robust=FALSE, cluster=NULL) 
+      method='kaczmarz', ef='ref', bN=100, robust=FALSE, cluster=obj[['clustervar']]) 
 }
 
 \arguments{
@@ -75,8 +75,8 @@ function.
 }
 
 \details{
-  For the case with two factors (the \code{G()}-terms in
-  \code{\link{felm}}), one reference in each connected component is
+  For the case with two factors (the terms in the second part of the
+  formula supplied to \code{\link{felm}}), one reference in each connected component is
   adequate when interpreting the results.
 
   For three or more factors, no such easy method is known;
@@ -101,6 +101,7 @@ function.
 }
 
 \examples{
+oldopts <- options(lfe.threads=2)
 ## create covariates
 x <- rnorm(4000)
 x2 <- rnorm(length(x))
@@ -117,7 +118,7 @@ firm.eff <- rexp(nlevels(firm))
 y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
 ## estimate and print result
-est <- felm(y ~ x+x2 + G(id)+G(firm))
+est <- felm(y ~ x+x2 | id + firm)
 summary(est)
 ## extract the group effects
 alpha <- getfe(est,se=TRUE)
@@ -133,7 +134,7 @@ ef <- function(v,addnames) {
   w
 }
 getfe(est,ef=ef,se=TRUE)
-
+options(oldopts)
 \dontrun{
 summary(lm(y ~ x+x2+id+firm-1))
 }

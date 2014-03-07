@@ -36,7 +36,7 @@ than, say, \code{1e-5} are estimable, whereas the others are not.
 }
 
 \examples{
-
+oldopts <- options(lfe.threads=1)
 ## create individual and firm
 id <- factor(sample(5000,50000,replace=TRUE))
 firm <- factor(sample(3000,50000,replace=TRUE))
@@ -58,5 +58,5 @@ ef <- function(v,addnames) {
   w
 }
 is.estimable(ef, list(id=id,firm=firm), keepdiff=TRUE)
-
+options(oldopts)
 }

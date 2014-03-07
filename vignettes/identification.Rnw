@@ -35,7 +35,7 @@ The \pkg{lfe} package is used for ordinary least squares estimation, i.e. models
 which conceptually may be estimated by \code{lm} as
 
 <<eval=FALSE>>=
-lm(y ~ x1 + x2 + ... + f1 + f2 + ... + fn)
+lm(y ~ x1 + x2 + ... + xm + f1 + f2 + ... + fn)
 @ 
 
 where \code{f1,f2,...,fn} are factors.
@@ -55,7 +55,7 @@ intercept term.
 
 In \pkg{lfe} the same estimation can be performed by
 << eval=FALSE>>=
-felm(y ~ x1 + x2 + ... + G(f1) + G(f2) + ... + G(fn))
+felm(y ~ x1 + x2 + ... + xm | f1 + f2 + ... + fn)
 @ 
 
 Since \code{felm} conceptually does exactly the same as \code{lm}, the contrasts approach may work there
@@ -84,9 +84,13 @@ patterns, romantic relationships, trees or cats, nor animals in general, were ha
 data collection and analysis. 
 
 \section{Identification with two factors}
-In the case with two factors, i.e. two \code{G()} terms in the model, identification
+In the case with two factors, identification
 is well-known. \code{getfe} will partition the dataset into connected components, and
 introduce a reference level in each component:
+<<echo=FALSE>>=
+  cores <- as.integer(Sys.getenv('SG_RUN'))
+  if(is.na(cores)) options(lfe.threads=1)
+@ 
 <<>>=
 library(lfe)
 set.seed(42)
@@ -95,7 +99,7 @@ f1 <- sample(8,length(x1),replace=TRUE)/10
 f2 <- sample(8,length(x1),replace=TRUE)/10
 e1 <- sin(f1) + 0.02*f2^2 + rnorm(length(x1))
 y <-  2.5*x1 + (e1-mean(e1))
-summary(est <- felm(y ~ x1 + G(f1) + G(f2)))
+summary(est <- felm(y ~ x1 | f1 + f2))
 @ 
 
 We examine the estimable function produced by \code{efactory}.
@@ -129,19 +133,19 @@ ordinary dummies.  In other words, the order of the factors in the model
 specification is important.  A typical example would be 3 factors; individuals, firms and education:
 
 <<eval=FALSE>>=
-est <- felm(logwage ~ x1 + x2 + G(id) + G(firm) + G(edu))
+est <- felm(logwage ~ x1 + x2 | id + firm + edu)
 getfe(est)
 @ 
 
 This will result in the same number of references as if using the model
 <<eval=FALSE>>=
-logwage ~ x1 + x2 + G(id) + G(firm) + edu
+logwage ~ x1 + x2 + edu | id + firm
 @ 
 though it may run faster (or slower).
 
 Alternatively, one could specify the model as
 <<eval=FALSE>>=
-logwage ~ x1 + x2 + G(firm) + G(edu) + G(id)
+logwage ~ x1 + x2 | firm + edu + id
 @ 
 
 This would not account for a partioning of the labour market along individual/firm, but
@@ -210,7 +214,7 @@ Like the \code{contrasts} argument to \code{lm}. However, the
 called first, it uses the Frisch-Waugh-Lovell theorem to project out
 the \(D\alpha\) term from \eqref{matmod} (see \cite[Remark 3.2]{GS13}):
 <<eval=FALSE>>=
-est <- felm(y ~ x1 + x2 + G(f1)+G(f2)+G(f3))
+est <- felm(y ~ x1 + x2 | f1 + f2 + f3)
 @ 
 
 This yields the parameters for \code{x1} and \code{x2}, i.e. \(\hat\beta\).
@@ -235,7 +239,7 @@ f2 <- sample(8,100,replace=TRUE)/8
 f3 <- sample(10,100,replace=TRUE)/10
 e1 <- sin(f1) + 0.02*f2^2  + 0.17*f3^3 + rnorm(100)
 y <-  2.5*x1 + (e1-mean(e1))
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3)))
+summary(est <- felm(y ~ x1 | f1 + f2 + f3))
 @ 
 
 In this case, with 3 factors we can not be certain that it is sufficient with a single
@@ -326,7 +330,7 @@ f2 <- sample(8,length(x1),replace=TRUE)
 f3 <- sample(8,length(x1),replace=TRUE)
 e1 <- sin(f1) + 0.02*f2^2  + 0.17*f3^3 + rnorm(length(x1))
 y <-  2.5*x1 + (e1-mean(e1))
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3)))
+summary(est <- felm(y ~ x1 | f1 + f2 + f3))
 @ 
 
 The default estimable function fails, and the coefficients
@@ -365,7 +369,7 @@ above mentioned rank-computation procedure can be activated by specifying
 time-consuming if the factors have many levels. Computing the rank
 does not in itself help us find estimable functions for \code{getfe}.
 <<>>=
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3), exactDOF=TRUE))
+summary(est <- felm(y ~ x1 | f1 + f2 + f3, exactDOF=TRUE))
 @ 
 
 We can get an idea what happens if we keep the dummies for \code{f3}. In this case, with
@@ -374,7 +378,7 @@ for all the multicollinearities among the factors \code{f1} and \code{f2} just a
 but this is not sufficient. The interpretation of the
 resulting coefficients is not straightforward.
 <<>>=
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + f3, exactDOF=TRUE))
+summary(est <- felm(y ~ x1 +f3 | f1 + f2, exactDOF=TRUE))
 getfe(est)
 @ 
 
@@ -384,7 +388,7 @@ there are 2 connected components (the factor \code{f2} gets its own \code{comp}-
 but this is not a graph theoretic component number, it merely indicates that there is
 a separate reference among these).
 <<>>=
-summary(est <- felm(y ~ x1 + G(f1) + G(f3) + G(f2), exactDOF=TRUE))
+summary(est <- felm(y ~ x1 | f1 + f3 + f2, exactDOF=TRUE))
 is.estimable(efactory(est),est$fe)
 getfe(est)
 
@@ -472,7 +476,7 @@ f3 <- (f2 + sample(9,length(x),replace=TRUE)) %% 500
 y <- x + 1e-4*f1 + sin(f2^2) +
   cos(f3)^3 + 0.5*rnorm(length(x))
 dataset <- data.frame(y,x,f1,f2,f3)
-summary(est <- felm(y ~ x + G(f1) + G(f2) + G(f3),
+summary(est <- felm(y ~ x | f1 + f2 + f3,
              data=dataset, exactDOF=TRUE))
 @ 
 
@@ -492,10 +496,10 @@ Then we analyse the largest WW-component
 <<>>=
 wwcomp <- compfactor(est$fe,WW=TRUE)
 nlevels(wwcomp)
-wwset <- dataset[wwcomp == 1, ]
-nrow(wwset)
-summary(wwest <- felm(y ~ x + G(f1) + G(f2) + G(f3),
-             data=wwset, exactDOF=TRUE))
+wwset <- wwcomp == 1
+sum(wwset)
+summary(wwest <- felm(y ~ x | f1 + f2 + f3,
+             data=dataset, subset=wwset, exactDOF=TRUE))
 @ 
 We see that we get the same coefficient for \code{x} in this case.
 This is not surprising, there is no obvious reason to believe that our

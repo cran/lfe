@@ -21,6 +21,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
@@ -33,6 +34,7 @@
 #include <Rdefines.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
+#include <R_ext/BLAS.h>
 
 #if defined(R_VERSION) && R_VERSION >= R_Version(3, 0, 0)
 typedef R_xlen_t mybigint_t;
@@ -49,7 +51,6 @@ typedef R_xlen_t mysize_t;
 #else
 typedef unsigned int mysize_t;
 #endif
-
 
 #ifdef NOTHREADS
 #define LOCK_T int*
@@ -133,6 +134,7 @@ typedef struct {
   int *group;
   /* invgpsize[j] is the 1/(size of level j) */
   double *invgpsize;  
+  double *gpsize;
   int *gpl; /* group list */
   int *ii;  /* indices into gpl */
   double *x; /* optional interaction covariate */
@@ -227,7 +229,7 @@ static int demean(double *v, int N, double *res,
   last = time(NULL);
   lastiter = 0;
 
-  double target;
+  double target=0;
   if(gkacc) target = 1e-4*neps;
 
   do {
@@ -640,7 +642,7 @@ static void invertfactor(FACTOR *f,int N) {
 static FACTOR** makefactors(SEXP flist) {
   FACTOR **factors;
   int numfac = LENGTH(flist);
-  int N;
+  int N=0;
 
   numfac = 0;
   for(int i = 0; i < LENGTH(flist); i++) {
@@ -706,17 +708,18 @@ static FACTOR** makefactors(SEXP flist) {
   
   for(int i = 0; i < truefac; i++) {
     FACTOR *f = factors[i];
+    f->gpsize = (double *)R_alloc(f->nlevels,sizeof(double));
     f->invgpsize = (double *)R_alloc(f->nlevels,sizeof(double));
-    memset(f->invgpsize,0,f->nlevels*sizeof(double));
+    memset(f->gpsize,0,f->nlevels*sizeof(double));
     /* first count it */
     for(int j = 0; j < N; j++) {
 	/* skip entries without a group, do we need that? */
 	/* if(f->group[j] < 1) error("Factors can't have missing levels"); */
       if(f->group[j] > 0) {
 	if(NULL == f->x)
-	  f->invgpsize[f->group[j]-1] += 1.0;
+	  f->gpsize[f->group[j]-1] += 1.0;
 	else
-	  f->invgpsize[f->group[j]-1] += f->x[j]*f->x[j];
+	  f->gpsize[f->group[j]-1] += f->x[j]*f->x[j];
       } else {
 	error("Factors can't have missing levels");
       }
@@ -724,7 +727,7 @@ static FACTOR** makefactors(SEXP flist) {
       /* then invert it, it's much faster to multiply than to divide */
       /* in the iterations */
     for(int j = 0; j < f->nlevels; j++) {
-      f->invgpsize[j] = 1.0/f->invgpsize[j];
+      f->invgpsize[j] = 1.0/f->gpsize[j];
     }
   }
   return(factors);
@@ -772,9 +775,16 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
     if(NULL != factors[i]->x) hasinteract = 1;
   mysize_t workpos = 0;
 
-  mysize_t *indices = (mysize_t *) work;
-  double *newR = (double *) &work[workpos += e*N];
-  mysize_t *perm = (mysize_t *) &work[workpos += N*sizeof(double)/sizeof(mysize_t)];
+  /* Do the doubles first to keep alignment */
+  double *newR = (double *) work;
+  mysize_t *indices = (mysize_t *) &work[workpos += N*sizeof(double)/sizeof(mysize_t)];
+  mysize_t *perm = (mysize_t *) &work[workpos += e*N];
+
+  /* mysize_t *indices = (mysize_t *) work;//&work[workpos += N*sizeof(double)/sizeof(mysize_t)]; */
+  /* double *newR = (double *) &work[workpos += e*N]; */
+  /* mysize_t *perm = (mysize_t *) &work[workpos += N*sizeof(double)/sizeof(mysize_t)]; */
+  /* if((uintptr_t)newR % sizeof(double) != 0) warning("newR is unaligned\n"); */
+
   mysize_t *prev = (mysize_t *) &work[workpos += N];
   mysize_t *this = (mysize_t *) &work[workpos += e];
 
@@ -925,7 +935,7 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
 #else
     if(*stop != 0) return(0);
 #endif
-  } while(sd >= neweps*(1.0-c)) ;
+  } while(sd >= neweps*(1.0-c) && neweps > 1e-15);
 
   return(sd);
 }
@@ -1058,7 +1068,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
     /* Each entry in the list is either a vector or a matrix */
     if(!isMatrix(elt)) {
       if(LENGTH(elt) != N) 
-	error("Vector length must be equal to factor length %d %d",LENGTH(elt),N);
+	error("Vector length (%d) must be equal to factor length (%d)",LENGTH(elt),N);
       numvec++;
     } else {
       if(nrows(elt) != N)
@@ -1143,15 +1153,23 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   arg.stop = 0;
   arg.work = (mysize_t**) R_alloc(numthr, sizeof(mysize_t*));
 
+  // when allocating the work, we use mysize_t, but parts of it is accessed as double which may be
+  // larger. So we allocate some more (8*sizeof(mysize_t) more), and adjust the address so it's aligned on a double
+  // When using it, make sure we do all the doubles first.
+
 #ifdef NOTHREADS
-  arg.work[0] = (mysize_t*) R_alloc(numfac*N + N*sizeof(double)/sizeof(mysize_t) + N + 2*numfac, sizeof(mysize_t));
+  arg.work[0] = (mysize_t*) R_alloc(numfac*N + N*sizeof(double)/sizeof(mysize_t) + N + 2*numfac+8, sizeof(mysize_t));
+  uintptr_t amiss = (uintptr_t) arg.work[0] % sizeof(double);
+  if(amiss != 0) arg.work[0] = (mysize_t*) ((uintptr_t)arg.work[0] + sizeof(double)-amiss);
   kaczmarz_thr((void*)&arg);
 #else
   /* Do it in separate threads */
   for(thr = 0; thr < numthr; thr++) {
     int stat;
     // allocate some thread-specific storage, we can't use R_alloc in a thread
-    arg.work[thr] = (mysize_t*) R_alloc(numfac*N + N*sizeof(double)/sizeof(mysize_t) + N + 2*numfac, sizeof(mysize_t));
+    arg.work[thr] = (mysize_t*) R_alloc(numfac*N + N*sizeof(double)/sizeof(mysize_t) + N + 2*numfac+8, sizeof(mysize_t));
+    uintptr_t amiss = (uintptr_t) arg.work[thr] % sizeof(double);
+    if(amiss != 0) arg.work[thr] = (mysize_t*) ((uintptr_t)arg.work[thr] + sizeof(double)-amiss);
 
 #ifdef WIN
     threads[thr] = CreateThread(NULL,0,kaczmarz_thr,&arg,0,&threadids[thr]);
@@ -1225,7 +1243,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 */
 
 static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
-			 SEXP scores, SEXP quiet, SEXP gkacc) {
+			 SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans) {
   int numvec;
   int numfac;
   int cnt;
@@ -1240,7 +1258,9 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   int icpt;
   SEXP badconv;
   int listlen;
+  int domeans=0;
 
+  domeans = LOGICAL(Rmeans)[0];
   icpt = INTEGER(Ricpt)[0] - 1; /* convert from 1-based to zero-based */
   eps = REAL(Reps)[0];
   cores = INTEGER(scores)[0];
@@ -1327,21 +1347,31 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     warning("%d vectors failed to centre to tolerance %.1le",INTEGER(badconv)[0],eps);
   setAttrib(reslist,install("badconv"),badconv);
   SET_NAMES(reslist, GET_NAMES(vlist));
+
+  if(domeans) {
+    for(int i = 0; i < numvec; i++) {
+      double *srcvec = vectors[i];
+      double *dstvec = target[i];
+      for(int j = 0; j < N; j++) {
+	dstvec[j] = (srcvec[j]-dstvec[j]);
+      }
+    }
+  }
   /* unprotect the reslist */
   UNPROTECT(4);
   return(reslist);
 }
 
 // an .External version of demeanlist
-
 static SEXP RE_demeanlist(SEXP args) {
   args = CDR(args); /* 'name' */
   /* Now, loop through the args and set up arguments for the 
      .Call demeanlist */
-  SEXP flist, Ricpt, Reps, scores, quiet, gkacc;
+  SEXP flist=R_NilValue, Ricpt=R_NilValue, Reps=R_NilValue,
+    scores=R_NilValue, quiet=R_NilValue, gkacc=R_NilValue, Rmeans=R_NilValue;
   // The number of vectors/matrices to be centered
-  if(length(args) < 6) error("Passed %d arguments to RE_demeanlist", length(args));
-  int numvec = length(args) - 6;
+  if(length(args) < 7) error("Passed %d arguments to RE_demeanlist", length(args));
+  int numvec = length(args) - 7;
   int curvec = 0;
   SEXP vlist,lnames;
   
@@ -1364,8 +1394,10 @@ static SEXP RE_demeanlist(SEXP args) {
       quiet = el;
     } else if(strcmp(name,"accel") == 0) {
       gkacc = el;
+    } else if(strcmp(name,"means") == 0) {
+      Rmeans = el;
     } else {
-      //      Rprintf("set vec %d to %s, length=%ld\n",curvec,name,TRUELENGTH(el));
+      //      Rprintf("set vec %d to %s, length=%d, tag-len %d\n",curvec,name,length(el), length(tag));
       SET_VECTOR_ELT(vlist,curvec,el);
       SET_STRING_ELT(lnames,curvec,tag);
       curvec++;
@@ -1373,20 +1405,23 @@ static SEXP RE_demeanlist(SEXP args) {
   }
 
   SET_NAMES(vlist, lnames);
-  SEXP ret = R_demeanlist(vlist, flist, Ricpt, Reps, scores, quiet, gkacc);
+  SEXP ret = R_demeanlist(vlist, flist, Ricpt, Reps, scores, quiet, gkacc, Rmeans);
   UNPROTECT(2);
   return ret;
 }
 
+
+
+
 static SEXP R_scalecols(SEXP mat, SEXP vec) {
   if(!isMatrix(mat)) error("first argument should be a matrix");
-  int col = ncols(mat), row = nrows(mat);
+  mybigint_t col = ncols(mat), row = nrows(mat);
   if(row != LENGTH(vec)) error("length of vector %d is different from number of rows %d",LENGTH(vec),row);
   double *cmat = REAL(mat);
-  double *cvec = REAL(vec);
-  for(int j = 0; j < col; j++) {
-    double *cc = &cmat[j*(mybigint_t) row];
-    for(int i = 0; i < row; i++)
+  double *cvec = REAL(AS_NUMERIC(vec));
+  for(mybigint_t j = 0; j < col; j++) {
+    double *cc = &cmat[j*row];
+    for(mybigint_t i = 0; i < row; i++)
       cc[i] *= cvec[i];
   }
   return R_NilValue;
@@ -1691,13 +1726,77 @@ static SEXP R_setdimnames(SEXP obj, SEXP nm) {
   setAttrib(obj, R_DimNamesSymbol, nm);
   return(R_NilValue);
 }
+
+// copy-free dsyrk
+static SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
+  double beta = REAL(AS_NUMERIC(inbeta))[0];
+  double alpha = REAL(AS_NUMERIC(inalpha))[0];
+  if(!isMatrix(inC)) error("C must be a matrix");
+  if(!isMatrix(inA)) error("A must be a matrix");
+
+  if(ncols(inC) != nrows(inC)) {
+    error("C must be a square matrix, it is %d x %d",nrows(inC), ncols(inC));
+  }
+  int N = nrows(inC);
+  double *C = REAL(inC);
+  if(ncols(inA) != ncols(inC)) {
+    error("A (%d x %d) must have the same number of columns as C (%d x %d)",nrows(inA),ncols(inA),nrows(inC),nrows(inC));
+  }
+  int K = nrows(inA);
+  double *A = REAL(inA);
+  F77_CALL(dsyrk)("U","T",&N, &K, &alpha, A, &K, &beta, C, &N);
+  // fill in the lower triangular part
+  for(R_xlen_t row=0; row < N; row++) {
+    for(R_xlen_t col=0; col < row; col++) {
+      C[col*N + row] = C[row*N+col];
+    }
+  }
+  return R_NilValue;
+}
+
+
+// perform C <- beta*C + alpha * (A'B + B'A)
+ static SEXP R_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB) {
+  double beta = REAL(AS_NUMERIC(inbeta))[0];
+  double alpha = REAL(AS_NUMERIC(inalpha))[0];
+  if(!isMatrix(inC)) error("C must be a matrix");
+  if(!isMatrix(inA)) error("A must be a matrix");
+  if(!isMatrix(inB)) error("B must be a matrix");
+
+  if(ncols(inC) != nrows(inC)) {
+    error("C must be a square matrix, it is %d x %d",nrows(inC), ncols(inC));
+  }
+  int N = nrows(inC);
+  double *C = REAL(inC);
+  if(ncols(inA) != ncols(inC)) {
+    error("A (%d x %d) must have the same number of columns as C (%d x %d)",nrows(inA),ncols(inA),nrows(inC),nrows(inC));
+  }
+  if(nrows(inA) != nrows(inB)) {
+    error("A (%d x %d) must have the same number of rows as B (%d x %d)",nrows(inA), ncols(inA), nrows(inB), ncols(inB));
+  }
+  int K = nrows(inA);
+  
+  double *A = REAL(inA);
+  double *B = REAL(inB);
+  F77_CALL(dsyr2k)("U","T",&N, &K, &alpha, A, &K, B, &K, &beta, C, &N);
+  // fill in the lower triangular part
+  for(R_xlen_t row=0; row < N; row++) {
+    for(R_xlen_t col=0; col < row; col++) {
+      C[col*N + row] = C[row*N+col];
+    }
+  }
+  return R_NilValue;
+}
+
 static R_CallMethodDef callMethods[] = {
   {"conncomp", (DL_FUNC) &R_conncomp, 1},
   {"wwcomp", (DL_FUNC) &R_wwcomp, 1},
-  {"demeanlist", (DL_FUNC) &R_demeanlist, 7},
+  {"demeanlist", (DL_FUNC) &R_demeanlist, 8},
   {"kaczmarz", (DL_FUNC) &R_kaczmarz, 5},
   {"setdimnames", (DL_FUNC) &R_setdimnames, 2},
   {"scalecols", (DL_FUNC) &R_scalecols, 2},
+  {"dsyrk", (DL_FUNC) &R_dsyrk, 4},
+  {"dsyr2k", (DL_FUNC) &R_dsyr2k, 5},
   {NULL, NULL, 0}
 };
 static R_ExternalMethodDef externalMethods[] = {

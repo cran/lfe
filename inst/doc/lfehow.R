@@ -4,11 +4,11 @@
 
 
 ## ----eval=FALSE----------------------------------------------------------
-## felm(Y ~ X1 + X2 + ... + Xk + G(D1) + G(D2) + ... + G(De))
+## felm(Y ~ X1 + X2 + ... + Xk | D1 + D2 + ... + De)
 
 
 ## ----eval=FALSE----------------------------------------------------------
-## Y ~ X1 + X2 + G(X3:D1) + G(D2) + G(D3)
+## Y ~ X1 + X2 | X3:D1 + D2 + D3
 
 
 ## ------------------------------------------------------------------------
@@ -54,22 +54,27 @@ demean <- function(v,fl) {
 summary(lm(Py ~ Px + Px2 + Px3 - 1))
 
 
+## ----echo=FALSE----------------------------------------------------------
+  cores <- as.integer(Sys.getenv('SG_RUN'))
+  if(is.na(cores)) options(lfe.threads=1)
+
+
 ## ------------------------------------------------------------------------
  library(lfe, quietly=TRUE)
- summary(est <- felm(y ~ x + x2 + x3 + G(f1)+G(f2)+G(f3)))
+ summary(est <- felm(y ~ x + x2 + x3 | f1+f2+f3))
 
 
-## ------------------------------------------------------------------------
+## ----tidy=FALSE----------------------------------------------------------
 ef <- function(v,addnames) {
+  r1 <- v[[1]]
   r2 <- v[[8]]
   r3 <- v[[12]]
-  v[1:7] <- v[1:7] + r2 + r3
-  v[8:11] <- v[8:11] - r2
-  v[12:14] <- v[12:14] - r3
-  if(addnames) names(v) <- c(paste('f1',1:7,sep='.'),
-                             paste('f2',1:4,sep='.'),
-                             paste('f3',1:3,sep='.'))
-  v
+  result <- c(r1+r2+r3,v[2:7]-r1,v[9:11]-r2,v[13:14]-r3)
+  if(addnames) names(result) <- c('(Intercept)',
+                             paste('f1',2:7,sep='.'),
+                             paste('f2',2:4,sep='.'),
+                             paste('f3',2:3,sep='.'))
+  result
 }
 # verify that it's estimable
 is.estimable(ef,est$fe)

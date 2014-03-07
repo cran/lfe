@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=1, digits=5)
+options(lfe.threads=2,digits=5,warn=1)
 set.seed(42)
 x <- rnorm(5000,mean=2)
 x2 <- rnorm(length(x))
@@ -22,7 +22,7 @@ shirt.eff <- rnorm(nlevels(shirt))
 y <- x + 0.25*x2 + 0.5*x3 + rowSums(ix*id.eff[id]) + id.eff[id] + fx*firm.eff[firm] + firm.eff[firm] + shoe.eff[shoe] + shirt.eff[shirt] + rnorm(length(x))
 
 ## estimate
-summary(est <- felm(y ~ x+x2+x3+G(ix:id)+G(id)+G(fx:firm)+G(firm)+G(shoe)+G(shirt), exactDOF=T))
+summary(est <- felm(y ~ x+x2+x3 | ix:id+id+fx:firm+firm+shoe+shirt, exactDOF=T))
 getfe(est)
 
 # compare with lm
@@ -34,7 +34,7 @@ firm <- factor(sample(7,length(x), replace=T))
 fx <- rnorm(length(x))
 ix <- matrix(rnorm(2*length(x)),length(x),2)
 y <- x + rowSums(ix*id.eff[id]) + fx*firm.eff[firm] + firm.eff[firm] + rnorm(length(x))
-summary(est <- felm(y ~ x + G(ix:id) + G(fx:firm) + G(firm), exactDOF='rM'))
+summary(est <- felm(y ~ x | ix:id + fx:firm + firm, exactDOF='rM'))
 getfe(est)
 summary(lm(y ~ x + ix:id + fx:firm + firm))
 

@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2013-12-03 r64376) -- "Unsuffered Consequences"
-Copyright (C) 2013 The R Foundation for Statistical Computing
+R Under development (unstable) (2014-02-12 r64976) -- "Unsuffered Consequences"
+Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -17,7 +17,7 @@ Type 'q()' to quit R.
 
 > library(lfe)
 Loading required package: Matrix
-> options(lfe.threads=1, digits=5)
+> options(lfe.threads=2,digits=5,warn=1)
 > set.seed(42)
 > x <- rnorm(5000,mean=2)
 > x2 <- rnorm(length(x))
@@ -40,10 +40,10 @@ Loading required package: Matrix
 > y <- x + 0.25*x2 + 0.5*x3 + rowSums(ix*id.eff[id]) + id.eff[id] + fx*firm.eff[firm] + firm.eff[firm] + shoe.eff[shoe] + shirt.eff[shirt] + rnorm(length(x))
 > 
 > ## estimate
-> summary(est <- felm(y ~ x+x2+x3+G(ix:id)+G(id)+G(fx:firm)+G(firm)+G(shoe)+G(shirt), exactDOF=T))
+> summary(est <- felm(y ~ x+x2+x3 | ix:id+id+fx:firm+firm+shoe+shirt, exactDOF=T))
 
 Call:
-   felm(formula = y ~ x + x2 + x3 + G(ix:id) + G(id) + G(fx:firm) +      G(firm) + G(shoe) + G(shirt), exactDOF = T) 
+   felm(formula = y ~ x + x2 + x3 | ix:id + id + fx:firm + firm +      shoe + shirt, exactDOF = T) 
 
 Residuals:
     Min      1Q  Median      3Q     Max 
@@ -59,7 +59,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1 on 4270 degrees of freedom
 Multiple R-squared: 0.898   Adjusted R-squared: 0.881 
-F-statistic: 51.7 on 729 and 4270 DF, p-value: <2e-16 
+F-statistic:51.7 on 729 and 4270 DF, p-value: <2e-16 
 
 
 > getfe(est)
@@ -804,10 +804,10 @@ shirt.10       1.7499347 517    3     shirt  10
 > fx <- rnorm(length(x))
 > ix <- matrix(rnorm(2*length(x)),length(x),2)
 > y <- x + rowSums(ix*id.eff[id]) + fx*firm.eff[firm] + firm.eff[firm] + rnorm(length(x))
-> summary(est <- felm(y ~ x + G(ix:id) + G(fx:firm) + G(firm), exactDOF='rM'))
+> summary(est <- felm(y ~ x | ix:id + fx:firm + firm, exactDOF='rM'))
 
 Call:
-   felm(formula = y ~ x + G(ix:id) + G(fx:firm) + G(firm), exactDOF = "rM") 
+   felm(formula = y ~ x | ix:id + fx:firm + firm, exactDOF = "rM") 
 
 Residuals:
     Min      1Q  Median      3Q     Max 
@@ -821,7 +821,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.942 on 75 degrees of freedom
 Multiple R-squared: 0.802   Adjusted R-squared: 0.736 
-F-statistic: 12.7 on 24 and 75 DF, p-value: <2e-16 
+F-statistic:12.7 on 24 and 75 DF, p-value: <2e-16 
 
 
 > getfe(est)
@@ -897,4 +897,4 @@ F-statistic: 12.7 on 24 and 75 DF,  p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  5.688   0.100   5.658 
+  5.787   0.145   5.633 

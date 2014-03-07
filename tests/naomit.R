@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=1)
+options(lfe.threads=2,digits=5,warn=1)
 set.seed(65318)
 x <- rnorm(500)
 x2 <- rnorm(length(x))
@@ -17,6 +17,6 @@ y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 x[sample(500,20)] <- NA
 y[sample(500,20)] <- NA
 ## estimate
-summary(est <- felm(y ~ x+x2 + G(id) + G(firm)))
+summary(est <- felm(y ~ x+x2 | id+firm))
 getfe(est)
 summary(lm(y ~ x + x2 + id + firm -1))

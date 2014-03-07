@@ -1,6 +1,6 @@
 library(lfe)
 set.seed(127)
-options(lfe.threads=1)
+options(lfe.threads=1,warn=1,digits=5)
 x <- rnorm(2000,mean=2000)
 x2 <- rnorm(length(x))
 x3 <- 1.2*x + 0.9*x2 
@@ -20,10 +20,10 @@ firm.eff <- rnorm(nlevels(firm))
 y <- x + 0.25*x2 + 0.5*x3 + 0.17*x4 + 0.8*x5 -0.3*x6 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
 ## estimate
-est <- felm(y ~ x+x2 + x3 + x4 + x5 + x6 + G(id) + G(firm))
+est <- felm(y ~ x+x2 + x3 + x4 + x5 + x6 | id + firm)
 ## extract the group fixed effects
 alpha <- getfe(est)
-#summary(est)  # remove from cran
+summary(est)  
 #alpha
 #summary(lm(y ~ x + x2 + x3 + x4 + x5 + x6 + id + firm)) # remove from cran
 # merge back

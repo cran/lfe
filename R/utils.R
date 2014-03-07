@@ -3,32 +3,44 @@
 # Licence: Artistic 2.0
 # pseudo-inverse, snatched from MASS
 
+# this call changes or adds the dimnames of obj without duplicating it
+# it should only be used on objects with a single reference
+# Our use of it is safe, and we don't export it.
+setdimnames <- function(obj, nm) {
+  .Call(C_setdimnames,obj,nm)
+}
+
 pinvx <- function(X) {
-    ch <- cholx(X)
+#    return(pinv(nazero(X)))
+    ch <- cholx(nazero(X))
     badvars <- attr(ch,'badvars')
-    if(is.null(badvars)) return(chol2inv(ch))
+    inv1 <- chol2inv(ch)
+    if(is.null(badvars)) return(inv1)
     inv <- matrix(0,nrow(X),ncol(X))
-    inv[-badvars,-badvars] <- chol2inv(ch)
+    inv[-badvars,-badvars] <- inv1
     structure(inv,badvars=attr(ch,'badvars'))
 }
 
-# Do a pivoted cholesky to detect multi-collinearities
-cholx <- function(mat,eps=1e-4) {
+# Do a Cholesky to detect multi-collinearities
+cholx <- function(mat, eps=1e-6) {
+  if(is.null(dim(mat))) dim(mat) <- c(1,1)
   N <- dim(mat)[1]
-  nm <- colnames(mat)
-  o <- options(warn=-1)
-  ch <- try(chol(mat),silent=TRUE)
-  options(o)
-  if(!inherits(ch,'try-error') && all(diag(ch) > eps*sqrt(diag(mat)))) return(ch)
+  if(N == 1) {
+      return(structure(sqrt(mat),badvars=if(mat<=0) 1 else NULL))
+  }
 
-  ch <- try(chol(mat,pivot=TRUE))
-  pivot <- attr(ch,'pivot')
-
-  rank <- min(which(c(diag(ch),-Inf) <= eps*c(sqrt(diag(mat)[pivot]),1)))-1
-  okcol=1:rank
-  badvars <- sort(pivot[-okcol])
-  ok <- sort(pivot[okcol])
-  return(structure(chol(mat[ok,ok]),badvars=badvars))
+  # first, try a pivoted one
+  tol <- N*getOption('lfe.eps')
+#  tol <- -1
+  chp <- chol(mat,pivot=TRUE,tol=tol)
+  rank <- attr(chp,'rank')
+  if(rank == N) return(chol(mat))
+  pivot <- attr(chp,'pivot')
+  oo <- order(pivot)
+  badvars <- pivot[((rank+1):N)]
+  ok <- (1:N)[-badvars]
+  ch <- chol(mat[ok,ok])
+  return(structure(ch,badvars=badvars))
 }
 
 
@@ -51,6 +63,8 @@ pinv <- function (X, tol = sqrt(.Machine$double.eps)) {
                             t(Xsvd$u[, Positive, drop = FALSE]))
   structure(res,badvars=badvars)
 }
+
+nazero <- function(x) ifelse(is.na(x),0,x)
 
 ftest <- function(z, zr=NULL, vcov=z$vcv) {
   rdf <- z$df #z$N - z$p - 1
@@ -75,31 +89,33 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
   z <- object
   res <- list()
   res$p <- z$p
-  if(res$p == 0) {
-    res <- list(residuals=as.vector(z$residuals),p=0,call=z$call)
+  res$Pp <- z$Pp
+  if(res$Pp == 0) {
+    res <- list(residuals=as.vector(z$residuals),p=z$p,Pp=0,call=z$call)
     class(res) <- 'summary.felm'
     return(res)
   }
+
   res$terms <- z$terms
   res$call <- z$call
   res$badF <- FALSE
   if(is.logical(robust) && robust) {
     if(!is.null(object$cse)) {
-      coefficients <- cbind(z$coefficients,z$cse,z$ctval,z$cpval)
+      coefficients <- cbind(z$beta,z$cse,z$ctval,z$cpval)
       sdnam <- 'Cluster s.e.'
       res$badF <- TRUE
     } else {
-      coefficients <- cbind(z$coefficients,z$rse,z$rtval,z$rpval)
+      coefficients <- cbind(z$beta,z$rse,z$rtval,z$rpval)
       sdnam <- 'Robust s.e'
       res$badF <- TRUE
     }
   } else {
     sdnam <- 'Std. Error'
-    coefficients <- cbind(z$coefficients,z$se,z$tval,z$pval)
+    coefficients <- cbind(z$beta,z$se,z$tval,z$pval)
   }
   if(!is.null(coefficients)) {
     dimnames(coefficients) <- 
-       list(names(z$coefficients),
+       list(names(z$beta),
            c('Estimate',sdnam,'t value','Pr(>|t|)'))
 
   }
@@ -138,9 +154,7 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
     r2 <- mss/tss
     resvar <- rss/rdf
   }
-
   # hmm, fstat should be computed differently when s.e. are robust or clustered.
-  
 
   res$fstat <- (mss/p)/resvar
   res$pval <- pf(res$fstat,p,rdf,lower.tail=FALSE)
@@ -151,7 +165,11 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
     if(is.null(z$cse)) {
       F <- ftest(z,vcov=z$robustvcv)
     } else {
-      F <- ftest(z,vcov=z$clustervcv)    
+      F <- try(ftest(z,vcov=z$clustervcv))
+      if(inherits(F,'try-error')) {
+          warning("can't compute cluster F-test")
+          F <- NULL
+      }
     }
     res$rob.fstat <- F[['F']]
     res$rob.pval  <- F[['p']]
@@ -159,7 +177,6 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
 
   sigma <- sqrt(resvar)  
   r2adj <- 1-(1-r2)*(z$N/rdf)
-
 
   res$exactDOF <- z$exactDOF
   if(!is.null(z$iv1fstat)) {
@@ -174,7 +191,6 @@ summary.felm <- function(object,...,robust=!is.null(object$cse)) {
       res$rob.iv1pval <- if1[['p']]
     }
   }
-
   res$df <- c(rdf,rdf)
   res$rse <- sigma
   res$rdf <- rdf
@@ -197,7 +213,7 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   print(qres,digits=digits)
 
   cat('\nCoefficients:\n')
-  if(x$p <= 0)
+  if(x$Pp <= 0)
     cat("(No coefficients)\n")
   else {
     printCoefmat(x$coefficients,digits=digits)
@@ -233,8 +249,12 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
           if1[['df1']],'and',if1[['df2']],'DF, p-value:',
           format.pval(if1[['p']],digits=digits),'\n')
       }
+      cat('*** F-test for excluded instruments assumes constant absorbed effects\n')
     }
 
+    if(x$badF) {
+      cat('*** F-test for robust/clustered standard errors is unreliable\n')
+    }
     if(length(x$fe) > 2 && !identical(x$exactDOF,'rM') && !x$exactDOF)
       cat('*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE\n')
   }
@@ -244,12 +264,25 @@ print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
 
 vcov.felm <- function(object,...) return(object$vcv)
 
+xtable.felm <- function(x, caption=NULL, label=NULL, align=NULL, digits=NULL,
+                        display=NULL, ...) {
+    cl <- match.call(expand.dots=FALSE)
+    do.call(getS3method('xtable','lm'), as.list(cl)[-1])
+}
+
+xtable.summary.felm <- function(x, caption=NULL, label=NULL, align=NULL, digits=NULL,
+                                display=NULL, ...) {
+    cl <- match.call(expand.dots=FALSE)
+    do.call(getS3method('xtable','summary.lm'), as.list(cl)[-1])
+}
+
 mkgraph <- function(f1,f2) {
-  graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)
+  require(igraph)
+#  graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)
 #  graph.edgelist(cbind(500000000+as.integer(f1),f2), directed=FALSE)
-#  graph.adjacency(tcrossprod(do.call('rBind',
-#                                     lapply(flist, as, 'sparseMatrix')))>0,
-#                  'undirected', diag=FALSE)
+  graph.adjacency(tcrossprod(do.call(rBind,
+                                     lapply(list(f1,f2), as, 'sparseMatrix')))>0,
+                  'undirected', diag=FALSE)
 }
 
 diamgraph <- function(flist,approx=TRUE) {
@@ -264,6 +297,7 @@ diamgraph <- function(flist,approx=TRUE) {
 }
 
 diammatrix <- function(flist, approx=TRUE) {
+
   flen <- length(flist)
   if(flen < 2) return(0)
   val <- matrix(0,flen,flen)
@@ -271,7 +305,7 @@ diammatrix <- function(flist, approx=TRUE) {
   rownames(val) <- names(flist)
   for(if1 in 1:(flen-1))
     for(if2 in (if1+1):flen) {
-      val[if1,if2] <- diamgraph(flist[c(if1,if2)])
+      val[if1,if2] <- diamgraph(flist[c(if1,if2)], approx)
     }
 
 # fill in lower triangle:
@@ -301,14 +335,12 @@ fixef.felm <- function(object,...) {
 # compute rank deficiency of D-matrix
 rankDefic <- function(fl,method='cholesky') {
   eps <- sqrt(.Machine$double.eps)
- # Ch <- as(Cholesky(tcrossprod(do.call('rBind',lapply(fl,as,Class='sparseMatrix'))),
-#                  super=TRUE,perm=TRUE,Imult=eps),'sparseMatrix')
   D <- makeDmatrix(fl)
   if(method == 'cholesky') {
     Ch <- as(Cholesky(crossprod(D), super=TRUE, perm=TRUE, Imult=eps), 'sparseMatrix')
-    sum(diag(Ch)^2 < eps^(1/3))
+    sum(diag(Ch) < eps^(1/4))
   } else {
-    as.integer(ncol(D) - rankMatrix(D,method='qrLINPACK'))
+    as.integer(ncol(D) - rankMatrix(crossprod(D), method='qr.R'))
   }
 }
 
@@ -318,15 +350,24 @@ makeDmatrix <- function(fl) {
   # for pure factors f, it's just the t(as(f,'sparseMatrix'))
   # if there's a covariate vector x, it's t(as(f,'sparseMatrix'))*x
   # for a covariate matrix x, it's the cbinds of the columns with the factor-matrix
-  do.call('cBind',lapply(fl, function(f) {
+  do.call(cBind,lapply(fl, function(f) {
     x <- attr(f,'x')
     fm <- t(as(f,'sparseMatrix'))
     if(is.null(x)) return(fm)
     if(!is.matrix(x)) return(fm*x)
-    do.call('cBind',apply(x,2,'*',fm))
+    do.call(cBind,apply(x,2,'*',fm))
   }))
 }
 
+makePmatrix <- function(fl) {
+  D <- makeDmatrix(fl)
+  DtD <- crossprod(D)
+  DtDi <- pinvx(as.matrix(DtD))
+  badvars <- attr(DtDi,'badvars')
+  if(is.null(badvars)) return(D %*% DtDi %*% t(D))
+  D <- D[,-badvars,drop=FALSE]
+  return(D %*% pinvx(as.matrix(crossprod(D))) %*% t(D))
+}
 # total number of variables projected out
 totalpvar <- function(fl) {
   if(length(fl) == 0) return(0)
@@ -339,12 +380,15 @@ totalpvar <- function(fl) {
 
 nrefs <- function(fl, cf, exactDOF=FALSE) {
   if(length(fl) == 0) return(0)
+  if(missing(cf)) cf <- compfactor(fl)
   numpure <- sum(sapply(fl,function(f) is.null(attr(f,'x'))))
+  if(numpure == 1) return(0)
+  if(numpure == 2) return(nlevels(cf))
   if(identical(exactDOF,'rM')) {
     return(rankDefic(fl, method='qr'))
   } else  if(exactDOF) {
     return(rankDefic(fl, method='cholesky'))
-  } else {
-    return((if(numpure>1) nlevels(cf) else 0) + max(numpure-2, 0))
   }
+  return(nlevels(cf) + numpure-2)
 }
+

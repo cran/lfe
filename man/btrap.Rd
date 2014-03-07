@@ -35,15 +35,21 @@ filled in.
 \details{
   The bootstrapping is done in parallel if \code{threads > 1}.  
   \code{\link{btrap}} is run automatically from \code{\link{getfe}} if
-  \code{se=TRUE} is specified.
+  \code{se=TRUE} is specified.  To save some overhead, the individual
+  iterations are grouped together, the memory available for this
+  grouping is fetched with \code{getOption('lfe.bootmem')}, which is
+  initialized upon loading of \pkg{lfe} to \code{options(lfe.bootmem=500)} (MB).
 
   If \code{robust=TRUE}, heteroskedastic robust standard errors are
   estimated. If \code{robust=FALSE} and \code{cluster=TRUE}, clustered
   standard errors with the cluster specified to \code{felm()} are
   estimated. If \code{cluster} is a factor, it is used for the cluster definition.
+  \code{cluster may} also be a list of factors.
+
 }
 
 \examples{
+oldopts <- options(lfe.threads=2)
 ## create covariates
 x <- rnorm(3000)
 x2 <- rnorm(length(x))
@@ -60,7 +66,7 @@ firm.eff <- rexp(nlevels(firm))
 y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 
 ## estimate and print result
-est <- felm(y ~ x+x2 + G(id)+G(firm))
+est <- felm(y ~ x+x2 | id + firm)
 summary(est)
 ## extract the group effects
 alpha <- getfe(est)
@@ -81,4 +87,5 @@ ef <- function(v,addnames) {
 lfe:::is.estimable(ef,est$fe)
 
 head(btrap(alpha,est,ef=ef))
+options(oldopts)
 }

@@ -50,9 +50,9 @@ length \code{N} which may be used to code additional information.
   method when using dummies.
 
   In the case that interactions are specified in the model,
-  i.e. with \code{G(x:f)}, these terms are not analyzed to create an
-  estimable function. Only the pure \code{G(f)} terms are used for this purpose.
-  It is assumed that the \code{G(x:f)} terms are all identified. Note
+  i.e. with \code{x:f} in the second part of the formula, these terms are not analyzed to create an
+  estimable function. Only the pure \code{f} terms are used for this purpose.
+  It is assumed that the \code{x:f} terms are all identified. Note
   that in this case, all the levels of \code{f} are included.
 }
 
@@ -65,11 +65,11 @@ It is not strictly necessary that the \code{obj} argument is of class
 the appropriate form will do.
 That is, \code{list(fe=fl,cfactor=compfactor(fl))} where \code{fl} is
 the list of factors defining the component structure.  I.e. if the model
-is \code{y ~ ... G(id) + G(firm)}, we have \code{fl=list(id=id,firm=firm)}.
+is \code{y ~ ... |id + firm}, we have \code{fl=list(id=id,firm=firm)}.
 }
 
 \examples{
-
+oldopts <- options(lfe.threads=1)
 id <- factor(sample(5000,50000,replace=TRUE))
 firm <- factor(sample(3000,50000,replace=TRUE))
 fl <- list(id=id,firm=firm)
@@ -82,4 +82,5 @@ print(ef <- efactory(obj,'ref'))
 is.estimable(ef,fl)
 # get the names of the coefficients, i.e. the nm-variable in the function
 head(evalq(nm,environment(ef)))
+options(oldopts)
 }

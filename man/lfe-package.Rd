@@ -38,16 +38,16 @@ The estimation is done in two steps.  First the other coefficients are
 estimated with the function \code{\link{felm}} by centering on all the
 group means, followed by an OLS (similar to lm).  Then the group effects
 are extracted (if needed) with the function \code{\link{getfe}}.  This
-method is described in Gaure (2013), but also appears in Guimaraes and
-Portugal(2010), disguised as the Gauss-Seidel algorithm.
+method is described in \cite{Gaure (2013)}, but also appears in \cite{Guimaraes and
+Portugal(2010)}, disguised as the Gauss-Seidel algorithm.
 
 
 There's also a function \code{\link{demeanlist}} which just does the
 centering on an arbitrary matrix, and there's a function
 \code{\link{compfactor}} which computes the connected components (which
 are used for interpreting the group effects when there are only two
-factors, see the Abowd et al references), they are also returned by
-\code{\link{getfe}}).
+factors; see the Abowd et al references), they are also returned by
+\code{\link{getfe}}.
 
 The centering on the means is done with a tolerance which is
 set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat
@@ -58,8 +58,9 @@ will provide maximum accuracy at the cost of computing time and
 warnings about convergence failure.
 
 The package is threaded, that is, it may use more than one cpu.  The
-number of threads is fetched upon loading the package, from the
-environment variable \env{LFE_THREADS} (or \env{OMP_NUM_THREADS}) and
+number of threads is fetched upon loading the package from the
+environment variable \env{LFE_THREADS}, \env{OMP_THREAD_LIMIT}, \env{OMP_NUM_THREADS} or
+\env{NUMBER_OF_PROCESSORS} (for Windows), and
 stored by \code{options(lfe.threads=n)}.  This option may be changed prior to
 calling \code{\link{felm}}, if so desired.  Note that, typically,
 \pkg{lfe} is limited by memory-bandwidth, not cpu-speed, thus fast
@@ -79,7 +80,7 @@ by setting the option \code{options(lfe.usecg=TRUE)}.
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
 levels (the \code{\link{felm}} took about 50 minutes on 8 cpus, the
-\code{\link{getfe}} takes 5 minutes.  Though, beware that not
+\code{\link{getfe}} takes 5 minutes).  Though, beware that not
 only the size of the dataset matters, but also its structure.
 
 The package will work with any positive number of grouping factors, but if
@@ -137,6 +138,7 @@ Statistical Software Components S456942, Boston College Department of Economics.
 }
 
 \examples{
+  oldopts <- options(lfe.threads=1)
   x <- rnorm(1000)
   x2 <- rnorm(length(x))
   id <- factor(sample(10,length(x),replace=TRUE))
@@ -147,12 +149,13 @@ Statistical Software Components S456942, Boston College Department of Economics.
   year.eff <- rnorm(nlevels(year))
   y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] +
          year.eff[year] + rnorm(length(x))
-  est <- felm(y ~ x+x2+G(id)+G(firm)+G(year))
+  est <- felm(y ~ x+x2 | id + firm + year)
   summary(est)
 
   getfe(est,se=TRUE)
 # compare with an ordinary lm
   summary(lm(y ~ x+x2+id+firm+year-1))
+  options(oldopts)
 }
 \keyword{regression}
 \keyword{models}

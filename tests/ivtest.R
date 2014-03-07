@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=2)
+options(lfe.threads=2,digits=5,warn=1)
 set.seed(42)
 x <- rnorm(1000)
 x2 <- rnorm(length(x))
@@ -18,9 +18,9 @@ R <- 0.001*x3 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.
 y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 
 ## estimate and print result
-est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3+x4, R ~ x3+x4))
+est <- felm(y ~ x+x2 | id+firm |(Q|R~x3+x4))
 summary(est,robust=TRUE)
 clu <- factor(sample(10,length(x), replace=TRUE))
-est <- felm(y ~ x+x2+G(id)+G(firm)+Q+R,iv=list(Q ~ x3+x4, R ~ x3+x4), cluster=clu)
+est <- felm(y ~ x+x2 | id + firm |(Q|R ~ x3+x4), cluster=clu)
 summary(est, robust=TRUE)
 for(s1 in est$step1) print(summary(s1))

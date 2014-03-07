@@ -1,10 +1,15 @@
 
 ## ----eval=FALSE----------------------------------------------------------
-## lm(y ~ x1 + x2 + ... + f1 + f2 + ... + fn)
+## lm(y ~ x1 + x2 + ... + xm + f1 + f2 + ... + fn)
 
 
 ## ----eval=FALSE----------------------------------------------------------
-## felm(y ~ x1 + x2 + ... + G(f1) + G(f2) + ... + G(fn))
+## felm(y ~ x1 + x2 + ... + xm | f1 + f2 + ... + fn)
+
+
+## ----echo=FALSE----------------------------------------------------------
+  cores <- as.integer(Sys.getenv('SG_RUN'))
+  if(is.na(cores)) options(lfe.threads=1)
 
 
 ## ------------------------------------------------------------------------
@@ -15,7 +20,7 @@ f1 <- sample(8,length(x1),replace=TRUE)/10
 f2 <- sample(8,length(x1),replace=TRUE)/10
 e1 <- sin(f1) + 0.02*f2^2 + rnorm(length(x1))
 y <-  2.5*x1 + (e1-mean(e1))
-summary(est <- felm(y ~ x1 + G(f1) + G(f2)))
+summary(est <- felm(y ~ x1 | f1 + f2))
 
 
 ## ------------------------------------------------------------------------
@@ -34,16 +39,16 @@ summary(lm(y ~ x1 + f1 + f2))
 
 
 ## ----eval=FALSE----------------------------------------------------------
-## est <- felm(logwage ~ x1 + x2 + G(id) + G(firm) + G(edu))
+## est <- felm(logwage ~ x1 + x2 | id + firm + edu)
 ## getfe(est)
 
 
 ## ----eval=FALSE----------------------------------------------------------
-## logwage ~ x1 + x2 + G(id) + G(firm) + edu
+## logwage ~ x1 + x2 + edu | id + firm
 
 
 ## ----eval=FALSE----------------------------------------------------------
-## logwage ~ x1 + x2 + G(firm) + G(edu) + G(id)
+## logwage ~ x1 + x2 | firm + edu + id
 
 
 ## ----eval=FALSE----------------------------------------------------------
@@ -51,7 +56,7 @@ summary(lm(y ~ x1 + f1 + f2))
 
 
 ## ----eval=FALSE----------------------------------------------------------
-## est <- felm(y ~ x1 + x2 + G(f1)+G(f2)+G(f3))
+## est <- felm(y ~ x1 + x2 | f1 + f2 + f3)
 
 
 ## ------------------------------------------------------------------------
@@ -62,7 +67,7 @@ f2 <- sample(8,100,replace=TRUE)/8
 f3 <- sample(10,100,replace=TRUE)/10
 e1 <- sin(f1) + 0.02*f2^2  + 0.17*f3^3 + rnorm(100)
 y <-  2.5*x1 + (e1-mean(e1))
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3)))
+summary(est <- felm(y ~ x1 | f1 + f2 + f3))
 
 
 ## ------------------------------------------------------------------------
@@ -123,7 +128,7 @@ f2 <- sample(8,length(x1),replace=TRUE)
 f3 <- sample(8,length(x1),replace=TRUE)
 e1 <- sin(f1) + 0.02*f2^2  + 0.17*f3^3 + rnorm(length(x1))
 y <-  2.5*x1 + (e1-mean(e1))
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3)))
+summary(est <- felm(y ~ x1 | f1 + f2 + f3))
 
 
 ## ------------------------------------------------------------------------
@@ -144,16 +149,16 @@ lfe:::rankDefic(list(f1,f2,f3))
 
 
 ## ------------------------------------------------------------------------
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + G(f3), exactDOF=TRUE))
+summary(est <- felm(y ~ x1 | f1 + f2 + f3, exactDOF=TRUE))
 
 
 ## ------------------------------------------------------------------------
-summary(est <- felm(y ~ x1 + G(f1) + G(f2) + f3, exactDOF=TRUE))
+summary(est <- felm(y ~ x1 +f3 | f1 + f2, exactDOF=TRUE))
 getfe(est)
 
 
 ## ------------------------------------------------------------------------
-summary(est <- felm(y ~ x1 + G(f1) + G(f3) + G(f2), exactDOF=TRUE))
+summary(est <- felm(y ~ x1 | f1 + f3 + f2, exactDOF=TRUE))
 is.estimable(efactory(est),est$fe)
 getfe(est)
 
@@ -193,7 +198,7 @@ f3 <- (f2 + sample(9,length(x),replace=TRUE)) %% 500
 y <- x + 1e-4*f1 + sin(f2^2) +
   cos(f3)^3 + 0.5*rnorm(length(x))
 dataset <- data.frame(y,x,f1,f2,f3)
-summary(est <- felm(y ~ x + G(f1) + G(f2) + G(f3),
+summary(est <- felm(y ~ x | f1 + f2 + f3,
              data=dataset, exactDOF=TRUE))
 
 
@@ -210,10 +215,10 @@ lfe:::rankDefic(est$fe)
 ## ------------------------------------------------------------------------
 wwcomp <- compfactor(est$fe,WW=TRUE)
 nlevels(wwcomp)
-wwset <- dataset[wwcomp == 1, ]
-nrow(wwset)
-summary(wwest <- felm(y ~ x + G(f1) + G(f2) + G(f3),
-             data=wwset, exactDOF=TRUE))
+wwset <- wwcomp == 1
+sum(wwset)
+summary(wwest <- felm(y ~ x | f1 + f2 + f3,
+             data=dataset, subset=wwset, exactDOF=TRUE))
 
 
 ## ------------------------------------------------------------------------

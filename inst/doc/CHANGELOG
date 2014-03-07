@@ -1,29 +1,45 @@
-Jan 23, 2014.  1.6 -- Map G() to factor(), not as.factor(), so as to remove unused levels which
-     otherwise will mess up the computation of DOF.
+Mar 5, 2014.   1.7 -- Depend on Matrix >= 1.1-2 to ensure that exactDOF='rM' works.
+     Also import xtable and Formula.
 
-Jan. 4, 2014.  1.6-1180 -- On CRAN.
+Feb 12, 2014.  1.7 -- Give warnings for unnamed 'clustervar' and 'iv'
+     args, in preparation for moving them out of the argument list.
 
-Dec. 17, 2013. 1.6 -- Fixed a bug in computing F-test for IV. Added F-test in 1st stage for omitted i.v.
-     Suppress F-test writing for robust and clustered errors. I can't compute it.
+Feb 11, 2014.  1.7 -- Support for multi part formulas.  G() removed from documentation.
 
-Dec. 06, 2013. 1.6.1163 -- On CRAN.
+Feb 3, 2014.   1.7 -- Do multiway clustering bootstrap also.
 
-Nov. 29, 2013. 1.6 -- Support for G(x:f) with x matrix.
+Jan 29, 2014.  1.7 -- Support multiway clustering (Cameron, Gelbach,
+     Miller). Suggested by Thiemo Fetzer.
+
+Jan 23, 2014.  1.6-1188 -- On CRAN. Map G() to factor(), not
+     as.factor(), so as to remove unused levels which otherwise will
+     mess up the computation of DOF.
+
+Jan 4, 2014.  1.6-1180 -- On CRAN.
+
+Dec 17, 2013. 1.6 -- Fixed a bug in computing F-test for IV. Added
+     F-test in 1st stage for omitted i.v.  Suppress F-test writing for
+     robust and clustered errors. I can't compute it.
+
+Dec 06, 2013. 1.6.1163 -- On CRAN.
+
+Nov 29, 2013. 1.6 -- Support for G(x:f) with x matrix.
      Fixed a one-off error in df for the one-factor case.
      Several bug-fixes and memory optimization pertaining to large model matrices.
      Some of them in R.
 
-Nov. 25, 2013. 1.6 -- Matrix::rankMatrix bug has been fixed. We can
-     use the sparse method qrLINPACK as soon as a new version of Matrix is released.  Bug #5031:
+Nov 25, 2013. 1.6 -- Matrix::rankMatrix bug has been fixed. We can
+     use the sparse method qrLINPACK as soon as a new version of
+     Matrix is released.  Bug #5031:
      https://r-forge.r-project.org/tracker/index.php?func=detail&aid=5031&group_id=61&atid=294
-     Added contrasts-argument to felm. It applies to factors outside G().
-     Fixed efactory() for G(x:f) interactions.
+     Added contrasts-argument to felm. It applies to factors outside
+     G().  Fixed efactory() for G(x:f) interactions.
 
-Nov. 14, 2013. 1.6 -- Added G(x:f) syntax for estimation similar to
+Nov 14, 2013. 1.6 -- Added G(x:f) syntax for estimation similar to
      x:f, i.e. interaction between a covariate and a factor. felm()
      and getfe() are ok, but efactory() does not always produce
      estimable functions.
 
-Nov. 12, 2013. 1.5-1118 -- On CRAN. Fixed a bug which prevented bootstrapping in some cases.
+Nov 12, 2013. 1.5-1118 -- On CRAN. Fixed a bug which prevented bootstrapping in some cases.
 
-Oct. 28, 2013. 1.5-1107 -- On CRAN. Version presented in R journal article.
+Oct 28, 2013. 1.5-1107 -- On CRAN. Version presented in R journal article.

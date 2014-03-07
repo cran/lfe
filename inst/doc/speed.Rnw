@@ -48,6 +48,10 @@ regression methods, so let's have a look at some examples.
 \section{Examples}
 Our first example has two factors, they are independent of each other, and
 of quite high cardinality
+<<echo=FALSE>>=
+  cores <- as.integer(Sys.getenv('SG_RUN'))
+  if(is.na(cores)) options(lfe.threads=1)
+@ 
 <<>>=
 library(lfe)
 set.seed(42)
@@ -58,7 +62,7 @@ y <- x + cos(f1) + log(f2+1) + rnorm(length(x), sd=0.5)
 @ 
 We time the first step:
 <<>>=
-system.time(est <- felm(y ~ x + G(f1) + G(f2)))
+system.time(est <- felm(y ~ x | f1 + f2))
 @ 
 and the second step
 <<>>=
@@ -71,7 +75,7 @@ Now we let \code{f2} have fewer levels:
 <<>>=
 f2 <- sample(300,length(x),replace=TRUE)
 y <- x + cos(f1) + log(f2+1) + rnorm(length(x), sd=0.5)
-system.time(est <- felm(y ~ x + G(f1) + G(f2)))
+system.time(est <- felm(y ~ x | f1 + f2))
 system.time(alpha <- getfe(est))
 @ 
 Not much happens, the second step is apparently faster, whereas the first is
@@ -80,51 +84,41 @@ in mundane bookkeeping such as creating a model matrix, not in the demeaning
 as such.
 
 Now we make the fixed effects dependent. We do this by ensuring
-that for each value of \code{f1} there are at most 20 different values
+that for each value of \code{f1} there are at most 10 different values
 of \code{f2}. We keep the number of levels
 in \code{f2} at 300, as in the previous example. The size of
 this problem is exactly the same as in the previous example, but
 the factor structure is very different.
 
 <<>>=
-f2 <- (f1 + sample(20,length(x),replace=TRUE)) %% 300
+f2 <- (f1 + sample(10,length(x),replace=TRUE)) %% 300
 y <- x + cos(f1) + log(f2+1) + rnorm(length(x), sd=0.5)
-system.time(est <- felm(y ~ x + G(f1) + G(f2)))
+system.time(est <- felm(y ~ x | f1 + f2))
 system.time(alpha <- getfe(est))
 @ 
 
-Then we modify it more, now having only 5 different values of \code{f2}
-for each \code{f1}. This is below the average group size in \code{f1}, which is
-10.
-<<>>=
-f2 <- (f1 + sample(5,length(x),replace=TRUE)) %% 300
-y <- x + cos(f1) + log(f2+1) + rnorm(length(x), sd=0.5)
-system.time(est <- felm(y ~ x + G(f1) + G(f2)))
-system.time(alpha <- getfe(est))
-nlevels(est[['cfactor']]) # number of connected components
-@ 
-The estimation now takes an order of magnitude more time.
+The estimation now takes a lot more time.
 Indeed, in this case, it is worthwile
 to consider coding \code{f2} as 300 dummies, i.e.\ as an ordinary factor, 
 even though there now are \(\approx 300\) vectors to centre, as opposed to two
 in the previous examples.
 <<>>=
-system.time(est <- felm(y ~ x + G(f1) + factor(f2)))
+system.time(est <- felm(y ~ x + factor(f2) | f1))
 system.time(alpha <- getfe(est))
 @ 
 
 We could be tempted to believe that this is the whole story, but it's not.
-We may create another example, where each \code{f1} only has 5 different
+We may create another example, where each \code{f1} only has 10 different
 \code{f2}'s as above, but where the overlap is different. In the above example,
-an observation with \code{f1=1} will have \code{f2} drawn from \{2,3,4,5,6\}, whereas
-an observation with \code{f1=2} will have \code{f2} in \{3,4,5,6,7\} and so on, i.e.
+an observation with \code{f1=1} will have \code{f2} drawn from \{2,3,4,\ldots,11\}, whereas
+an observation with \code{f1=2} will have \code{f2} in \{3,4,5,\ldots,12\} and so on, i.e.
 a considerable overlap. 
 We reduce this overlap by creating \code{f2} with a little twist, by 
-introducing some unevenly sized ``holes'' by cubing the samples of \code{1:5}.
+introducing some unevenly sized ``holes'' by cubing the samples of \code{1:10}.
 <<>>=
-f2 <- (f1 + sample(5,length(x),replace=TRUE)^3) %% 300
+f2 <- (f1 + sample(10,length(x),replace=TRUE)^3) %% 300
 y <- x + cos(f1) + log(f2+1) + rnorm(length(x), sd=0.5)
-system.time(est <- felm(y ~ x + G(f1) + G(f2)))
+system.time(est <- felm(y ~ x | f1 + f2))
 system.time(alpha <- getfe(est))
 nlevels(est[['cfactor']])
 @ 
@@ -150,12 +144,13 @@ library(igraph)
 mkgraph <- function(f1,f2)
   graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)
 
+appxdiam <- function(g) max(shortest.paths(g,sample(V(g),10),sample(V(g),10)))
 f2 <- sample(10000,length(x),replace=TRUE)
-diameter(mkgraph(f1,f2))
+appxdiam(mkgraph(f1,f2))
 f2 <- (f1 + sample(5,length(x),replace=TRUE)^3) %% 300
-diameter(mkgraph(f1,f2))
+appxdiam(mkgraph(f1,f2))
 f2 <- (f1 + sample(5,length(x),replace=TRUE)) %% 300
-diameter(mkgraph(f1,f2))
+appxdiam(mkgraph(f1,f2))
 @ 
 Loosely speaking, data with ``six degrees of separation'' seems to
 converge faster than less well connected networks.  Informal trials,
@@ -193,8 +188,7 @@ Kaczmarz-step of \pkg{lfe}, i.e.\ in \code{getfe}, as suggested in \cite{GS13}.
 Another acceleration scheme is found in \cite{GK89}, where a line search method
 is used in each iteration.  I.e. when a single iteration transforms our vector \(\eta \mapsto \eta'\),
 it is fairly easy to find the exact point on the line \(\{\eta + t(\eta' - \eta)\, :\, t \in \RN\}\) which
-is closest to the solution.  A future version of \pkg{lfe} will probably utilize a combination
-of random ordering of factors and this line search method.  However, it is noted in \cite{BDHP03} that
+is closest to the solution.  \pkg{lfe} uses this line search method in \code{felm} (or rather, in \code{demeanlist}).  However, it is noted in \cite{BDHP03} that
 this method does not always accelerate convergence.
 
 After publishing \cite{GS13}, the author was made aware that exactly

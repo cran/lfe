@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2014-01-05 r64665) -- "Unsuffered Consequences"
+R Under development (unstable) (2014-02-12 r64976) -- "Unsuffered Consequences"
 Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -18,7 +18,7 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 > set.seed(65513)
-> options(lfe.threads=1, digits=5)
+> options(lfe.threads=2,digits=4,warn=1)
 > x <- rnorm(52)
 > x2 <- rnorm(length(x))
 > x3 <- 0.2*x + 0.1*x2
@@ -34,10 +34,12 @@ Loading required package: Matrix
 > y <- x + 0.25*x2 + x3 + id.eff[id] + firm.eff[firm] + year.eff[year] + rnorm(length(x))
 > 
 > ## estimate and print result
-> summary(est <- felm(y ~ x+x2+x3+G(id)+G(firm)+G(year), exactDOF=TRUE))
+> summary(est <- felm(y ~ x+x2+x3 |id+firm+year, exactDOF=TRUE))
+Warning in chol.default(mat, pivot = TRUE, tol = tol) :
+  the matrix is either rank-deficient or indefinite
 
 Call:
-   felm(formula = y ~ x + x2 + x3 + G(id) + G(firm) + G(year), exactDOF = TRUE) 
+   felm(formula = y ~ x + x2 + x3 | id + firm + year, exactDOF = TRUE) 
 
 Residuals:
       Min        1Q    Median        3Q       Max 
@@ -56,240 +58,236 @@ Multiple R-squared: 0.953   Adjusted R-squared: 0.385
 F-statistic:1.71 on 47 and 4 DF, p-value: 0.324 
 
 
-Warning message:
-In chol.default(mat, pivot = TRUE) :
-  the matrix is either rank-deficient or indefinite
 > 
 > ## extract the group fixed effects
 > getfe(est)
-           effect obs comp   fe idx
-id.1     2.706446   2    1   id   1
-id.2     0.000000   5    1   id   2
-id.3     0.000000   1    4   id   3
-id.5    -0.924419   2    1   id   5
-id.6     2.617762   3    1   id   6
-id.7     1.151974   2    1   id   7
-id.10    2.199300   1    1   id  10
-id.11    1.730169   1    1   id  11
-id.12    0.338432   1    1   id  12
-id.13   -1.271333   1    3   id  13
-id.14    0.115733   1    2   id  14
-id.15    0.817741   2    1   id  15
-id.16    0.231140   1    1   id  16
-id.17    1.883113   1    1   id  17
-id.19    1.070017   3    1   id  19
-id.21    0.383653   5    1   id  21
-id.22   -1.288470   2    1   id  22
-id.24    0.567298   4    1   id  24
-id.27    6.428772   2    1   id  27
-id.28    1.163187   2    1   id  28
-id.29    0.000000   4    3   id  29
-id.30    0.000000   6    2   id  30
-firm.1  -0.748450   1    2 firm   1
-firm.2  -9.696457   1    1 firm   2
-firm.3  -3.879800   1    2 firm   3
-firm.4  -3.744556   1    1 firm   4
-firm.7   0.013458   3    1 firm   7
-firm.8  -3.034991   5    1 firm   8
-firm.9  -2.643924   2    3 firm   9
-firm.11 -2.778999   3    1 firm  11
-firm.12 -2.102599   1    2 firm  12
-firm.13 -2.320728   3    1 firm  13
-firm.14 -2.501301   1    3 firm  14
-firm.15 -3.597195   3    1 firm  15
-firm.16 -3.605860   3    1 firm  16
-firm.17 -3.374038   4    1 firm  17
-firm.18 -1.240328   3    1 firm  18
-firm.19 -1.532532   2    1 firm  19
-firm.20 -1.705361   1    1 firm  20
-firm.22 -3.104024   2    2 firm  22
-firm.23  2.579201   1    4 firm  23
-firm.24 -4.190594   1    2 firm  24
-firm.25 -3.012647   1    2 firm  25
-firm.26 -1.683019   2    1 firm  26
-firm.27 -1.376036   2    3 firm  27
-firm.29 -4.451574   2    1 firm  29
-firm.31 -5.990936   1    1 firm  31
-firm.32 -6.618937   2    1 firm  32
-year.1   0.000000  21    5 year   1
-year.2   1.480169  18    5 year   2
-year.3   2.774369  13    5 year   3
+          effect obs comp   fe idx
+id.1     2.70645   2    1   id   1
+id.2     0.00000   5    1   id   2
+id.3     0.00000   1    4   id   3
+id.5    -0.92442   2    1   id   5
+id.6     2.61776   3    1   id   6
+id.7     1.15197   2    1   id   7
+id.10    2.19930   1    1   id  10
+id.11    1.73017   1    1   id  11
+id.12    0.33843   1    1   id  12
+id.13   -1.27133   1    3   id  13
+id.14    0.11573   1    2   id  14
+id.15    0.81774   2    1   id  15
+id.16    0.23114   1    1   id  16
+id.17    1.88311   1    1   id  17
+id.19    1.07002   3    1   id  19
+id.21    0.38365   5    1   id  21
+id.22   -1.28847   2    1   id  22
+id.24    0.56730   4    1   id  24
+id.27    6.42877   2    1   id  27
+id.28    1.16319   2    1   id  28
+id.29    0.00000   4    3   id  29
+id.30    0.00000   6    2   id  30
+firm.1  -0.74845   1    2 firm   1
+firm.2  -9.69646   1    1 firm   2
+firm.3  -3.87980   1    2 firm   3
+firm.4  -3.74456   1    1 firm   4
+firm.7   0.01346   3    1 firm   7
+firm.8  -3.03499   5    1 firm   8
+firm.9  -2.64392   2    3 firm   9
+firm.11 -2.77900   3    1 firm  11
+firm.12 -2.10260   1    2 firm  12
+firm.13 -2.32073   3    1 firm  13
+firm.14 -2.50130   1    3 firm  14
+firm.15 -3.59719   3    1 firm  15
+firm.16 -3.60586   3    1 firm  16
+firm.17 -3.37404   4    1 firm  17
+firm.18 -1.24033   3    1 firm  18
+firm.19 -1.53253   2    1 firm  19
+firm.20 -1.70536   1    1 firm  20
+firm.22 -3.10402   2    2 firm  22
+firm.23  2.57920   1    4 firm  23
+firm.24 -4.19059   1    2 firm  24
+firm.25 -3.01265   1    2 firm  25
+firm.26 -1.68302   2    1 firm  26
+firm.27 -1.37604   2    3 firm  27
+firm.29 -4.45157   2    1 firm  29
+firm.31 -5.99094   1    1 firm  31
+firm.32 -6.61894   2    1 firm  32
+year.1   0.00000  21    5 year   1
+year.2   1.48017  18    5 year   2
+year.3   2.77437  13    5 year   3
 > print(alpha <- getfe(est,ef='ln'))
-           effect obs comp   fe idx
-id.1     1.357325   2    1   id   1
-id.2    -1.349121   5    1   id   2
-id.3     2.287012   1    4   id   3
-id.5    -2.273540   2    1   id   5
-id.6     1.268641   3    1   id   6
-id.7    -0.197147   2    1   id   7
-id.10    0.850179   1    1   id  10
-id.11    0.381049   1    1   id  11
-id.12   -1.010688   1    1   id  12
-id.13   -1.124425   1    3   id  13
-id.14   -0.532380   1    2   id  14
-id.15   -0.531379   2    1   id  15
-id.16   -1.117981   1    1   id  16
-id.17    0.533992   1    1   id  17
-id.19   -0.279104   3    1   id  19
-id.21   -0.965468   5    1   id  21
-id.22   -2.637591   2    1   id  22
-id.24   -0.781823   4    1   id  24
-id.27    5.079652   2    1   id  27
-id.28   -0.185934   2    1   id  28
-id.29    0.146909   4    3   id  29
-id.30   -0.648113   6    2   id  30
-firm.1   1.894487   1    2 firm   1
-firm.2  -6.352513   1    1 firm   2
-firm.3  -1.236863   1    2 firm   3
-firm.4  -0.400612   1    1 firm   4
-firm.7   3.357403   3    1 firm   7
-firm.8   0.308954   5    1 firm   8
-firm.9  -0.796009   2    3 firm   9
-firm.11  0.564946   3    1 firm  11
-firm.12  0.540338   1    2 firm  12
-firm.13  1.023217   3    1 firm  13
-firm.14 -0.653386   1    3 firm  14
-firm.15 -0.253250   3    1 firm  15
-firm.16 -0.261915   3    1 firm  16
-firm.17 -0.030094   4    1 firm  17
-firm.18  2.103617   3    1 firm  18
-firm.19  1.811413   2    1 firm  19
-firm.20  1.638584   1    1 firm  20
-firm.22 -0.461087   2    2 firm  22
-firm.23  2.287012   1    4 firm  23
-firm.24 -1.547657   1    2 firm  24
-firm.25 -0.369710   1    2 firm  25
-firm.26  1.660925   2    1 firm  26
-firm.27  0.471880   2    3 firm  27
-firm.29 -1.107629   2    1 firm  29
-firm.31 -2.646992   1    1 firm  31
-firm.32 -3.274992   2    1 firm  32
-year.1  -1.994824  21    5 year   1
-year.2  -0.514655  18    5 year   2
-year.3   0.779545  13    5 year   3
-Warning messages:
-1: In is.estimable(ef, obj$fe) :
+Warning in is.estimable(ef, obj$fe) :
   non-estimable function, largest error 0.4 in coordinate 3 ("id.3")
-2: In getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
   Supplied function seems non-estimable
+          effect obs comp   fe idx
+id.1     1.35733   2    1   id   1
+id.2    -1.34912   5    1   id   2
+id.3     2.28701   1    4   id   3
+id.5    -2.27354   2    1   id   5
+id.6     1.26864   3    1   id   6
+id.7    -0.19715   2    1   id   7
+id.10    0.85018   1    1   id  10
+id.11    0.38105   1    1   id  11
+id.12   -1.01069   1    1   id  12
+id.13   -1.12442   1    3   id  13
+id.14   -0.53238   1    2   id  14
+id.15   -0.53138   2    1   id  15
+id.16   -1.11798   1    1   id  16
+id.17    0.53399   1    1   id  17
+id.19   -0.27910   3    1   id  19
+id.21   -0.96547   5    1   id  21
+id.22   -2.63759   2    1   id  22
+id.24   -0.78182   4    1   id  24
+id.27    5.07965   2    1   id  27
+id.28   -0.18593   2    1   id  28
+id.29    0.14691   4    3   id  29
+id.30   -0.64811   6    2   id  30
+firm.1   1.89449   1    2 firm   1
+firm.2  -6.35251   1    1 firm   2
+firm.3  -1.23686   1    2 firm   3
+firm.4  -0.40061   1    1 firm   4
+firm.7   3.35740   3    1 firm   7
+firm.8   0.30895   5    1 firm   8
+firm.9  -0.79601   2    3 firm   9
+firm.11  0.56495   3    1 firm  11
+firm.12  0.54034   1    2 firm  12
+firm.13  1.02322   3    1 firm  13
+firm.14 -0.65339   1    3 firm  14
+firm.15 -0.25325   3    1 firm  15
+firm.16 -0.26191   3    1 firm  16
+firm.17 -0.03009   4    1 firm  17
+firm.18  2.10362   3    1 firm  18
+firm.19  1.81141   2    1 firm  19
+firm.20  1.63858   1    1 firm  20
+firm.22 -0.46109   2    2 firm  22
+firm.23  2.28701   1    4 firm  23
+firm.24 -1.54766   1    2 firm  24
+firm.25 -0.36971   1    2 firm  25
+firm.26  1.66093   2    1 firm  26
+firm.27  0.47188   2    3 firm  27
+firm.29 -1.10763   2    1 firm  29
+firm.31 -2.64699   1    1 firm  31
+firm.32 -3.27499   2    1 firm  32
+year.1  -1.99482  21    5 year   1
+year.2  -0.51465  18    5 year   2
+year.3   0.77954  13    5 year   3
 > # get the names to use below, just to make it easier
 > # lower precision in output
 > 
 > nm <- rownames(alpha)
 > getfe(est,ef='zm',se=TRUE)
-          effect obs comp      se
-id.1     2.70645   2    1 2.94035
-id.2     0.00000   5    1 0.00000
-id.5    -0.92442   2    1 3.34056
-id.6     2.61776   3    1 4.10518
-id.7     1.15197   2    1 1.96168
-id.10    2.19930   1    1 4.46844
-id.11    1.73017   1    1 3.76489
-id.12    0.33843   1    1 2.37165
-id.15    0.81774   2    1 2.53980
-id.16    0.23114   1    1 3.97955
-id.17    1.88311   1    1 4.21095
-id.19    1.07002   3    1 2.36597
-id.21    0.38365   5    1 1.31274
-id.22   -1.28847   2    1 1.47881
-id.24    0.56730   4    1 1.26353
-id.27    6.42877   2    1 3.84005
-id.28    1.16319   2    1 3.16566
-firm.2  -6.23633   1    1 3.35511
-firm.4  -0.28443   1    1 3.24111
-firm.7   3.47359   3    1 1.66190
-firm.8   0.42514   5    1 2.87876
-firm.11  0.68113   3    1 1.30198
-firm.13  1.13940   3    1 1.67239
-firm.15 -0.13707   3    1 2.88215
-firm.16 -0.14573   3    1 1.79310
-firm.17  0.08609   4    1 1.43239
-firm.18  2.21980   3    1 1.47635
-firm.19  1.92760   2    1 1.57583
-firm.20  1.75477   1    1 2.55472
-firm.26  1.77711   2    1 1.56211
-firm.29 -0.99145   2    1 1.61794
-firm.31 -2.53081   1    1 2.55654
-firm.32 -3.15881   2    1 2.15478
-icpt.1  -3.46013  39    1 2.03165
-id.14    0.11573   1    2 2.29503
-id.30    0.00000   6    2 0.00000
-firm.1   2.09124   1    2 1.32839
-firm.3  -1.04011   1    2 1.38527
-firm.12  0.73709   1    2 1.50605
-firm.22 -0.26434   2    2 1.39249
-firm.24 -1.35091   1    2 1.30896
-firm.25 -0.17296   1    2 1.54496
-icpt.2  -2.83969   7    2 1.14289
-id.13   -1.27133   1    3 2.26871
-id.29    0.00000   4    3 0.00000
-firm.9  -0.47017   2    3 1.13676
-firm.14 -0.32755   1    3 1.19874
-firm.27  0.79772   2    3 1.14816
-icpt.3  -2.17375   5    3 0.90792
-id.3     0.00000   1    4 0.00000
-firm.23  0.00000   1    4 0.00000
-icpt.4   2.57920   1    4 1.22529
-year.1   0.00000  21    5 0.00000
-year.2   1.48017  18    5 1.10416
-year.3   2.77437  13    5 1.21265
+          effect obs comp     se
+id.1     2.70645   2    1 2.9403
+id.2     0.00000   5    1 0.0000
+id.5    -0.92442   2    1 3.3406
+id.6     2.61776   3    1 4.1052
+id.7     1.15197   2    1 1.9617
+id.10    2.19930   1    1 4.4684
+id.11    1.73017   1    1 3.7649
+id.12    0.33843   1    1 2.3717
+id.15    0.81774   2    1 2.5398
+id.16    0.23114   1    1 3.9796
+id.17    1.88311   1    1 4.2110
+id.19    1.07002   3    1 2.3660
+id.21    0.38365   5    1 1.3127
+id.22   -1.28847   2    1 1.4788
+id.24    0.56730   4    1 1.2635
+id.27    6.42877   2    1 3.8400
+id.28    1.16319   2    1 3.1657
+firm.2  -6.23633   1    1 3.3551
+firm.4  -0.28443   1    1 3.2411
+firm.7   3.47359   3    1 1.6619
+firm.8   0.42514   5    1 2.8788
+firm.11  0.68113   3    1 1.3020
+firm.13  1.13940   3    1 1.6724
+firm.15 -0.13707   3    1 2.8821
+firm.16 -0.14573   3    1 1.7931
+firm.17  0.08609   4    1 1.4324
+firm.18  2.21980   3    1 1.4763
+firm.19  1.92760   2    1 1.5758
+firm.20  1.75477   1    1 2.5547
+firm.26  1.77711   2    1 1.5621
+firm.29 -0.99145   2    1 1.6179
+firm.31 -2.53081   1    1 2.5565
+firm.32 -3.15881   2    1 2.1548
+icpt.1  -3.46013  39    1 2.0316
+id.14    0.11573   1    2 2.2950
+id.30    0.00000   6    2 0.0000
+firm.1   2.09124   1    2 1.3284
+firm.3  -1.04011   1    2 1.3853
+firm.12  0.73709   1    2 1.5060
+firm.22 -0.26434   2    2 1.3925
+firm.24 -1.35091   1    2 1.3090
+firm.25 -0.17296   1    2 1.5450
+icpt.2  -2.83969   7    2 1.1429
+id.13   -1.27133   1    3 2.2687
+id.29    0.00000   4    3 0.0000
+firm.9  -0.47017   2    3 1.1368
+firm.14 -0.32755   1    3 1.1987
+firm.27  0.79772   2    3 1.1482
+icpt.3  -2.17375   5    3 0.9079
+id.3     0.00000   1    4 0.0000
+firm.23  0.00000   1    4 0.0000
+icpt.4   2.57920   1    4 1.2253
+year.1   0.00000  21    5 0.0000
+year.2   1.48017  18    5 1.1042
+year.3   2.77437  13    5 1.2127
 > getfe(est,ef='zm2',se=TRUE)
-           effect obs comp     se
-id.1     1.466675   2    1 2.1720
-id.2    -1.239771   5    1 1.7389
-id.5    -2.164190   2    1 1.8755
-id.6     1.377990   3    1 2.4533
-id.7    -0.087797   2    1 1.7748
-id.10    0.959528   1    1 2.9711
-id.11    0.490398   1    1 2.6489
-id.12   -0.901339   1    1 2.5070
-id.15   -0.422030   2    1 2.6964
-id.16   -1.008632   1    1 2.8231
-id.17    0.643341   1    1 2.5755
-id.19   -0.169755   3    1 1.3969
-id.21   -0.856119   5    1 1.2358
-id.22   -2.528242   2    1 2.2548
-id.24   -0.672474   4    1 1.4876
-id.27    5.189001   2    1 2.6034
-id.28   -0.076584   2    1 1.4970
-firm.2  -6.236329   1    1 3.1132
-firm.4  -0.284428   1    1 2.8899
-firm.7   3.473586   3    1 1.6524
-firm.8   0.425137   5    1 2.4695
-firm.11  0.681129   3    1 1.3285
-firm.13  1.139401   3    1 1.3255
-firm.15 -0.137067   3    1 2.6962
-firm.16 -0.145731   3    1 1.6387
-firm.17  0.086090   4    1 1.3069
-firm.18  2.219800   3    1 1.5147
-firm.19  1.927597   2    1 1.7093
-firm.20  1.754768   1    1 2.4941
-firm.26  1.777109   2    1 1.6044
-firm.29 -0.991446   2    1 1.6775
-firm.31 -2.530808   1    1 2.8211
-firm.32 -3.158808   2    1 1.8781
-icpt.1  -2.220357  39    1 0.6706
-id.14    0.057867   1    2 1.2071
-id.30   -0.057867   6    2 1.2071
-firm.1   2.091236   1    2 1.5290
-firm.3  -1.040114   1    2 1.4185
-firm.12  0.737087   1    2 1.4892
-firm.22 -0.264338   2    2 1.3895
-firm.24 -1.350908   1    2 1.2117
-firm.25 -0.172962   1    2 1.2335
-icpt.2  -2.781819   7    2 1.0349
-id.13   -0.635667   1    3 1.0576
-id.29    0.635667   4    3 1.0576
-firm.9  -0.470171   2    3 1.0930
-firm.14 -0.327548   1    3 1.0666
-firm.27  0.797718   2    3 0.9703
-icpt.3  -2.809420   5    3 1.5433
-id.3     0.000000   1    4 0.0000
-firm.23  0.000000   1    4 0.0000
-icpt.4   2.579201   1    4 1.3354
-year.1   0.000000  21    5 0.0000
-year.2   1.480169  18    5 1.0697
-year.3   2.774369  13    5 1.2440
+          effect obs comp     se
+id.1     1.46667   2    1 2.1720
+id.2    -1.23977   5    1 1.7389
+id.5    -2.16419   2    1 1.8755
+id.6     1.37799   3    1 2.4533
+id.7    -0.08780   2    1 1.7748
+id.10    0.95953   1    1 2.9711
+id.11    0.49040   1    1 2.6489
+id.12   -0.90134   1    1 2.5070
+id.15   -0.42203   2    1 2.6964
+id.16   -1.00863   1    1 2.8231
+id.17    0.64334   1    1 2.5755
+id.19   -0.16975   3    1 1.3969
+id.21   -0.85612   5    1 1.2358
+id.22   -2.52824   2    1 2.2548
+id.24   -0.67247   4    1 1.4876
+id.27    5.18900   2    1 2.6034
+id.28   -0.07658   2    1 1.4970
+firm.2  -6.23633   1    1 3.1132
+firm.4  -0.28443   1    1 2.8899
+firm.7   3.47359   3    1 1.6524
+firm.8   0.42514   5    1 2.4695
+firm.11  0.68113   3    1 1.3285
+firm.13  1.13940   3    1 1.3255
+firm.15 -0.13707   3    1 2.6962
+firm.16 -0.14573   3    1 1.6387
+firm.17  0.08609   4    1 1.3069
+firm.18  2.21980   3    1 1.5147
+firm.19  1.92760   2    1 1.7093
+firm.20  1.75477   1    1 2.4941
+firm.26  1.77711   2    1 1.6044
+firm.29 -0.99145   2    1 1.6775
+firm.31 -2.53081   1    1 2.8211
+firm.32 -3.15881   2    1 1.8781
+icpt.1  -2.22036  39    1 0.6706
+id.14    0.05787   1    2 1.2071
+id.30   -0.05787   6    2 1.2071
+firm.1   2.09124   1    2 1.5290
+firm.3  -1.04011   1    2 1.4185
+firm.12  0.73709   1    2 1.4892
+firm.22 -0.26434   2    2 1.3895
+firm.24 -1.35091   1    2 1.2117
+firm.25 -0.17296   1    2 1.2335
+icpt.2  -2.78182   7    2 1.0349
+id.13   -0.63567   1    3 1.0576
+id.29    0.63567   4    3 1.0576
+firm.9  -0.47017   2    3 1.0930
+firm.14 -0.32755   1    3 1.0666
+firm.27  0.79772   2    3 0.9703
+icpt.3  -2.80942   5    3 1.5433
+id.3     0.00000   1    4 0.0000
+firm.23  0.00000   1    4 0.0000
+icpt.4   2.57920   1    4 1.3354
+year.1   0.00000  21    5 0.0000
+year.2   1.48017  18    5 1.0697
+year.3   2.77437  13    5 1.2440
 > ef <- function(v,addnames) {
 +   names(v) <- nm
 +   w <- c(v['id.2']-v['id.1'],exp(v['id.2']-v['id.1']),
@@ -298,11 +296,11 @@ year.3   2.774369  13    5 1.2440
 +   w
 + }
 > getfe(est,ef=ef,se=TRUE)
-                effect        se
-id2-id1      -2.706446 2.7141083
-exp(id2-id1)  0.066774 0.0076218
-id2+f2+y1    -9.696457 4.3076086
-id5+f4+y2    -3.188806 3.4458424
+               effect       se
+id2-id1      -2.70645 2.714108
+exp(id2-id1)  0.06677 0.007622
+id2+f2+y1    -9.69646 4.307609
+id5+f4+y2    -3.18881 3.445842
 > 
 > # test whether we have estimable functions
 > 
@@ -316,11 +314,10 @@ myef : TRUE
 ref : TRUE 
 zm : TRUE 
 zm2 : TRUE 
-ln : FALSE 
-Warning message:
-In is.estimable(efactory(est, n), est$fe, R) :
+Warning in is.estimable(efactory(est, n), est$fe, R) :
   non-estimable function, largest error 0.2 in coordinate 3 ("id.3")
+ln : FALSE 
 > 
 > proc.time()
    user  system elapsed 
-  5.272   0.120   5.639 
+  5.608   0.082   5.384 

@@ -40,6 +40,7 @@ of \pkg{Rcgmin}.  This may or may not be faster.
 }
 
 \examples{
+  oldopts <- options(lfe.threads=1)
 ## create factors
   f1 <- factor(sample(24000,100000,replace=TRUE))
   f2 <- factor(sample(20000,length(f1),replace=TRUE))
@@ -64,5 +65,6 @@ as(f3,'sparseMatrix'), as(f4,'sparseMatrix')))
 ## moreover, the solution from kaczmarz has smaller norm
   sqrt(sum(sol^2))
   sqrt(sum(truex^2))
+  options(oldopts)
 }
 

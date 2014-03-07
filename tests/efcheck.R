@@ -1,6 +1,6 @@
 library(lfe)
 set.seed(65513)
-options(lfe.threads=1, digits=5)
+options(lfe.threads=2,digits=4,warn=1)
 x <- rnorm(52)
 x2 <- rnorm(length(x))
 x3 <- 0.2*x + 0.1*x2
@@ -16,7 +16,7 @@ year.eff <- rnorm(nlevels(year))
 y <- x + 0.25*x2 + x3 + id.eff[id] + firm.eff[firm] + year.eff[year] + rnorm(length(x))
 
 ## estimate and print result
-summary(est <- felm(y ~ x+x2+x3+G(id)+G(firm)+G(year), exactDOF=TRUE))
+summary(est <- felm(y ~ x+x2+x3 |id+firm+year, exactDOF=TRUE))
 
 ## extract the group fixed effects
 getfe(est)

@@ -203,12 +203,7 @@ if(!inherits(tab,'data.frame')) {
   attr(tab,'row.names') <- NULL
 }
 
-factors <- lfe:::flfromformula(model,tab)[[2]]
-
-#festr <- paste('list(',paste(sapply(feidx,function(i) deparse(va[[i]])),collapse=','),')')
-#factors <- local({G <- as.factor;'*'<-interaction;eval(parse(text=festr),tab,environment())})
-#nm <- unlist(eval(parse(text=festr),list(G=function(t) as.character(substitute(t)))))
-#names(factors) <- nm
+factors <- lfe:::parseformula(model,tab)[['fl']]
 
 for(i in seq_along(factors)) {
   cat(date(),'There are',nlevels(factors[[i]]),names(factors)[[i]],'effects\\n')
