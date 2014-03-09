@@ -1,6 +1,6 @@
 library(lfe)
 set.seed(65513)
-options(lfe.threads=2,digits=4,warn=1)
+options(lfe.threads=1,digits=4,warn=1)
 x <- rnorm(52)
 x2 <- rnorm(length(x))
 x3 <- 0.2*x + 0.1*x2

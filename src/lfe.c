@@ -1165,7 +1165,6 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #else
   /* Do it in separate threads */
   for(thr = 0; thr < numthr; thr++) {
-    int stat;
     // allocate some thread-specific storage, we can't use R_alloc in a thread
     arg.work[thr] = (mysize_t*) R_alloc(numfac*N + N*sizeof(double)/sizeof(mysize_t) + N + 2*numfac+8, sizeof(mysize_t));
     uintptr_t amiss = (uintptr_t) arg.work[thr] % sizeof(double);
@@ -1175,7 +1174,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
     threads[thr] = CreateThread(NULL,0,kaczmarz_thr,&arg,0,&threadids[thr]);
     if(0 == threads[thr]) error("Failed to create kaczmarz thread");
 #else
-    stat = pthread_create(&threads[thr],NULL,kaczmarz_thr,&arg);
+    int stat = pthread_create(&threads[thr],NULL,kaczmarz_thr,&arg);
     if(0 != stat) error("Failed to create kaczmarz thread, stat=%d",stat);
 #endif
   }
