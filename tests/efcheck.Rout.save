@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2014-02-12 r64976) -- "Unsuffered Consequences"
+R Under development (unstable) (2014-03-06 r65130) -- "Unsuffered Consequences"
 Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -18,7 +18,7 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 > set.seed(65513)
-> options(lfe.threads=2,digits=4,warn=1)
+> options(lfe.threads=1,digits=4,warn=1)
 > x <- rnorm(52)
 > x2 <- rnorm(length(x))
 > x3 <- 0.2*x + 0.1*x2
@@ -320,4 +320,4 @@ ln : FALSE
 > 
 > proc.time()
    user  system elapsed 
-  5.608   0.082   5.384 
+  5.244   0.137   5.361 

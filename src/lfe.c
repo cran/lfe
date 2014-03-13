@@ -779,12 +779,6 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
   double *newR = (double *) work;
   mysize_t *indices = (mysize_t *) &work[workpos += N*sizeof(double)/sizeof(mysize_t)];
   mysize_t *perm = (mysize_t *) &work[workpos += e*N];
-
-  /* mysize_t *indices = (mysize_t *) work;//&work[workpos += N*sizeof(double)/sizeof(mysize_t)]; */
-  /* double *newR = (double *) &work[workpos += e*N]; */
-  /* mysize_t *perm = (mysize_t *) &work[workpos += N*sizeof(double)/sizeof(mysize_t)]; */
-  /* if((uintptr_t)newR % sizeof(double) != 0) warning("newR is unaligned\n"); */
-
   mysize_t *prev = (mysize_t *) &work[workpos += N];
   mysize_t *this = (mysize_t *) &work[workpos += e];
 
@@ -988,7 +982,6 @@ static void *kaczmarz_thr(void *varg) {
     (void) kaczmarz(arg->factors,arg->e,arg->N,
 		    arg->source[vecnum],arg->target[vecnum],arg->eps,
 		    arg->work[myid], &arg->stop, arg->lock);
-		    //		    arg->newR[myid],arg->indices[myid], &arg->stop, arg->lock);
   }
 #ifndef NOTHREADS
 #ifndef WIN
@@ -1745,8 +1738,8 @@ static SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
   double *A = REAL(inA);
   F77_CALL(dsyrk)("U","T",&N, &K, &alpha, A, &K, &beta, C, &N);
   // fill in the lower triangular part
-  for(R_xlen_t row=0; row < N; row++) {
-    for(R_xlen_t col=0; col < row; col++) {
+  for(mybigint_t row=0; row < N; row++) {
+    for(mybigint_t col=0; col < row; col++) {
       C[col*N + row] = C[row*N+col];
     }
   }
@@ -1779,8 +1772,8 @@ static SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
   double *B = REAL(inB);
   F77_CALL(dsyr2k)("U","T",&N, &K, &alpha, A, &K, B, &K, &beta, C, &N);
   // fill in the lower triangular part
-  for(R_xlen_t row=0; row < N; row++) {
-    for(R_xlen_t col=0; col < row; col++) {
+  for(mybigint_t row=0; row < N; row++) {
+    for(mybigint_t col=0; col < row; col++) {
       C[col*N + row] = C[row*N+col];
     }
   }
