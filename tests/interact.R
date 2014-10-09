@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=2,digits=5,warn=1)
+options(lfe.threads=2,digits=4,warn=1)
 set.seed(42)
 x <- rnorm(5000,mean=2)
 x2 <- rnorm(length(x))
@@ -24,6 +24,10 @@ y <- x + 0.25*x2 + 0.5*x3 + rowSums(ix*id.eff[id]) + id.eff[id] + fx*firm.eff[fi
 ## estimate
 summary(est <- felm(y ~ x+x2+x3 | ix:id+id+fx:firm+firm+shoe+shirt, exactDOF=T))
 getfe(est)
+
+# make sure this one works, 
+summary(est <- felm(y ~ x | x2:id + x3:id + id))
+
 
 # compare with lm
 x <- rnorm(100)

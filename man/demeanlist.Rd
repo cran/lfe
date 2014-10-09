@@ -51,7 +51,20 @@ attribute \code{'x'} which is a numeric vector of the same length as
 the factor. The centering is then not done on the means of each group,
 but on the projection onto the covariate in each group.  That is, with a
 covariate \code{x} and a factor \code{f}, it is like projecting out the
-interaction \code{x:f}.
+interaction \code{x:f}.  The \(x\) can also be a matrix of column
+vectors, in this case it can be beneficial to orthogonalize the columns,
+either with a stabilized Gram-Schmidt method, or with the simple
+method \code{x \%*\% solve(chol(crossprod(x)))}.
+
+In some applications it is known that a single centering iteration is
+sufficient. In particular, if \code{length(fl)==1} and there is no
+interaction attribute \code{x}.  In this case the centering algorithm is
+terminated after the first iteration. There may be other cases, e.g. if
+there is a single factor with an \code{x} with orthogonal columns. If
+you have such prior knowledge, it is possible to force termination after
+the first iteration by adding an attribute \code{attr(fl, 'oneiter') <-
+TRUE}.  Convergence will be reached in the second iteration anyway, but
+you save one iteration, i.e. you double the speed.
 }
 
 

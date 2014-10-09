@@ -1,4 +1,5 @@
 .onLoad <- function(libname,pkgname) {
+  
   if(is.null(getOption('lfe.usecg')))
     options(lfe.usecg=FALSE)
   if(is.null(getOption('lfe.eps')))
@@ -20,10 +21,18 @@
     }
     options(lfe.threads=cr)
   }
+
+# acml messes with the affinity, we should store what it is at startup
+# on second thought, amd should fix it. A sysadmin may restrict our
+# affinity for whatever useful purpose he may have, and we shouldn't
+# mess it back (it's enough with acml)
+# if(is.null(getOption('lfe.cpuaffinity')))
+# options(lfe.cpuaffinity=parallel::mcaffinity())
+
 }
 
 .onUnload <- function(libpath) {
-  options(lfe.usecg=NULL, lfe.eps=NULL,lfe.pint=NULL,lfe.accel=NULL,lfe.bootmem=NULL,lfe.threads=NULL)
+  options(lfe.usecg=NULL, lfe.eps=NULL,lfe.pint=NULL,lfe.accel=NULL,lfe.bootmem=NULL,lfe.threads=NULL,lfe.cpuaffinity=NULL)
   library.dynam.unload('lfe',libpath)
 }
 

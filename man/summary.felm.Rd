@@ -1,6 +1,6 @@
 \name{summary.felm}
 \alias{summary.felm}
-\title{Summarizing felm model fits}
+\title{Summarize felm model fits}
 \description{
 \code{summary} method for class \code{"felm"}.
 }

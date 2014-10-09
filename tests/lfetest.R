@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=2,digits=5,warn=1)
+options(lfe.threads=2,digits=4,warn=1)
 set.seed(655318)
 x <- rnorm(500)
 x2 <- rnorm(length(x))

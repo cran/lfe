@@ -25,10 +25,8 @@ cgsol <- function(fl,R,eps=getOption('lfe.eps'), init=NULL,threads=NULL) {
       as.vector(a %*% mat)
   }
   if(is.null(init)) init <- rnorm(ncol(mat))
-  library(Rcgmin)
-
   apply(R,2,function(vec) {
-    cg <- Rcgmin(init,fn,gr,control=list(eps=eps),R=vec)
+    cg <- Rcgmin::Rcgmin(init,fn,gr,control=list(eps=eps),R=vec)
     if(cg$convergence != 0) warning(cg$message)
     cg$par
   })

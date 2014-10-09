@@ -280,7 +280,7 @@ mkgraph <- function(f1,f2) {
   require(igraph)
 #  graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)
 #  graph.edgelist(cbind(500000000+as.integer(f1),f2), directed=FALSE)
-  graph.adjacency(tcrossprod(do.call(rBind,
+  igraph::graph.adjacency(tcrossprod(do.call(rBind,
                                      lapply(list(f1,f2), as, 'sparseMatrix')))>0,
                   'undirected', diag=FALSE)
 }
@@ -288,12 +288,12 @@ mkgraph <- function(f1,f2) {
 diamgraph <- function(flist,approx=TRUE) {
   gr <- mkgraph(flist[[1]],flist[[2]])
 # find largest cluster
-  cl <- clusters(gr)$membership
+  cl <- igraph::clusters(gr)$membership
   lcl <- which(cl == which.max(table(cl)))
   if(approx) 
-    max(shortest.paths(gr,v=sample(lcl,10),to=sample(lcl,10)))
+    max(igraph::shortest.paths(gr,v=sample(lcl,10),to=sample(lcl,10)))
   else
-    diameter(induced.subgraph(gr,lcl))
+    igraph::diameter(igraph::induced.subgraph(gr,lcl))
 }
 
 diammatrix <- function(flist, approx=TRUE) {
@@ -330,16 +330,44 @@ fixef.felm <- function(object,...) {
   l
 }
 
+update.felm <- function (object, formula., ..., evaluate = TRUE) 
+{
+    if (is.null(call <- getCall(object))) 
+        stop("need an object with call component")
+    extras <- match.call(expand.dots = FALSE)$...
+    if (!missing(formula.)) 
+        call$formula <- formula(update(as.Formula(call$formula), formula.))
+    if (length(extras)) {
+        existing <- !is.na(match(names(extras), names(call)))
+        for (a in names(extras)[existing]) call[[a]] <- extras[[a]]
+        if (any(!existing)) {
+            call <- c(as.list(call), extras[!existing])
+            call <- as.call(call)
+        }
+    }
+    if (evaluate) 
+        eval(call, parent.frame())
+    else call
+}
+
+
 # if(!exists('fixef')) fixef <- function(object,...) UseMethod('fixef')
 
 # compute rank deficiency of D-matrix
-rankDefic <- function(fl,method='cholesky') {
+rankDefic <- function(fl,method='cholesky',mctol=1e-3) {
   eps <- sqrt(.Machine$double.eps)
-  D <- makeDmatrix(fl)
+  if(length(fl) == 1) return(1)
+  if(length(fl) == 2) return(nlevels(compfactor(fl)))
   if(method == 'cholesky') {
+    D <- makeDmatrix(fl)
     Ch <- as(Cholesky(crossprod(D), super=TRUE, perm=TRUE, Imult=eps), 'sparseMatrix')
     sum(diag(Ch) < eps^(1/4))
+  } else if(method == 'mc') {
+    totlev <- sum(sapply(fl,nlevels))
+    N <- length(fl[[1]])
+    N - (mctrace(fl,tol=mctol) + totlev)+length(fl)+1
   } else {
+    D <- makeDmatrix(fl)
     as.integer(ncol(D) - rankMatrix(crossprod(D), method='qr.R'))
   }
 }
@@ -386,9 +414,20 @@ nrefs <- function(fl, cf, exactDOF=FALSE) {
   if(numpure == 2) return(nlevels(cf))
   if(identical(exactDOF,'rM')) {
     return(rankDefic(fl, method='qr'))
+  } else if(identical(exactDOF,'mc')) {
+    return(rankDefic(fl, method='mc'))
   } else  if(exactDOF) {
     return(rankDefic(fl, method='cholesky'))
   }
   return(nlevels(cf) + numpure-2)
 }
 
+#prettyprint a list of integers
+ilpretty <- function(il) {
+  paste(tapply(il,cumsum(c(1,diff(il)) != 1),
+         function(x) if(length(x) == 1) {
+           as.character(x)
+         } else {
+           paste(x[[1]],x[[length(x)]],sep=':')
+         }), collapse=' ')
+}

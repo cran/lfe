@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2014-02-12 r64976) -- "Unsuffered Consequences"
+R Under development (unstable) (2014-10-08 r66730) -- "Unsuffered Consequences"
 Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -43,7 +43,7 @@ Call:
 
 Residuals:
       Min        1Q    Median        3Q       Max 
--2.51e+00 -3.89e-01 -2.96e-11  3.93e-01  2.21e+00 
+-2.51e+00 -3.89e-01 -2.01e-10  3.93e-01  2.21e+00 
 
 Coefficients:
    Estimate Std. Error t value Pr(>|t|)    
@@ -198,4 +198,4 @@ accuracy: 1.00000000e+00 1.00000000e+00 1.00000000e+00 1.00000000e+00 1.00000000
 > 
 > proc.time()
    user  system elapsed 
-  5.349   0.107   5.345 
+  5.119   0.119   5.030 

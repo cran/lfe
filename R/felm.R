@@ -78,28 +78,51 @@ parseformula <- function(form, data) {
   # the factor part
   gpart <- formula(f,lhs=0, rhs=2)
   if(!nopart(gpart)) {
-      tm <- terms(gpart, keep.order=TRUE)
-      parts <- attr(tm,'term.labels')
-      parts <- parts[parts != '0']
-      nm <- parts
-      glist <- lapply(paste('.G(',parts,')',sep=''),function(e) parse(text=e))
-      Gfunc <- function(f) if(is.null(attr(f,'xnam'))) factor(f) else f
-      Ginfunc <- function(x,f) {
-          if(is.factor(x)) {
-              structure(interaction(factor(f),factor(x),drop=TRUE),xnam=deparse(substitute(x)),fnam=deparse(substitute(f)))
-          } else {
-              structure(factor(f),x=x,xnam=deparse(substitute(x)), fnam=deparse(substitute(f)))
-          }
-      }
-      if(is.environment(data)) {
-        fl <- lapply(glist,eval,list(.G=Gfunc,':'=Ginfunc),data)
+    tm <- terms(gpart, keep.order=TRUE)
+    ft <- attr(tm,'factors')
+    var <- eval(attr(tm,'variables'),data)
+    varnames <- rownames(ft)
+    names(var) <- varnames
+    fl <- apply(ft, 2, function(v) {
+      nonz <- sum(v > 0)
+      vnam <- varnames[which(v > 0)]
+      if(nonz > 2) stop('Interaction only supported for two variables')
+      if(nonz == 1) {
+        if(!is.factor(var[[vnam]])) warning('non-factor ',vnam, ' coerced to factor')
+        res <- list(factor(var[[vnam]]))
+        names(res) <- vnam
       } else {
-        fl <- lapply(glist,eval,data,as.environment(list(.G=Gfunc,':'=Ginfunc)))
+        xnam <- vnam[[1]]
+        fnam <- vnam[[2]]
+        x <- var[[xnam]]
+        f <- var[[fnam]]
+        if(!is.factor(f) && !is.factor(x)) {
+          stop('interaction between ', xnam, ' and ', fnam, ', none of which are factors')
+        }
+        if(!is.factor(f) && is.factor(x)) {
+          tmp <- x
+          x <- f
+          f <- tmp
+          tmp <- xnam
+          xnam <- fnam
+          fnam <- tmp
+        }
+        if(is.factor(x)) {
+          res <- list(structure(interaction(factor(f),factor(x),drop=TRUE),xnam=xnam,fnam=fnam))
+        } else {
+          res <- list(structure(factor(f),x=x,xnam=xnam, fnam=fnam))
+        }
+        names(res) <- paste(xnam,fnam,sep=':')
       }
-      names(fl) <- nm
+      res
+    })
+    nm <- names(fl)
+    fl <- unlist(fl, recursive=FALSE)
+    names(fl) <- nm
   } else {
-      fl <- NULL
+    fl <- NULL
   }
+  
   if(len == 2) return(list(formula=opart,fl=fl,gpart=gpart,ivpart=~0,cpart=~0))
 
   # Then the iv-part
@@ -141,14 +164,22 @@ parseformula <- function(form, data) {
 # ivresid is optional, used in 2. stage of 2sls to pass
 # the difference between the original endogenous variable and the prediction
 # for the purpose of computing sum of square residuals
-doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
-    totvar <- totalpvar(psys$fl)-nrefs(psys$fl, psys$cfactor, exactDOF) 
-    if(is.null(psys$yxz$x)) {
+doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE, keepX=FALSE) {
+  if(is.numeric(exactDOF)) {
+    df <- exactDOF
+    totvar <- length(psys$y) - df
+  } else {
+    # numrefs is also used later
+    numrefs <- nrefs(psys$fl, compfactor(psys$fl), exactDOF) 
+    totvar <- totalpvar(psys$fl)-numrefs
+    df <- length(psys$y)-totvar
+  }
+  if(is.null(psys$yxz$x)) {
     # No covariates
         z <- list(N=psys$N, r.residuals=psys$y,fe=psys$fl,p=totvar,Pp=0,cfactor=compfactor(psys$fl),
                   na.action=psys$na.action, contrasts=psys$contrasts,
                   fitted.values=psys$y - psys$yxz$y,
-                  df=length(psys$y)-totvar,
+                  df=df,
                   residuals=psys$yxz$y,clustervar=psys$clustervar, call=match.call())
         z$df.residual <- z$df
         class(z) <- 'felm'
@@ -195,138 +226,6 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
 
   z <- list(coefficients=beta,badconv=psys$badconv,Pp=ncol(xz))
 
-##  if(FALSE) {
-##   z <- lm.fit(xz,yz)
-##   # Now z has coefficients, residuals, fitted.values, effects, rank, df.residuals and qr.
-##   # We need to add N, p, inv, contrasts, r.residuals, terms, cfactor, Pp, exactDOF, numrefs,
-##   # and se, pval, tval, vcv, na.action. Some of this should have been in the summary,
-##   # but we don't want to keep the qr for space reasons, so we must compute them here.
-##   # We must also add robustvcv and clustervcv and the iv-related stuff
-##   # Hmm, lm.fit can't in general find all the aliased variables because our
-##   # centring isn't accurate enough, so ditch it
-
-##   p <- z$rank
-##   qr <- z$qr$qr
-##   pl <- 1L:p
-##   z$beta <- beta <- coef(z)[z$qr$pivot[pl]]
-##   print(beta)
-##   aliased <- is.na(coef(z))
-##   if(any(aliased)) {
-##       xz <- xz[,!aliased]
-##       gc()
-##       x <- x[,!aliased]
-##       gc()
-##   }
-##   z$N <- nrow(xz)
-##   z$Pp <- z$p <- p
-##   z$inv <- chol2inv(qr[pl,pl, drop=FALSE])
-##   z$contrasts <- contrasts
-##   z$r.residuals <- y - x %*% beta
-##   z$response <- y
-##   rm(x); gc()
-##   if(!is.null(ivresid)) {
-##     z$ivresid <- rep(0,length(z$r.residuals))
-##     for(ivnam in names(ivresid)) {
-##     # fitted difference
-##     # predict the residuals from the first step
-##       ivbeta <- nazero(coef(z)[[ivnam]])
-##       ivrp <- ivresid[[ivnam]] * ivbeta
-##     # use this to subtract from residuals to get the residuals with the original variable
-##       z$ivresid <- z$ivresid + ivrp
-##     }
-##   }
-##   z$terms <- psys$terms
-##   z$cfactor <- compfactor(fl)
-##   totlev <- totalpvar(fl)
-##   if(is.numeric(exactDOF)) {
-##     z$df <- exactDOF
-##     numdum <- z$N - z$p - z$df
-##     z$numrefs <- totlev - numdum
-##   } else {
-##     numrefs <- nrefs(fl, z$cfactor, exactDOF)
-##     numdum <- totlev - numrefs
-##     z$numrefs <- numrefs
-##     z$df <- z$N - z$p - numdum
-##   }
-##   z$exactDOF <- exactDOF
-
-##   res <- z$residuals
-##   if(!is.null(ivresid)) res <- res - z$ivresid
-##   vcvfactor <- sum(res**2)/z$df
-##   z$vcv <- z$inv * vcvfactor
-
-
-##   setdimnames(z$vcv, list(names(beta),names(beta)))
-##   # We should make the robust covariance matrix too.
-##   # it's inv * sum (X_i' u_i u_i' X_i) * inv
-##   # where u_i are the (full) residuals (Wooldridge, 10.5.4 (10.59))
-##   # i.e. inv * sum(u_i^2 X_i' X_i) * inv
-##   # for large datasets the sum is probably best computed by a series of scaled
-##   # rank k updates, i.e. the dsyrk blas routine, we make an R-version of it.
-##   # need to check this computation, the SE's are slightly numerically different from Stata's.
-##   # it seems stata does not do the small-sample adjustment
-##   dfadj <- z$N/z$df
-##   # Now, here's an optimzation for very large xz. If we use the wcrossprod and ccrossprod
-##   # functions, we can't get rid of xz, we end up with a copy of it which blows away memory.
-##   # we need to scale xz with the residuals in xz, but we don't want to expand res to a full matrix,
-##   # and even get a copy in the result.
-##   # thus we modify it in place with a .Call. The scaled variant is also used in the cluster computation.
-## #  z$robustvcv <- dfadj * inv %*% wcrossprod(xz,res) %*% inv
-##   .Call(C_scalecols, xz, res)
-##   z$robustvcv <- matrix(0,nrow(z$vcv),ncol(z$vcv))
-##   .Call(C_dsyrk,0,z$robustvcv,dfadj,xz %*% z$inv)  
-## #  z$robustvcv <- dfadj * inv %*% crossprod(xz) %*% inv
-## #  z$robustvcv <- dfadj * crossprod(xz %*% inv)
-##   setdimnames(z$robustvcv, dimnames(z$vcv))
-## #  dimnames(z$robustvcv) <- dimnames(z$vcv)
-##   cluster <- psys$clustervar
-##   gc()
-##   # then the clustered covariance matrix
-##   # The algorithm of Cameron, Gelbach and Miller
-##   if(!is.null(cluster)) {
-##     dfadj <- (z$N-1)/z$df
-##     M <- sum(sapply(cluster,nlevels))
-##     d <- length(cluster)
-##     z$clustervcv <- matrix(0,nrow(z$vcv),ncol(z$vcv))
-##     for(i in 1:(2^d-1)) {
-##         # Find out which ones to interact
-##         iac <- as.logical(intToBits(i))[1:d]
-##         # odd number is positive, even is negative
-##         sgn <- 2*(sum(iac) %% 2) - 1
-##         # paste() is faster than interaction(), use a weird separator to avoid ambiguity
-##         ia <- factor(do.call('paste',c(cluster[iac],sep='\004')))
-##         adj <- sgn*dfadj*nlevels(ia)/(nlevels(ia)-1)
-## #        z$clustervcv <- z$clustervcv + adj*crossprod(rowsum(xz,ia) %*% inv)
-## # Do non-copy version instead
-##         .Call(C_dsyrk,1,z$clustervcv,adj,rowsum(xz,ia) %*% z$inv)
-##     }
-##     rm(xz)
-
-##     setdimnames(z$clustervcv, dimnames(z$vcv))
-##     z$cse <- sqrt(diag(z$clustervcv))
-##     z$ctval <- beta/z$cse
-##     z$cpval <- 2*pt(abs(z$ctval),z$df,lower.tail=FALSE)
-##     z$clustervar <- cluster
-##   }
-##   z$se <- sqrt(diag(z$vcv))
-##   z$tval <- beta/z$se
-##   z$pval <- 2*pt(abs(z$tval),z$df,lower.tail=FALSE)
-
-##   z$rse <- sqrt(diag(z$robustvcv))
-##   z$rtval <- beta/z$rse
-##   z$rpval <- 2*pt(abs(z$rtval),z$df,lower.tail=FALSE)
-
-
-##   z$fe <- fl
-## # should we subtract 1 for an intercept?
-## # a similar adjustment is done in summary.felm when computing rdf
-##   z$p <- z$p + numdum - 1  
-##   z$xp <- z$p
-##   z$na.action <- psys$na.action
-##   class(z) <- 'felm'
-##   return(z)
-  
-## }
 
   z$N <- nrow(xz)
   z$p <- ncol(xz) - length(badvars)
@@ -382,7 +281,6 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE) {
     numdum <- z$N - z$p - z$df
     z$numrefs <- totlev - numdum
   } else {
-    numrefs <- nrefs(fl, z$cfactor, exactDOF)
     numdum <- totlev - numrefs
     z$numrefs <- numrefs
     z$df <- z$N - z$p - numdum
@@ -503,7 +401,6 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
   mf <- eval(mf, pf)
   mt <- attr(mf,'terms')
   naact <- attr(mf,'na.action')
-
   if(!is.null(naact))
     naclass <- attr(naact,'na.omit')
 
@@ -616,7 +513,8 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   # For now, make sure people specify them by name, so that it will continue to work
   # I.e. if they're non-null, but not in pmatch(names(sys.call())), they're
   # without names.  Warn them.
-  knownargs <- c('iv','clustervar','cmethod')
+  knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX')
+  keepX <- FALSE
   sc <- names(sys.call())[-1]
   named <- knownargs[pmatch(sc,knownargs)]
   for(arg in c('iv', 'clustervar')) {
@@ -669,7 +567,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
     gc()
 
     z <- doprojols(psys,exactDOF=exactDOF)
-
+    if(keepX) z$X <- if(psys$icpt > 0) psys$x[,-psys$icpt] else psys$x
     rm(psys)
     gc()
     z$call <- match.call()
@@ -733,7 +631,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   ivarg <- list()
   vars <- NULL
   step1 <- list()
-
+  ivenv <- new.env()
   for(ivv in iv) {
     # Now, make the full instrumental formula, i.e. with the rhs expanded with the
     # instruments, and the lhs equal to the instrumented variable
@@ -774,7 +672,9 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
      ivz <- z
      evar <- deparse(ivlhs)
      new.var <- paste(evar,'(fit)',sep='')
-     assign(new.var,ivz$fitted.values,envir=parent.frame())
+     # store them in an environment
+     assign(new.var,ivz$fitted.values,envir=ivenv)
+#     data[[new.var]] <- ivz$fitted
      vars <- c(vars,new.var)
      # keep the residuals, they are needed to reconstruct the residuals for the
      # original variables in the 2. stage
@@ -782,17 +682,23 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
      # and add it to the equation
      step2form <- update(as.Formula(step2form),as.formula(substitute(. ~ . + FIT | .,
                                          list(FIT=as.name(new.var)))))
-
   }
   names(step1) <- names(iv)
   # now we have a formula in step2form with all the iv-variables
   # it's just to project it
+
   pform <- parseformula(step2form,data)
   fl <- pform[['fl']]
   formula <- pform[['formula']]
   mf[['formula']] <- formula
+  # attach iv-variables to search path, make sure they are detached again
+  atnam <- 'LFE.IVNAM'
+  on.exit(detach(atnam, character.only=TRUE))
+  attach(ivenv, name=atnam)
+  rm(ivenv)
   psys <- project(mf,fl,data,contrasts,clustervar,pf)
-  rm(list=vars,envir=parent.frame())
+  detach(atnam, character.only=TRUE); on.exit()
+
   z <- doprojols(psys,ivresid=ivarg,exactDOF=exactDOF)
   z$step1 <- step1
   rm(psys)
@@ -800,177 +706,5 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   return(z)
 }
 
-felm.old <- function(formula,fl,data) {
-  mf <- match.call(expand.dots = FALSE)
-
-  if(missing(fl)) {
-    # we should rather parse the formula tree
-    # find the terms involving G
-    trm <- terms(formula,special='G')
-    feidx <- attr(trm,'specials')$G-1
-    festr <- paste(labels(trm)[feidx],collapse='+')
-
-    if(festr == '') stop('No factors specified')
-    # remove the G-terms from formula
-    formula <- update(formula,paste('. ~ . -(',festr,')'))
-    mf[['formula']] <- formula
-
-    # then make a list of them, and find their names
-    felist <- parse(text=paste('list(',gsub('+',',',festr,fixed=TRUE),')',sep=''))
-    nm <- eval(felist,list(G=function(t) as.character(substitute(t))))
-    # collapse them in case there's an interaction with a funny name
-    nm <- lapply(nm,paste,collapse='.')
-    
-    # replace G with as.factor, eval with this, and the parent frame, or with data
-    # allow interaction factors with '*'
-    iact <- function(a,b) interaction(a,b,drop=TRUE)
-    if(missing(data)) 
-      fl <- eval(felist,list(G=as.factor,'*'=iact))
-    else {
-      G <- as.factor
-      fl <- local({'*'<-iact;eval(felist,data,environment())})
-    }
-    gc()
-    names(fl) <- nm
-  } else {
-#    warning('The fl-argument is obsolete')
-  }
-
-  if(!is.list(fl)) stop('need at least one factor')
-  fl <- lapply(fl,as.factor)
-  if(is.null(names(fl))) names(fl) <- paste('fe',1:length(fl),sep='')
-
-#  mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula", "data"), names(mf), 0L)
-  mf <- mf[c(1L, m)]
-  mf$drop.unused.levels <- TRUE
-  mf[[1L]] <- as.name("model.frame")
-  mf <- eval(mf, parent.frame())
-  mt <- attr(mf,'terms')
-
-  y <- model.response(mf,'numeric')
-
-# try a sparse model matrix to save memory when removing intercept
-# though, demeanlist must be full.  Ah, no, not much to save because
-# it won't be sparse after centering
-# we should rather let demeanlist remove the intercept, this
-# will save memory by not copying.  But we need to remove it below in x %*% beta
-# (or should we extend beta with a zero at the right place, it's only
-#  a vector, eh, is it, do we not allow matrix lhs? No.)
-
-  x <- model.matrix(mt,mf)
-  rm(mf)
-
-  icpt <- 0
-  icpt <- which(attr(x,'assign') == 0)
-  if(length(icpt) == 0) icpt <- 0
-  ncov <- ncol(x) - (icpt > 0)
-  if(ncov == 0) {
-    # No covariates
-    fr <- demeanlist(y,fl)
-    z <- list(r.residuals=y,fe=fl,p=0,cfactor=compfactor(fl),residuals=fr,call=match.call())
-    class(z) <- 'felm'
-    return(z)
-  }
-  # here we need to demean things
-
-  dm <- demeanlist(list(y=y,x=x),fl,icpt)
-  yz <- dm[[1]]
-  xz <- dm[[2]]
-  rm(dm)
-  gc()
-
-  badconv <- attr(xz,'badconv') + attr(yz,'badconv')
-  dim(xz) <- c(nrow(x),ncov)
-  attributes(yz) <- attributes(y)
-
-
-# here we just do an lm.fit, however lm.fit is quite slow since
-# it doesn't use blas (in particular it can't use e.g. threaded blas in acml)
-# so we have rolled our own.
-
-# we really don't return an 'lm' object or other similar stuff, so
-# we should consider using more elementary operations which map to blas-3
-# eg. solve(crossprod(xz),t(xz) %*% yz)
-# Or, even invert by solve(crossprod(xz)) since we need
-# the diagonal for standard errors.  We could use the cholesky inversion
-# chol2inv(chol(crossprod(xz)))
-
-  cp <- crossprod(xz)
-  ch <- cholx(cp)
-
-#  ch <- chol(cp)
-#  beta <- drop(inv %*% (t(xz) %*% yz))
-  # remove multicollinearities
-  badvars <- attr(ch,'badvars')
-  b <- crossprod(xz,yz)
-
-  if(is.null(badvars)) {
-    beta <- as.vector(backsolve(ch,backsolve(ch,b,transpose=TRUE)))
-    inv <- chol2inv(ch)
-  } else {
-    beta <- rep(NaN,nrow(cp))
-    beta[-badvars] <- backsolve(ch,backsolve(ch,b[-badvars],transpose=TRUE))
-    inv <- matrix(NaN,nrow(cp),ncol(cp))
-    inv[-badvars,-badvars] <- chol2inv(ch)
-  }
-  rm(b)
-  if(icpt > 0) names(beta) <- colnames(x)[-icpt] else names(beta) <- colnames(x)
-#  cat(date(),'projected system finished\n')
-  z <- list(coefficients=beta,badconv=badconv)
-  N <- nrow(xz)
-  p <- ncol(xz) - length(badvars)
-
-# how well would we fit with all the dummies?
-# the residuals of the centered model equals the residuals
-# of the full model, thus we may compute the fitted values
-# resulting from the full model.
-  zfit <- xz %*% ifelse(is.na(beta),0,beta)
-
-  rm(xz)
-  zresid <- yz - zfit
-  rm(yz)
-  z$fitted.values <- y - zresid
-  z$residuals <- zresid
-  # insert a zero at the intercept position
-  if(length(fl) > 0) {
-    if(icpt > 0) ibeta <- append(beta,0,after=icpt-1) else ibeta <- beta
-    pred <- x %*% ifelse(is.na(ibeta),0,ibeta)
-    z$r.residuals <- y - pred
-  } else {
-    z$r.residuals <- zresid
-  }
-#  z$xb <- pred
-  rm(x)
-  rm(y)
-  gc()
-
-  z$cfactor <- compfactor(fl)
-
-  numrefs <- nlevels(z$cfactor) + max(length(fl)-2,0)
-  numdum <- sum(unlist(lapply(fl,nlevels))) - numrefs
-  z$numrefs <- numrefs
-#  if(length(fl) <= 2) {
-#    numdum <- sum(unlist(lapply(fl,nlevels))) - nlevels(z$cfactor)
-#  } else {
-#    numdum <- sum(unlist(lapply(fl,nlevels))) - length(fl) + 1
-#  }
-  z$df <- N - p - numdum
-  vcvfactor <- sum(z$residuals**2)/z$df
-  z$vcv <- inv * vcvfactor
-  z$se <- sqrt(diag(z$vcv))
-  z$sefactor <- sqrt(vcvfactor)
-  z$tval <- z$coefficients/z$se
-  z$pval <- 2*pt(abs(z$tval),z$df,lower.tail=FALSE)
-  z$terms <- mt
-  z$fe <- fl
-  z$N <- N
-  z$p <- p + numdum
-  z$xp <- p
-  z$call <- match.call()
-  class(z) <- 'felm'
-
-  return(z)
-}
 
 

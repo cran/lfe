@@ -6,17 +6,31 @@
 
 #include "config.h"
 
+/* different syntax in pthread_setname_np between platforms, disable for now */
+#undef HAVE_THREADNAME
+
 #if defined(_WIN32) || defined(_WIN64) || defined(WIN64)
 #define WIN
+#undef HAVE_THREADNAME
 #endif
 
+#ifdef __APPLE__
+#endif
 
 #ifdef WIN
 #include <windows.h>
 #else
 #ifndef NOTHREADS
 #include <semaphore.h>
+#ifdef HAVE_THREADNAME
+#define _GNU_SOURCE             /* to find pthread_setname_np */
+#endif
 #include <pthread.h>
+#ifdef HAVE_THREADNAME
+int pthread_setname_np(pthread_t thread, const char *name);
+int pthread_getname_np(pthread_t thread,
+		       const char *name, size_t len);
+#endif
 #endif
 #endif
 
@@ -124,12 +138,10 @@ static void printmsg(LOCK_T lock) {
   }
   msgptr = 0;
   UNLOCK(lock);
-
 #endif
 }
 
 typedef struct {
-  int nlevels;
   /* group[i] is the level of observation i */
   int *group;
   /* invgpsize[j] is the 1/(size of level j) */
@@ -138,6 +150,8 @@ typedef struct {
   int *gpl; /* group list */
   int *ii;  /* indices into gpl */
   double *x; /* optional interaction covariate */
+  int nlevels;
+  int oneiter;
 } FACTOR;
 
 
@@ -166,11 +180,11 @@ static R_INLINE void centre(double *v, int N,
     memset(means,0,sizeof(double)* f->nlevels);
     if(NULL != f->x) {
       for(j = 0; j < N; j++) {
-	means[gp[j]-1] += v[j]*f->x[j];
+	if(gp[j] > 0) means[gp[j]-1] += v[j]*f->x[j];
       }
     } else {
       for(j = 0; j < N; j++) {
-	means[gp[j]-1] += v[j];
+	if(gp[j] > 0) means[gp[j]-1] += v[j];
       }
     }
     for(j = 0; j < f->nlevels; j++) {
@@ -179,11 +193,11 @@ static R_INLINE void centre(double *v, int N,
 
     if(NULL != f->x) {
       for(j = 0; j < N; j++) {
-	v[j] -= means[gp[j]-1]*f->x[j];
+	if(gp[j] > 0) v[j] -= means[gp[j]-1]*f->x[j];
       }
     } else {
       for(j = 0; j < N; j++) {
-	v[j] -= means[gp[j]-1];
+	if(gp[j] > 0) v[j] -= means[gp[j]-1];
       }
     }
   }
@@ -213,9 +227,11 @@ static int demean(double *v, int N, double *res,
   for(int i = 0; i < e; i++) factors[i] = infactors[i];
   /* make a copy to result vector, centre() is in-place */
   memcpy(res,v,N*sizeof(double));
+  // zero out NaNs
+  for(int i = 0; i < N; i++) if(isnan(res[i])) res[i]=0.0;
   centre(res, N, factors, e, means);
 
-  if(e <= 1) return(1);
+  if(e <= 1 || factors[0]->oneiter) return(1);
 
   // Initialize
   memcpy(prev2, res, N*sizeof(double));
@@ -231,7 +247,7 @@ static int demean(double *v, int N, double *res,
 
   double target=0;
   if(gkacc) target = 1e-4*neps;
-
+  double prevdp=0.0;
   do {
     iter++;
     if(gkacc) memcpy(prev, res, N*sizeof(double));
@@ -272,26 +288,23 @@ static int demean(double *v, int N, double *res,
       }
     }
 
+    delta = 0.0;
+    for(int i = 0; i < N; i++) delta += (prev2[i]-res[i])*(prev2[i]-res[i]);
+
     // make this a power of two, so we don't have to do integer division
-#define IBATCH 128
     // Check convergence rate every now and then
     // For the purpose of computing time to convergence, we assume convergence is linear, 
     // i.e. that the decrease in norm since the previous iteration is a constant factor c.
-    // To save some computing time we don't check every iteration
-    if((iter & (IBATCH-1)) == 0) {
       // compute delta per iter
-      delta = 0.0;
-      for(int i = 0; i < N; i++) delta += (prev2[i]-res[i])*(prev2[i]-res[i]);
-      memcpy(prev2,res,N*sizeof(double));
+    memcpy(prev2,res,N*sizeof(double));
       // delta is the square norm improvement since last time
       // we normalize it to be per iteration
       // we divide it by the number of iterations to get an improvement per iteration
-      delta = sqrt(delta/IBATCH);
+    delta = sqrt(delta);
       // then we compute how fast the improvement dimishes. We use this to predict when we're done
       // for e == 2 without gkacc it should diminish, so that c < 1, but for e > 2 it may
       // increase, in particular when we do acceleration. Then it is difficult to predict when we will be done
-      c = pow(delta/prevdelta,1.0/IBATCH);
-      prevdelta = delta;
+    c = delta/prevdelta;
     /* c is the convergence rate per iteration, at infinity they add up to 1/(1-c).
        This is true for e==2, but also in the ballpark for e>2 we guess.
        Only fail if it's after some rounds. It seems a bit unstable in the
@@ -299,16 +312,15 @@ static int demean(double *v, int N, double *res,
        If we're doing acceleration, we test above for t < 0.5 for failure
     */
 
-      if(!gkacc && c >= 1.0 && iter > 100) {
-	char buf[256];
-	sprintf(buf,"Demeaning of vec %d failed after %d iterations, c-1=%.0e, delta=%.1e\n",
-		vecnum,iter,c-1.0,delta);
-	pushmsg(buf,lock);
-	okconv = 0;
-	break;
-      }
-
-      if(c < 1.0) target = (1.0-c)*neps;
+    if(!gkacc && c >= 1.0 && iter > 100) {
+      char buf[256];
+      sprintf(buf,"Demeaning of vec %d failed after %d iterations, c-1=%.0e, delta=%.1e\n",
+	      vecnum,iter,c-1.0,delta);
+      pushmsg(buf,lock);
+      okconv = 0;
+      break;
+    }
+    if(c < 1.0) target = (1.0-c)*neps;
       // target should not be smaller than 3 bits of precision in each coordinate
       if(target < N*1e-15) target = N*1e-15;
       now = time(NULL);
@@ -317,28 +329,42 @@ static int demean(double *v, int N, double *res,
 	double eta;
 	char tu;
 	char buf[256];
+	// Now, use a c which is based on the medium c since the last print
+	if(prevdp == 0.0)
+	  c = delta/prevdelta;
+	else
+	  c = pow(delta/prevdp, 1.0/(iter-lastiter));
 	reqiter = log(target/delta)/log(c);
 	eta = 1.0*(now-last)*reqiter/(iter-lastiter);
 	if(eta < 0) eta = NA_REAL; 
 	tu = 's';
-	if(eta > 3600.0) {
+	/*
+	if(eta > 360.0) {
 	  eta /= 3600.0;
 	  tu='h';
 	}
+	*/
 	if(gkacc&&0) {
 	  sprintf(buf,"...centering vec %d iter %d, delta=%.1e(target %.1e)\n",
 		  vecnum,iter,delta,target);
 
 	} else {
-	  sprintf(buf,"...centering vec %d iter %d, c=1-%.1e, delta=%.1e(target %.1e), ETA in %.1f%c\n",
-		  vecnum,iter,1.0-c,delta,target,eta,tu);
+	  //	  sprintf(buf,"...centering vec %d iter %d, c=1-%.1e, delta=%.1e(target %.1e), ETA in %.1f%c\n",
+	  //		  vecnum,iter,1.0-c,delta,target,eta,tu);
+	  time_t arriv = now + (time_t) eta;
+	  char timbuf[50];
+	  ctime_r(&arriv, timbuf);
+	  sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s",
+		  vecnum,iter,1.0-c,delta,target,timbuf);
+
 	}
 	pushmsg(buf,lock);
 	lastiter = iter;
+	prevdp = delta;
 	last = now;
       }
-    }
-
+    
+    prevdelta = delta;    
 #ifdef NOTHREADS
     R_CheckUserInterrupt();
 #else
@@ -425,7 +451,12 @@ static void *demeanlist_thr(void *varg) {
     vecnum = (arg->nowdoing)++;
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
-
+#ifdef HAVE_THREADNAME
+    char thrname[16];
+    snprintf(thrname,16, "Cvec %d/%d",vecnum+1, arg->K);
+    pthread_setname_np(pthread_self(), thrname);
+#endif
+    //    Rprintf("core %d vector %d\n",myid,vecnum);
     okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],
 		    arg->factors,arg->e,arg->eps,means,
 		    tmp1,tmp2,
@@ -622,7 +653,9 @@ static void invertfactor(FACTOR *f,int N) {
 
   /* find sizes of groups */
   for(i = 0; i < N; i++) {
-    f->ii[f->group[i]]++;
+    int gp = f->group[i];
+    if(gp < 1) error("Factors can not have missing levels");
+    f->ii[gp]++;
   }
 
   /* cumulative */
@@ -639,11 +672,11 @@ static void invertfactor(FACTOR *f,int N) {
   Free(curoff);
 }
 
-static FACTOR** makefactors(SEXP flist) {
+static FACTOR** makefactors(SEXP flist, int allowmissing) {
   FACTOR **factors;
   int numfac = LENGTH(flist);
   int N=0;
-
+  int oneiter = 0;
   numfac = 0;
   for(int i = 0; i < LENGTH(flist); i++) {
     SEXP sf = VECTOR_ELT(flist,i);
@@ -651,12 +684,20 @@ static FACTOR** makefactors(SEXP flist) {
     if(isNull(xattr)) {
       numfac++;
       continue;
+    } else if(LENGTH(flist) == 1) {
+      SEXP ortho = getAttrib(xattr, install("ortho"));
+      if(isLogical(ortho)) oneiter = LOGICAL(ortho)[0];
     }
     if(!isMatrix(xattr)) {
       numfac++;
       continue;
     }
     numfac += ncols(xattr);
+  }
+
+  if(!oneiter) {
+    SEXP Roneiter = getAttrib(flist, install("oneiter"));
+    if(isLogical(Roneiter)) oneiter = LOGICAL(Roneiter)[0];
   }
 
   factors = (FACTOR**) R_alloc(numfac+1,sizeof(FACTOR*));
@@ -675,6 +716,7 @@ static FACTOR** makefactors(SEXP flist) {
     f = factors[truefac++] = (FACTOR*) R_alloc(1,sizeof(FACTOR));
     f->group = INTEGER(VECTOR_ELT(flist,i));
     f->nlevels = LENGTH(getAttrib(VECTOR_ELT(flist,i),R_LevelsSymbol));
+    f->oneiter = oneiter;
     SEXP xattr = getAttrib(VECTOR_ELT(flist,i),install("x"));
     if(isNull(xattr)) {
       f->x = NULL;
@@ -689,7 +731,7 @@ static FACTOR** makefactors(SEXP flist) {
 	  FACTOR *g = factors[truefac++] = (FACTOR*) R_alloc(1,sizeof(FACTOR));
 	  g->group = f->group;
 	  g->nlevels = f->nlevels;
-	  g->x = &REAL(xattr)[(mybigint_t)nrows(xattr)*j];
+	  g->x = &REAL(xattr)[j*(mybigint_t)nrows(xattr)];
 	}
       } else {
 	if(LENGTH(xattr) != len) {
@@ -721,11 +763,11 @@ static FACTOR** makefactors(SEXP flist) {
 	else
 	  f->gpsize[f->group[j]-1] += f->x[j]*f->x[j];
       } else {
-	error("Factors can't have missing levels");
+	if(!allowmissing) error("Factors can't have missing levels");
       }
-      }
-      /* then invert it, it's much faster to multiply than to divide */
-      /* in the iterations */
+    }
+    /* then invert it, it's much faster to multiply than to divide */
+    /* in the iterations */
     for(int j = 0; j < f->nlevels; j++) {
       f->invgpsize[j] = 1.0/f->gpsize[j];
     }
@@ -978,7 +1020,14 @@ static void *kaczmarz_thr(void *varg) {
     LOCK(arg->lock);
     vecnum = arg->nowdoing++;
     UNLOCK(arg->lock);
+
     if(vecnum >= arg->numvec) break;
+#ifdef HAVE_THREADNAME
+    char thrname[16];
+    snprintf(thrname, 16, "Kvec %d/%d",vecnum+1, arg->numvec);
+    pthread_setname_np(pthread_self(), thrname);
+#endif
+
     (void) kaczmarz(arg->factors,arg->e,arg->N,
 		    arg->source[vecnum],arg->target[vecnum],arg->eps,
 		    arg->work[myid], &arg->stop, arg->lock);
@@ -1037,7 +1086,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   PROTECT(flist = AS_LIST(flist));
   //  numfac = LENGTH(flist);
 
-  factors = makefactors(flist);
+  factors = makefactors(flist, 0);
   numfac = 0;
   for(FACTOR **f = factors; *f != NULL; f++) numfac++;
   N = LENGTH(VECTOR_ELT(flist,0));
@@ -1260,7 +1309,7 @@ static SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 
   PROTECT(flist = AS_LIST(flist));
   //  numfac = LENGTH(flist);
-  factors = makefactors(flist);
+  factors = makefactors(flist, 1);
   numfac = 0;
   for(FACTOR **f = factors; *f != NULL; f++) numfac++;
 
@@ -1419,6 +1468,60 @@ static SEXP R_scalecols(SEXP mat, SEXP vec) {
   return R_NilValue;
 }
 
+/*
+  compute X + beta x Y
+  where X and Y are matrices of column vectors, and beta a vector
+  of length the number of columns of X and Y. Each column of Y should
+  be scaled by the corresponding entry of beta
+ */
+static SEXP R_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta) {
+  mybigint_t col = ncols(inX), row=nrows(inX);
+  if(col != ncols(inY) || row != nrows(inY))
+    error("X and Y should have the same shape");
+  if(LENGTH(inbeta) != col)
+    error("beta should have the same length as columns of Y");
+  double *X = REAL(inX);
+  double *Y = REAL(inY);
+  double *beta = REAL(inbeta);
+  SEXP res;
+  PROTECT(res = allocMatrix(REALSXP,row,col));
+  double *pres = REAL(res);
+  for(mybigint_t j= 0; j < col; j++) {
+    double b = beta[j];
+    double *out = &pres[j*row];
+    double *xin = &X[j*row];
+    double *yin = &Y[j*row];
+    for(mybigint_t i=0; i < row; i++) {
+      out[i] = xin[i] + b*yin[i];
+    }
+  }
+  UNPROTECT(1);
+  return(res);
+}
+
+/*
+  compute inner product pairwise of the columns of matrices X and Y
+ */
+static SEXP R_piproduct(SEXP inX, SEXP inY) {
+  mybigint_t col = ncols(inX), row=nrows(inX);
+  if(col != ncols(inY) || row != nrows(inY))
+    error("X and Y should have the same shape");
+  double *X = REAL(inX);
+  double *Y = REAL(inY);
+  SEXP res;
+  PROTECT(res = allocVector(REALSXP, col));
+  double *pres = REAL(res);
+  for(mybigint_t j= 0; j < col; j++) {
+    double *xin = &X[j*row];
+    double *yin = &Y[j*row];
+    pres[j] = 0.0;
+    for(mybigint_t i= 0; i < row; i++) {
+      pres[j] += xin[i]*yin[i];
+    }
+  }
+  UNPROTECT(1);
+  return(res);
+}
 
 /* 
 Then for finding connection components 
@@ -1787,6 +1890,8 @@ static R_CallMethodDef callMethods[] = {
   {"kaczmarz", (DL_FUNC) &R_kaczmarz, 5},
   {"setdimnames", (DL_FUNC) &R_setdimnames, 2},
   {"scalecols", (DL_FUNC) &R_scalecols, 2},
+  {"pdaxpy", (DL_FUNC) &R_pdaxpy, 3},
+  {"piproduct", (DL_FUNC) &R_piproduct, 2},
   {"dsyrk", (DL_FUNC) &R_dsyrk, 4},
   {"dsyr2k", (DL_FUNC) &R_dsyr2k, 5},
   {NULL, NULL, 0}

@@ -12,6 +12,7 @@ efactory <- function(obj, opt='ref', ...) {
   nm <- unlist(lapply(names(pfe),function(n) xlevels(n,pfe[[n]],sep='\003')))
   # create an index where the pure fe's belong in the full array
   allpos <- match(nm,allnm)
+
   mkallvec <- function(x) {res <- rep(NA,length(allnm)); res[allpos] <- allpos[x]; res;}
 # how many obervations for each level
   lobs <- lapply(pfe,table)
@@ -40,6 +41,15 @@ efactory <- function(obj, opt='ref', ...) {
   } else {
     comp <- factor(rep(1,length(obs)))
     ncomp <- 1
+  }
+
+  if(length(pfe) == 0) {
+    nm <- unlist(lapply(names(obj$fe),function(n) xlevels(n,obj$fe[[n]],sep='.')))
+    return(function(v,addnames) {
+      if(!addnames) return(v)
+      names(v) <- nm
+      v
+    })
   }
 
   refnames <- unlist(tapply(obs,comp,function(l) names(which.max(l))))
@@ -234,11 +244,7 @@ efactory <- function(obj, opt='ref', ...) {
          )
 
 # try to byte compile the stuff
-  o <- options(warn=-1)
-  require('compiler',quietly=TRUE)
-  options(o)
-  if(exists('cmpfun'))
-    ef <- cmpfun(ef,list(optimize=3))
+  ef <- cmpfun(ef,list(optimize=3))
   if(length(pfe) <= 2 && as.character(opt) != 'ln' && all(purefes)) 
     attr(ef,'verified') <- TRUE
   ef

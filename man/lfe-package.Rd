@@ -2,7 +2,7 @@
 \alias{lfe-package}
 \alias{lfe}
 \docType{package}
-\title{Linear Group Fixed Effects}
+\title{Overview. Linear Group Fixed Effects}
 \concept{Method of Alternating Projections}
 \concept{Kaczmarz Method}
 \concept{Fixed Effect Estimator}
@@ -29,6 +29,8 @@ only wants to control for the group effects, without actually estimating
 them.  The package may optionally compute standard errors for the group
 effects by bootstrapping, but this is a very time- and memory-consuming process compared
 to finding the point estimates.
+If you only have a single huge factor, the package \pkg{plm} is probably
+better suited.
 
 As of version 1.6, projecting out interactions between continuous
 covariates and factors is also supported. I.e. individual slopes, not
@@ -41,13 +43,16 @@ are extracted (if needed) with the function \code{\link{getfe}}.  This
 method is described in \cite{Gaure (2013)}, but also appears in \cite{Guimaraes and
 Portugal(2010)}, disguised as the Gauss-Seidel algorithm.
 
-
 There's also a function \code{\link{demeanlist}} which just does the
 centering on an arbitrary matrix, and there's a function
 \code{\link{compfactor}} which computes the connected components (which
 are used for interpreting the group effects when there are only two
 factors; see the Abowd et al references), they are also returned by
 \code{\link{getfe}}.
+
+% For those who study the correlation between the fixed effects, like in
+% \cite{Abowd et al.}, there is a function \code{\link{bccorr}} for
+% computing a bias corrected correlation.
 
 The centering on the means is done with a tolerance which is
 set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat

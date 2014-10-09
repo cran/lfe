@@ -1,5 +1,6 @@
 #undef HAVE_SEM
 #undef NOTHREADS
 #undef HUGE_INT
+#undef HAVE_THREADNAME
 
 

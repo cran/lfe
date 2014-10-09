@@ -1,6 +1,6 @@
 \name{felm}
 \alias{felm}
-\title{Fitting linear models with multiple group fixed effects}
+\title{Fit a linear model with multiple group fixed effects}
 \description{
 'felm' is used to fit linear models with multiple group fixed effects,
 similarly to lm.  It uses the Method of Alternating projections to
@@ -35,8 +35,13 @@ subset, na.action, contrasts=NULL, ...) }
         errors) is normally estimated. Setting \code{exactDOF=TRUE}
         causes \code{felm} to attempt to compute it, but this may fail if there are
         too many levels in the factors.  \code{exactDOF='rM'} will use
-        the exact method in \code{Matrix::rankMatrix()}, but this is slower. If
-        the degrees of freedom for some reason are known, they can be
+        the exact method in \code{Matrix::rankMatrix()}, but this is
+        slower. If neither of these methods works, it is possible to
+	specify \code{exactDOF='mc'}, which utilizes a Monte-Carlo method to
+        estimate the expectation E(x' P x) = tr(P), the trace of a certain projection,
+	a method which may be more accurate than the default guess.
+
+	If the degrees of freedom for some reason are known, they can be
         specified like \code{exactDOF=342772}.} 
 
  \item{subset}{an optional vector specifying a subset of observations to
@@ -51,9 +56,13 @@ subset, na.action, contrasts=NULL, ...) }
 
   \item{contrasts}{an optional list. See the \code{contrasts.arg} of \code{model.matrix.default}.}
 
-  \item{...}{other arguments. Currently not used. The \code{clustervar}
+  \item{...}{other arguments. The \code{clustervar}
     and \code{iv} arguments will be removed from the argument list at a
-    later time, but will continue to be supported in this field.}
+    later time, but will continue to be supported in this field.
+  Currently, the only argument supported in this field is the 'logical'
+    \code{keepX} to include a copy of the expanded data matrix in the
+    return value.%, as needed by \code{\link{bccorr}}.
+  }
 }
 
 \value{
@@ -90,6 +99,12 @@ subset, na.action, contrasts=NULL, ...) }
     excluded instruments, the number of parameters in restricted model
     and in the unrestricted model.}
     
+  \item{X}{matrix. The expanded data matrix, i.e. from the first part of
+  the formula. To save memory with large datasets, it is only included if
+  \code{felm(keepX=TRUE)} is specified.  %Must be included if
+%  \code{\link{bccorr}} is to be used.
+  }
+
 }
 
 \details{
@@ -112,6 +127,11 @@ projected out with the syntax \code{x:f}.
 The terms in the second and fourth parts are not treated as 
 ordinary formulas, in particular it is not possible with things like
 \code{y ~ x1 | x*f}, rather one would specify \code{y ~ x1 + x | x:f + f}.
+Note that \code{f:x} also works, since R's parser does not keep the
+order.  This means that in interactions, the factor \emph{must} be a
+factor, whereas a non-interacted factor will be coerced to a
+factor. I.e. in \code{y ~ x1 | x:f1 + f2}, the \code{f1} must be a
+factor, whereas it will work as expected if \code{f2} is an integer vector.
 
 In older versions of \pkg{lfe} the syntax was \code{felm(y ~ x1 + x2 + G(f1)
   + G(f2), iv=list(Q ~ x3+x4, W ~ x3+x4),
@@ -192,7 +212,7 @@ summary(est)
 summary(lm(y ~ x + x2 + id + firm-1))
 
 
-# make a weird example with 'reverse causation'
+# make an example with 'reverse causation'
 # Q and W are instrumented by x3 and the factor x4. Report robust s.e.
 x3 <- rnorm(length(x))
 x4 <- sample(12,length(x),replace=TRUE)
@@ -203,7 +223,7 @@ W <- 0.7*x3 - 2*x + 0.1*x2 - 0.7*id.eff[id] + 0.8*cos(x4) - 0.2*y+ rnorm(length(
 # add them to the outcome
 y <- y + Q + W
 
-ivest <- felm(y ~ x + x2 | id+firm | (Q|W ~x3|x4))
+ivest <- felm(y ~ x + x2 | id+firm | (Q|W ~x3|factor(x4)))
 summary(ivest,robust=TRUE)
 \dontrun{
 # compare with the not instrumented fit:

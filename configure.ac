@@ -76,6 +76,9 @@ AC_DEFINE([HAVE_SEM], [1]),
 AC_MSG_RESULT(no)
 )
 
+# check for GNU capability of setting library name
+AC_SEARCH_LIBS([pthread_setname_np], [], AC_DEFINE([HAVE_THREADNAME]))
+AC_SUBST(HAVE_THREADNAME)
 fi
 
 AC_OUTPUT
