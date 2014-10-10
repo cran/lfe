@@ -11,15 +11,15 @@
 # T. Iitaka and T. Ebisuzaki, Physical Review E 69 (2004).
 
 mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
-                    trname='',threads=getOption('lfe.threads')) {
+                    trname='',threads=getOption('lfe.threads'), initr) {
   if(is.matrix(mat) || inherits(mat,'Matrix')) {
     return(structure(sum(diag(mat)), sd=0, iterations=0))
   } else if(is.list(mat) && all(sapply(mat, is.factor))) {
     N <- length(mat[[1]])
     if(ortho)
-        fun <- function(v) N - colSums(demeanlist(v, mat, threads=threads)*v)
+        fun <- function(v,trtol) N - colSums(demeanlist(v, mat, threads=threads)*v)
     else
-        fun <- function(v) colSums(demeanlist(v, mat, threads=threads)*v)
+        fun <- function(v,trtol) colSums(demeanlist(v, mat, threads=threads)*v)
   } else if(!is.function(mat)) {
     stop('mat must be function, factor list or matrix')
   } else {
@@ -28,7 +28,7 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
       # inner product is done by the function itself.
       fun <- mat
     } else {
-      fun <- function(v) colSums(mat(v)*v)
+      fun <- function(v,trtol) colSums(mat(v)*v)
     }
   }
 
@@ -54,8 +54,10 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
   start <- Sys.time()
   last <- 0
   # get a clue about the tolerance.
-  cureps <- eps(as.numeric(fun(0, trtol=0)))/2
-
+#  cureps <- eps(as.numeric(fun(0, trtol=0)))/2
+  if(missing(initr)) initr <- N
+  cureps <- eps(initr)/2
+  
   while(NN < maxsamples && (NN < 4 || (cureps > 0 && relsd > cureps) || (cureps < 0 && sd > -cureps))) {
     i <- i+1
     now <- Sys.time()

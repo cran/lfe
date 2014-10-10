@@ -50,6 +50,7 @@ int pthread_getname_np(pthread_t thread,
 #include <R_ext/Visibility.h>
 #include <R_ext/BLAS.h>
 
+
 #if defined(R_VERSION) && R_VERSION >= R_Version(3, 0, 0)
 typedef R_xlen_t mybigint_t;
 #else
@@ -327,7 +328,6 @@ static int demean(double *v, int N, double *res,
       if(now - last >= 3600 && delta > 0.0) {
 	int reqiter;
 	double eta;
-	char tu;
 	char buf[256];
 	// Now, use a c which is based on the medium c since the last print
 	if(prevdp == 0.0)
@@ -337,23 +337,21 @@ static int demean(double *v, int N, double *res,
 	reqiter = log(target/delta)/log(c);
 	eta = 1.0*(now-last)*reqiter/(iter-lastiter);
 	if(eta < 0) eta = NA_REAL; 
-	tu = 's';
-	/*
-	if(eta > 360.0) {
-	  eta /= 3600.0;
-	  tu='h';
-	}
-	*/
 	if(gkacc&&0) {
 	  sprintf(buf,"...centering vec %d iter %d, delta=%.1e(target %.1e)\n",
 		  vecnum,iter,delta,target);
 
 	} else {
-	  //	  sprintf(buf,"...centering vec %d iter %d, c=1-%.1e, delta=%.1e(target %.1e), ETA in %.1f%c\n",
-	  //		  vecnum,iter,1.0-c,delta,target,eta,tu);
 	  time_t arriv = now + (time_t) eta;
 	  char timbuf[50];
-	  ctime_r(&arriv, timbuf);
+	  struct tm tmarriv;
+#ifdef WIN
+	  localtime_s(&tmarriv, &arriv);
+#else
+	  localtime_r(&arriv,&tmarriv);
+#endif
+	  strftime(timbuf, sizeof(timbuf), "%X %x", &tmarriv);
+	  //	  ctime_r(&arriv, timbuf);
 	  sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s",
 		  vecnum,iter,1.0-c,delta,target,timbuf);
 

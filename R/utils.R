@@ -365,7 +365,15 @@ rankDefic <- function(fl,method='cholesky',mctol=1e-3) {
   } else if(method == 'mc') {
     totlev <- sum(sapply(fl,nlevels))
     N <- length(fl[[1]])
-    N - (mctrace(fl,tol=mctol) + totlev)+length(fl)+1
+    len <- length(fl) + 1
+    # now, we will use the rank deficiency d to compute
+    # degrees of freedom corrections. I.e. (tr+totlev)+len should
+    # be within a certain relative tolerance, which translates
+    # to an absolute tolerance of tr
+    tolfun <- function(tr) -mctol*abs((tr+totlev)+len)
+    initr <- 0
+    N - (mctrace(fl,tol=tolfun,initr=initr) + totlev)+len
+    
   } else {
     D <- makeDmatrix(fl)
     as.integer(ncol(D) - rankMatrix(crossprod(D), method='qr.R'))

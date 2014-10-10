@@ -17,6 +17,12 @@ AC_ARG_ENABLE([huge],
 	[ AC_DEFINE([HUGE_INT], [1])],
 	[])
 
+dnl local debug 
+AC_ARG_ENABLE([pedantry],,
+	[DFLAGS='-Wall -Wpedantic -Werror'],
+	[])
+
+AC_SUBST(DFLAGS)
 # pick up R's compilers, we need to use that one
 CC=`${R_HOME}/bin/R CMD config CC`
 
@@ -36,7 +42,6 @@ else
 fi
 AC_SUBST(PTHREAD_CFLAGS)
 AC_SUBST(PTHREAD_LIBS)
-
 # Checks for header files.
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -82,5 +87,3 @@ AC_SUBST(HAVE_THREADNAME)
 fi
 
 AC_OUTPUT
-
-
