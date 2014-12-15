@@ -1,4 +1,5 @@
-citHeader("To cite package 'lfe' in publications use one or some of:")
+citHeader("The package 'lfe' and its methods have been documented in several papers.
+          To cite 'lfe' in publications use one or some of:")
 citEntry(entry="article",
          title="lfe: Linear group fixed effects",
          author=as.person("Simen Gaure"),
@@ -7,9 +8,10 @@ citEntry(entry="article",
          year="2013",
          volume="5",
          number="2",
+         note="User documentation of the 'lfe' package",
          month="Dec",
          url="http://journal.r-project.org/archive/2013-2/gaure.pdf",
-	 textVersion="Simen Gaure. lfe: Linear group fixed effects. The R Journal, 5(2):104-117, Dec 2013"
+	 textVersion="S. Gaure. lfe: Linear group fixed effects. The R Journal, 5(2):104-117, Dec 2013"
 )
 
 citEntry(entry="article",
@@ -18,14 +20,32 @@ citEntry(entry="article",
 	volume = "66",	
 	pages = "8 - 18",
 	year = "2013",
-	note = "",
+	note = "Description of the projection methods used in 'lfe'",
 	issn = "0167-9473",
-	doi = "http://dx.doi.org/10.1016/j.csda.2013.03.024",
-	url = "http://www.sciencedirect.com/science/article/pii/S0167947313001266",
+	doi = "10.1016/j.csda.2013.03.024",
+	url = "http://dx.doi.org/10.1016/j.csda.2013.03.024",
 	author = as.person("Simen Gaure"),
          textVersion=paste("S. Gaure. OLS with multiple high dimensional category variables.",
            "Computational Statistics & Data Analysis, 66:8-18, 2013")
          )
+
+citEntry(entry="article",
+	title = "Correlation bias correction in two-way fixed effects linear regression",
+	journal = "Stat",
+	volume = "3",	
+        number = "1",
+        url = "http://dx.doi.org/10.1002/sta4.68",
+        doi = "10.1002/sta4.68",
+	pages = "379-390",
+	year = "2014",
+	note = "Description of the limited mobility bias correction method used in 'lfe'",
+        issn = "2049-1573",
+	author = as.person("Simen Gaure"),
+         textVersion=paste("S. Gaure. Correlation bias correction in two-way fixed effects linear regression.",
+           "Stat, 3:379-390, 2014")
+         )
+
+
 
 if(!exists("meta") || is.null(meta)) meta <- packageDescription("lfe")
 year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date)

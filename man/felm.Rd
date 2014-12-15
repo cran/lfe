@@ -61,7 +61,7 @@ subset, na.action, contrasts=NULL, ...) }
     later time, but will continue to be supported in this field.
   Currently, the only argument supported in this field is the 'logical'
     \code{keepX} to include a copy of the expanded data matrix in the
-    return value.%, as needed by \code{\link{bccorr}}.
+    return value, as needed by \code{\link{bccorr}}.
   }
 }
 
@@ -101,8 +101,8 @@ subset, na.action, contrasts=NULL, ...) }
     
   \item{X}{matrix. The expanded data matrix, i.e. from the first part of
   the formula. To save memory with large datasets, it is only included if
-  \code{felm(keepX=TRUE)} is specified.  %Must be included if
-%  \code{\link{bccorr}} is to be used.
+  \code{felm(keepX=TRUE)} is specified.  Must be included if
+  \code{\link{bccorr}} is to be used for correcting limited mobility bias.
   }
 
 }

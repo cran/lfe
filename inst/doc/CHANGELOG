@@ -1,4 +1,6 @@
-Oct 9, 2018.   1.7-1402 -- On CRAN. bccorr() not public for now.
+Dec 15, 2014.  1.7-1412 -- Put bccorr() back in.	
+	
+Oct 9, 2014.   1.7-1402 -- On CRAN. bccorr() not public for now.
 	
 Oct 8, 2014.   1.7 -- Fixed a bug which prevents calling felm() with IV from within
 	a function.  Reported by Matthieu Gomez gomez.matthieu@gmail.com

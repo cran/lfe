@@ -350,9 +350,9 @@ static int demean(double *v, int N, double *res,
 #else
 	  localtime_r(&arriv,&tmarriv);
 #endif
-	  strftime(timbuf, sizeof(timbuf), "%X %x", &tmarriv);
+	  strftime(timbuf, sizeof(timbuf), "%c", &tmarriv);
 	  //	  ctime_r(&arriv, timbuf);
-	  sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s",
+	  sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
 		  vecnum,iter,1.0-c,delta,target,timbuf);
 
 	}
