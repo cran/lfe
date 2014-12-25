@@ -548,7 +548,7 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   if(length(unk) > 0) stop('unknown arguments ',paste(unk, collapse=' '))
 
 
-  if(missing(data)) data <- environment(formula)
+  if(missing(data)) mf$data <- data <- environment(formula)
   pf <- parent.frame()
   pform <- parseformula(formula,data)
   
@@ -631,7 +631,11 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   ivarg <- list()
   vars <- NULL
   step1 <- list()
-  ivenv <- new.env()
+  if(is.environment(data)) {
+    ivenv <- new.env(parent=data)
+  } else {
+    ivenv <- new.env(parent=pf)
+  }
   for(ivv in iv) {
     # Now, make the full instrumental formula, i.e. with the rhs expanded with the
     # instruments, and the lhs equal to the instrumented variable
@@ -690,14 +694,10 @@ felm <- function(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE, subset
   pform <- parseformula(step2form,data)
   fl <- pform[['fl']]
   formula <- pform[['formula']]
-  mf[['formula']] <- formula
-  # attach iv-variables to search path, make sure they are detached again
-  atnam <- 'LFE.IVNAM'
-  on.exit(detach(atnam, character.only=TRUE))
-  attach(ivenv, name=atnam)
-  rm(ivenv)
-  psys <- project(mf,fl,data,contrasts,clustervar,pf)
-  detach(atnam, character.only=TRUE); on.exit()
+  environment(formula) <- ivenv
+  mf$formula <- formula
+  if(is.environment(mf$data)) mf$data <- ivenv
+  psys <- project(mf=mf,fl=fl,data=data,contrasts=contrasts,clustervar=clustervar,pf=pf)
 
   z <- doprojols(psys,ivresid=ivarg,exactDOF=exactDOF)
   z$step1 <- step1

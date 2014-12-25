@@ -16,11 +16,11 @@ year.eff <- rnorm(nlevels(year))
 y <- x + 0.25*x2 + x3 + id.eff[id] + firm.eff[firm] + year.eff[year] + rnorm(length(x))
 
 ## estimate and print result
-summary(est <- felm(y ~ x+x2+x3 |id+firm+year, exactDOF=TRUE))
+est <- felm(y ~ x+x2+x3 |id+firm+year, exactDOF=TRUE)
 
 ## extract the group fixed effects
-getfe(est)
-print(alpha <- getfe(est,ef='ln'))
+head(getfe(est))
+tail(alpha <- getfe(est,ef='ln'))
 # get the names to use below, just to make it easier
 # lower precision in output
 

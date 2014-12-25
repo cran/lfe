@@ -47,7 +47,7 @@ newmus <- function(oldmus, i, alpha, beta) {
 #stop('debug')
 # conjugate gradient solver Ax = b, b may be matrix
 # If A is a function, it must be able to take matrix argument
-cgsolve <- function(A, b, eps=1e-3,init=NULL) {
+cgsolve <- function(A, b, eps=1e-3,init=NULL, name='') {
   start <- Sys.time()
   precon <- attr(A,'precon')
 #  if(any(eps <= 0)) stop('tolerance eps should be larger than 0',eps)  
@@ -95,7 +95,7 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL) {
     now <- Sys.time()
     if(now - last > 30) {
       last <- now
-      message(date(), ' CG iter ',k,' target=',min(eps),
+      message(date(), ' CG iter ',k,' ',name,' target=',min(eps),
               ' delta=',max(sqrt(r2)/delta), ' vecs=',length(delta))
     }
 

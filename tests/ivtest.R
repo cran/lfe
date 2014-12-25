@@ -1,7 +1,7 @@
 library(lfe)
-options(lfe.threads=2,digits=5,warn=1)
+options(lfe.threads=2,digits=5,warn=1,lfe.eps=1e-5)
 set.seed(42)
-x <- rnorm(1000)
+x <- rnorm(400)
 x2 <- rnorm(length(x))
 
 id <- factor(sample(10,length(x),replace=TRUE))
@@ -21,6 +21,14 @@ y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 est <- felm(y ~ x+x2 | id+firm |(Q|R~x3+x4))
 summary(est,robust=TRUE)
 clu <- factor(sample(10,length(x), replace=TRUE))
-est <- felm(y ~ x+x2 | id + firm |(Q|R ~ x3+x4), cluster=clu)
+# try it from a function
+fun <- function() {
+  Y <- y
+  S <- Q
+  felm(Y ~ x+x2 | id + firm |(S|R ~ x3+x4), cluster=clu)
+  fr <- data.frame(y,x,x2,id,firm,Q,R,x3,x4)
+  felm(y ~ x+x2 | id + firm |(Q|R ~ x3+x4), data=fr, cluster=clu)
+}
+est <- fun()
 summary(est, robust=TRUE)
 for(s1 in est$step1) print(summary(s1))

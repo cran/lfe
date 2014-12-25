@@ -1,3 +1,7 @@
+Dec 25, 2014.  1.8-1440 -- Added fevcov() and varvars(). Discovered error in the 
+	handling of mutexes on Windows. Race condition. Fixed.  Rewritten handling of
+	the extra IV-variables. Didn't work properly before, see Gomez on Oct 8 below.
+	
 Dec 15, 2014.  1.7-1412 -- Put bccorr() back in.	
 	
 Oct 9, 2014.   1.7-1402 -- On CRAN. bccorr() not public for now.

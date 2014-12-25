@@ -57,13 +57,13 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
 #  cureps <- eps(as.numeric(fun(0, trtol=0)))/2
   if(missing(initr)) initr <- N
   cureps <- eps(initr)/2
-  
+
   while(NN < maxsamples && (NN < 4 || (cureps > 0 && relsd > cureps) || (cureps < 0 && sd > -cureps))) {
     i <- i+1
     now <- Sys.time()
     if(NN > 0) {
       remaining <- as.integer((Ntarget-NN)/(NN/as.numeric(now-start)))
-      if(remaining > 60 && now - last > 60 || TRUE) {
+      if(remaining > 60 && now - last > 60) {
         message('  *** trace ',trname,' sample ',NN,' of ',Ntarget,', expected finish at ',
                 now + remaining) 
         last <- now
@@ -81,7 +81,9 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
     sd <- sqrt(sqsum/NN - (tr/NN)^2)/sqrt(NN)
     if(NN > 1) sd <- sd*sqrt(NN/(NN-1))  # small sample correction?
     relsd <- sd/abs(tr/NN)
+#    message(trname,' sd=',sd,' relsd=',relsd,' NN=',NN, ' cureps=',cureps)
     cureps <- eps(tr/NN)
+
     # try to figure out how many iterations are needed to obtain the
     # desired tolerance.
     sdtarget <- if(cureps < 0) -cureps else cureps*abs(tr/NN)

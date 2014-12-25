@@ -74,7 +74,7 @@ typedef unsigned int mysize_t;
 #else
 
 #ifdef WIN
-#define LOCK_T HANDLE*
+#define LOCK_T HANDLE
 #define LOCK(l) WaitForSingleObject(l,INFINITE)
 #define UNLOCK(l) ReleaseMutex(l)
 #else
@@ -454,13 +454,11 @@ static void *demeanlist_thr(void *varg) {
     snprintf(thrname,16, "Cvec %d/%d",vecnum+1, arg->K);
     pthread_setname_np(pthread_self(), thrname);
 #endif
-    //    Rprintf("core %d vector %d\n",myid,vecnum);
     okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],
 		    arg->factors,arg->e,arg->eps,means,
 		    tmp1,tmp2,
 		    &arg->stop,vecnum+1,
 		    arg->lock,arg->gkacc);
-
     LOCK(arg->lock);
     now = time(NULL);
     if(!okconv) {
@@ -525,16 +523,20 @@ static int demeanlist(double **vp, int N, int K, double **res,
 
 #ifdef WIN
   lock = CreateMutex(NULL,FALSE,NULL);
+  if(lock == NULL) {
+    error("Couldn't create mutex (error=%d)", GetLastError());
+  }
   threads = (HANDLE*) R_alloc(numthr,sizeof(HANDLE));
   threadids = (DWORD*) R_alloc(numthr,sizeof(DWORD));
+  arg.lock = lock;
 #else
   threads = (pthread_t*) R_alloc(numthr,sizeof(pthread_t));
+  arg.lock = &lock;
 #ifdef HAVE_SEM
   if(sem_init(&arg.finished,0,0) != 0) error("sem_init failed, errno=%d",errno);
 #endif
   arg.running = numthr;
 #endif
-  arg.lock = &lock;
 #endif
 
   maxlev = 0;
@@ -598,6 +600,8 @@ static int demeanlist(double **vp, int N, int K, double **res,
       for(thr = 0; thr < numthr; thr++) {
 	CloseHandle(threads[thr]);
       }
+      /* print remaining messages */
+      printmsg(arg.lock);
       CloseHandle(lock);
       break;
     }
@@ -619,6 +623,8 @@ static int demeanlist(double **vp, int N, int K, double **res,
 #ifdef HAVE_SEM
 	  sem_destroy(&arg.finished);
 #endif
+	  /* print remaining messages */
+	  printmsg(arg.lock);
 	  pthread_mutex_destroy(arg.lock);
 	  break;
 	}
@@ -627,8 +633,6 @@ static int demeanlist(double **vp, int N, int K, double **res,
     }
 #endif
 
-    /* print remaining messages */
-  printmsg(arg.lock);
   if(arg.stop == 1) error("centering interrupted");
   if(quiet > 0 && arg.start != arg.last && K > 1)
     REprintf("...%d vectors centred in %d seconds\n",K,(int)(time(NULL)-arg.start));
@@ -1169,6 +1173,7 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #ifndef NOTHREADS
 #ifdef WIN
   lock = CreateMutex(NULL,FALSE,NULL);
+  arg.lock = lock;
   threads = (HANDLE*) R_alloc(numthr,sizeof(HANDLE));
   threadids = (DWORD*) R_alloc(numthr,sizeof(DWORD));
 #else
@@ -1177,8 +1182,8 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #ifdef HAVE_SEM
   if(sem_init(&arg.finished,0,0) != 0) error("sem_init failed, errno=%d",errno);
 #endif
-#endif
   arg.lock = &lock;
+#endif
 #endif
 
   arg.factors = factors;
@@ -1233,6 +1238,8 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
       for(thr = 0; thr < numthr; thr++) {
 	CloseHandle(threads[thr]);
       }
+      /* Print any remaining messages */
+      printmsg(arg.lock);
       CloseHandle(lock);
       break;
     }
@@ -1254,6 +1261,8 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
 #ifdef HAVE_SEM
 	sem_destroy(&arg.finished);
 #endif
+	/* Print any remaining messages */
+	printmsg(arg.lock);
 	pthread_mutex_destroy(arg.lock);
 	break;
       }
@@ -1262,8 +1271,6 @@ static SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rco
   }
 #endif
   PutRNGstate();
-  /* Print any remaining messages */
-  printmsg(arg.lock);
   if(arg.stop == 1) error("Kaczmarz interrupted");
   UNPROTECT(3);
   return(reslist);

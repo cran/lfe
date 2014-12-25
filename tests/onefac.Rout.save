@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2014-10-08 r66730) -- "Unsuffered Consequences"
+R Under development (unstable) (2014-12-21 r67196) -- "Unsuffered Consequences"
 Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -17,16 +17,16 @@ Type 'q()' to quit R.
 
 > library(lfe)
 Loading required package: Matrix
-> options(lfe.threads=2,digits=5,warn=1)
+> options(lfe.threads=1,digits=3,warn=1)
 > set.seed(6553)
 > # single fixed effect, special case which we risk destroying when we optimize, so check it
-> x <- rnorm(2000,mean=2)
+> x <- rnorm(2000)
 > x2 <- rnorm(length(x))
-> x3 <- rexp(length(x))
+> x3 <- rnorm(length(x))
 > ## create individual and firm
 > id <- factor(sample(1500,length(x),replace=TRUE))
 > nlevels(id)
-[1] 1115
+[1] 1101
 > ## effects
 > id.eff <- rnorm(nlevels(id))
 > 
@@ -34,138 +34,50 @@ Loading required package: Matrix
 > y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + rnorm(length(x))
 > 
 > ## estimate
-> summary(est <- felm(y ~ x+x2 + x3 |id))
-
-Call:
-   felm(formula = y ~ x + x2 + x3 | id) 
-
-Residuals:
-   Min     1Q Median     3Q    Max 
--2.326 -0.326  0.000  0.316  3.064 
-
-Coefficients:
-   Estimate Std. Error t value Pr(>|t|)    
-x    1.0125     0.0324   31.23  < 2e-16 ***
-x2   0.2221     0.0329    6.75  2.7e-11 ***
-x3   0.4596     0.0311   14.76  < 2e-16 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: 0.978 on 882 degrees of freedom
-Multiple R-squared: 0.872   Adjusted R-squared: 0.71 
-F-statistic:5.39 on 1117 and 882 DF, p-value: <2e-16 
-
-
+> est <- felm(y ~ x+x2 + x3 |id)
 > 
 > ## extract the group fixed effects
 > fe <- getfe(est, se=TRUE)
 > ## merge back
 > head(fe)
-       effect obs comp fe idx      se
-id.1 -0.95806   2    1 id   1 0.73463
-id.2 -0.62290   2    1 id   2 0.68828
-id.3  0.18820   2    1 id   3 0.72413
-id.4 -0.45513   1    1 id   4 0.95612
-id.5  0.23218   1    1 id   5 0.99785
-id.6 -1.20687   1    1 id   6 0.86194
+     effect obs comp fe idx    se
+id.1  1.686   1    1 id   1 1.149
+id.2 -0.998   2    1 id   2 0.754
+id.3 -0.830   1    1 id   3 1.035
+id.4 -0.562   1    1 id   4 0.986
+id.5 -1.546   2    1 id   5 0.737
+id.8 -1.814   1    1 id   8 1.077
 > ideff <- fe[paste('id',id,sep='.'),'effect']
 > 
 > ## verify that id and firm coefficients are 1
 > options(scipen=8)
-> summary(lm(y ~ x + x2 + x3 + ideff -1),digits=8)
+> lm(y ~ x + x2 + x3 + ideff -1)
 
 Call:
 lm(formula = y ~ x + x2 + x3 + ideff - 1)
 
-Residuals:
-   Min     1Q Median     3Q    Max 
--2.326 -0.326  0.000  0.316  3.064 
-
 Coefficients:
-      Estimate Std. Error t value Pr(>|t|)    
-x      1.01253    0.00822   123.2   <2e-16 ***
-x2     0.22206    0.01452    15.3   <2e-16 ***
-x3     0.45957    0.01282    35.9   <2e-16 ***
-ideff  1.00000    0.01165    85.8   <2e-16 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: 0.65 on 1996 degrees of freedom
-Multiple R-squared:  0.954,	Adjusted R-squared:  0.954 
-F-statistic: 1.05e+04 on 4 and 1996 DF,  p-value: <2e-16
+    x     x2     x3  ideff  
+1.007  0.246  0.545  1.000  
 
 > 
 > # no factor
-> summary(felm(y ~ x + x2 + x3))
-
-Call:
-   felm(formula = y ~ x + x2 + x3) 
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--5.44789 -0.91322 -0.00701  0.90776  4.62348 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  -0.0162     0.0766   -0.21     0.83    
-x             0.9783     0.0312   31.40   <2e-16 ***
-x2            0.3053     0.0314    9.73   <2e-16 ***
-x3            0.4964     0.0304   16.34   <2e-16 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: 1.41 on 1996 degrees of freedom
-Multiple R-squared: 0.401   Adjusted R-squared:  0.4 
-F-statistic: 445 on 3 and 1996 DF, p-value: <2e-16 
-
-
-> summary(lm(y ~ x + x2 + x3))
-
-Call:
-lm(formula = y ~ x + x2 + x3)
-
-Residuals:
-   Min     1Q Median     3Q    Max 
--5.448 -0.913 -0.007  0.908  4.623 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  -0.0162     0.0766   -0.21     0.83    
-x             0.9783     0.0312   31.40   <2e-16 ***
-x2            0.3053     0.0314    9.73   <2e-16 ***
-x3            0.4964     0.0304   16.34   <2e-16 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: 1.41 on 1996 degrees of freedom
-Multiple R-squared:  0.401,	Adjusted R-squared:   0.4 
-F-statistic:  445 on 3 and 1996 DF,  p-value: <2e-16
-
+> felm(y ~ x + x2 + x3)
+(Intercept)           x          x2          x3 
+     0.0447      0.9669      0.2145      0.5351 
 > 
 > # no covariate
-> summary(est <- felm(y ~ 0|id))
-
-Call:
-   felm(formula = y ~ 0 | id) 
-
-Residuals:
-   Min     1Q Median     3Q    Max 
--3.842 -0.497  0.000  0.474  3.566 
-
-Coefficients:
-(No coefficients)
-
-
+> est <- felm(y ~ 0|id)
 > head(getfe(est, se=TRUE))
-     effect obs comp fe idx     se
-id.1 1.3524   2    1 id   1 1.1187
-id.2 1.7847   2    1 id   2 1.0415
-id.3 3.6503   2    1 id   3 1.1140
-id.4 1.8782   1    1 id   4 1.5583
-id.5 3.4896   1    1 id   5 1.3707
-id.6 1.4024   1    1 id   6 1.3643
+      effect obs comp fe idx   se
+id.1  0.0434   1    1 id   1 1.36
+id.2 -1.1396   2    1 id   2 1.17
+id.3 -0.1782   1    1 id   3 1.45
+id.4 -3.4786   1    1 id   4 1.67
+id.5 -0.5694   2    1 id   5 1.17
+id.8 -1.7134   1    1 id   8 1.56
 > 
 > 
 > proc.time()
    user  system elapsed 
-  5.637   0.086   5.513 
+   7.21    0.23    7.38 

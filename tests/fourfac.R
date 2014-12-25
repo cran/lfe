@@ -18,7 +18,7 @@ shirt.eff <- rnorm(nlevels(shirt))
 y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + shoe.eff[shoe] + shirt.eff[shirt] + rnorm(length(x))
 
 ## estimate
-summary(est <- felm(y ~ x+x2 + x3 |id+firm+shoe+shirt))
+print(est <- felm(y ~ x+x2 + x3 |id+firm+shoe+shirt))
 cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
 ## extract the group fixed effects
   ## verify that id and firm coefficients are 1

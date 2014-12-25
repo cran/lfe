@@ -1,6 +1,7 @@
 useDynLib(lfe,.registration=TRUE, .fixes='C_')
 
-export(felm,getfe,demeanlist,compfactor,kaczmarz,btrap,is.estimable,efactory)
+export(felm,getfe,demeanlist,compfactor,kaczmarz,btrap,
+       is.estimable,efactory,bccorr,fevcov,varvars)
 import(Matrix)
 import(Formula)
 importFrom(compiler, cmpfun)

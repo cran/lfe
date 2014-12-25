@@ -1,5 +1,5 @@
 library(lfe)
-options(lfe.threads=2,digits=4,warn=1)
+options(lfe.threads=2,digits=3,warn=1)
 set.seed(655318)
 x <- rnorm(500)
 x2 <- rnorm(length(x))
@@ -18,7 +18,7 @@ y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
 # make a data frame
 fr <- data.frame(y,x,x2,id,firm)
 ## estimate and print result
-summary(est <- felm(y ~ x+x2|id+firm, data=fr))
+print(est <- felm(y ~ x+x2|id+firm, data=fr))
 
 ## extract the group fixed effects
-getfe(est)
+tail(getfe(est))

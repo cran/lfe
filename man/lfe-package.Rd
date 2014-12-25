@@ -53,8 +53,9 @@ factors; see the Abowd et al references), they are also returned by
 \code{\link{getfe}}.
 
 For those who study the correlation between the fixed effects, like in
-\cite{Abowd et al.}, there is a function \code{\link{bccorr}} for
-computing a bias corrected correlation as documented in \cite{Gaure(2014)}.
+\cite{Abowd et al.}, there are functions \code{\link{bccorr}} and
+\code{\link{fevcov}} for computing limited mobility bias corrected
+correlations and variances as documented in \cite{Gaure(2014)}.
 
 The centering on the means is done with a tolerance which is
 set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat
@@ -133,8 +134,8 @@ Gaure, S. (2014) \code{lfe: Linear Group Fixed Effects.} The R
   Journal, 5(2):104-117, Dec 2013. \url{http://journal.r-project.org/archive/2013-2/gaure.pdf}
 
 Gaure, S. (2014), \cite{Correlation bias correction in two-way
-  fixed-effects linear regression}, Stat 3(1), 2014, 379-390.
-  \url{http://dx.doi.org/10.1002/sta4.68/full}
+  fixed-effects linear regression}, Stat 3(1):379-390, 2014.
+  \url{http://dx.doi.org/10.1002/sta4.68}
 
 
 Guimaraes, P. and Portugal, P. (2010) \cite{A simple feasible

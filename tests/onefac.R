@@ -1,10 +1,10 @@
 library(lfe)
-options(lfe.threads=2,digits=5,warn=1)
+options(lfe.threads=1,digits=3,warn=1)
 set.seed(6553)
 # single fixed effect, special case which we risk destroying when we optimize, so check it
-x <- rnorm(2000,mean=2)
+x <- rnorm(2000)
 x2 <- rnorm(length(x))
-x3 <- rexp(length(x))
+x3 <- rnorm(length(x))
 ## create individual and firm
 id <- factor(sample(1500,length(x),replace=TRUE))
 nlevels(id)
@@ -15,7 +15,7 @@ id.eff <- rnorm(nlevels(id))
 y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + rnorm(length(x))
 
 ## estimate
-summary(est <- felm(y ~ x+x2 + x3 |id))
+est <- felm(y ~ x+x2 + x3 |id)
 
 ## extract the group fixed effects
 fe <- getfe(est, se=TRUE)
@@ -25,13 +25,12 @@ ideff <- fe[paste('id',id,sep='.'),'effect']
 
 ## verify that id and firm coefficients are 1
 options(scipen=8)
-summary(lm(y ~ x + x2 + x3 + ideff -1),digits=8)
+lm(y ~ x + x2 + x3 + ideff -1)
 
 # no factor
-summary(felm(y ~ x + x2 + x3))
-summary(lm(y ~ x + x2 + x3))
+felm(y ~ x + x2 + x3)
 
 # no covariate
-summary(est <- felm(y ~ 0|id))
+est <- felm(y ~ 0|id)
 head(getfe(est, se=TRUE))
 

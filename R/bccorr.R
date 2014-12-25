@@ -27,6 +27,7 @@ bccorr <- function(est, alpha=getfe(est), corrfactors=1L:2L,
                    nocovar=is.null(est$X) && length(est$fe)==2,
                    tol=0.01, maxsamples=Inf) {
 
+  if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
   if(length(est$fe) == 2 && nlevels(est$cfactor) != 1) stop('Bias correction only makes sense on data with 1 component')
   if(length(est$fe) < 2) stop('Bias correction only makes sense for two factors')
   if(length(corrfactors) != 2) stop('corrfactors must have length 2')
@@ -78,7 +79,7 @@ bccorr <- function(est, alpha=getfe(est), corrfactors=1L:2L,
 varbias <- function(index,fe,X,tol=0.01,epsvar,bvar, maxsamples=Inf) {
   if(length(index) != 1) stop("index must have length 1")
   f <- fe[[index]]
-  name <- names(fe)[[index]]
+  name <- paste('var(',names(fe)[[index]],')', sep='')
   N <- length(f)
   if(!is.null(X) && nrow(X) != N) stop("X must be of same length as factor")
   nlev <- nlevels(f)
@@ -109,7 +110,7 @@ varbias <- function(index,fe,X,tol=0.01,epsvar,bvar, maxsamples=Inf) {
   # in the trace computation depends on the current value of the trace
   # i.e. absolute precision should be 0.01*(sum(d1^2) - epsvar*tr)/epsvar
 
-  epsfun <- function(tr) -tol*abs(bvar*N - epsvar*tr)/epsvar
+  epsfun <- function(tr) -abs(tol)*abs(bvar*N - epsvar*tr)/epsvar
   # the tolerance before mctrace has got a clue about where we are
   # is a problem. If the bias is very large compared to the variance, we will
   # be in trouble. 
@@ -121,11 +122,11 @@ varbias <- function(index,fe,X,tol=0.01,epsvar,bvar, maxsamples=Inf) {
     # we divide by the L2-norm of DtM1x, since we take the
     # inner product with this afterwards
     tol1 <- -trtol/sqrt(colSums(DtM1x^2))/2
-    v <- cgsolve(invfun, DtM1x, eps=tol1)
+    v <- cgsolve(invfun, DtM1x, eps=tol1,name=name)
     colSums(DtM1x * v)
   }
   attr(trfun,'IP') <- TRUE
-  res <- epsvar*mctrace(trfun,N=N,tol=epsfun, trname=paste(name,'bias'),
+  res <- epsvar*mctrace(trfun,N=N,tol=epsfun, trname=name,
                  maxsamples=maxsamples)/N
 }
 
@@ -134,11 +135,11 @@ varbias <- function(index,fe,X,tol=0.01,epsvar,bvar, maxsamples=Inf) {
 # var(x^t A x) = 2 tr(AVAV) + 4mu^t*AVA*mu
 # where V is the variance matrix of x, assumed to be sigma^2 I, and mu is the
 # expectation of x (i.e. Dtheta).
-varvar <- function(index, fe, X, pointest, resvar, tol=0.01) {
+varvar <- function(index, fe, X, pointest, resvar, tol=0.01, biascorrect=FALSE) {
   f <- fe[[index]]
   N <- length(f)
   fmean <- list(factor(rep(1,N)))
-
+  name <- paste('varvar(',names(fe)[[index]],')', sep='')
   if(is.null(X)) {
       MFX <- fe[-index]
       invfun <- function(x) {
@@ -155,34 +156,46 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01) {
 
   Dtheta <- pointest[f]
   DtM1D <- rowsum(demeanlist(Dtheta,fmean), f)
-  v <- cgsolve(invfun, DtM1D, eps=tol/4/resvar)
+  v <- cgsolve(invfun, DtM1D, eps=tol/4/resvar/sqrt(sum(DtM1D^2)), name=name)
   meanpart <- 4*resvar * sum(DtM1D * v)
-  # this mean part is biased upwards. We should correct it.
+  if(!biascorrect)
+      return(meanpart/N^2)
+  # the mean part is biased upwards. We should correct it.
   # it turns out that we can do this by changing the sign of the
   # trace term, the bias is the same expression as the trace part
-  message('mean part=',meanpart/N^2)
-  mytol <- -meanpart/10
+  #  message('mean part=',meanpart/N^2)
+  mytol <- meanpart/10
   trfun <- function(x,trtol) {
     v <- demeanlist(cgsolve(invfun, rowsum(demeanlist(x,fmean),f),
-                            eps=mytol/resvar^2/2)[f,],fmean)
+                            eps=-mytol^2/resvar^2/2,name=name)[f,],fmean)
     colSums(v * v)
   }
   attr(trfun,'IP') = TRUE
-  trpart <- 2*resvar^2 * mctrace(trfun, N=length(f))
-  message('mean part=', meanpart/N^2, ' trpart=',trpart/N^2)
+  trpart <- 2*resvar^2 * mctrace(trfun, N=length(f), trname=name, tol=-mytol/resvar/2)
+#  message('mean part=', meanpart/N^2, ' trpart=',trpart/N^2)
   (-trpart+meanpart)/N^2
+}
+
+varvars <- function(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE) {
+  if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
+  fe <- est$fe
+  e <- length(fe)
+  if(length(tol) == 1) tol <- rep(tol,e)
+  effs <- lapply(names(fe), function(nm) alpha[alpha[,'fe']==nm, 'effect'])
+  resvar <- sum(est$residuals^2)/est$df
+  sapply(1:e, function(index) {
+    varvar(index, fe, est$X, effs[[index]], resvar, tol[index], biascorrect)
+  })
 }
 
 # if positive tolerance, the tolerance is relative to the bias corrected
 # covariance. In this case, the biased covariance (bcov) and residual
 # variance (epsvar) must be specified. A negative tolerance is an
 # absolute tolerance
-covbias <- function(index,fe,X,tol=-0.01, epsvar, bcov, maxsamples=Inf) {
+covbias <- function(index,fe,X,tol=0.01, epsvar, bcov, maxsamples=Inf) {
   if(length(index) != 2) stop("index must have length 2")
   if(length(fe) < 2) stop("fe must have length >= 2")
-  if(tol > 0 && missing(bcov))
-      stop("with relative tolerance, bcov must be specified")
-
+  if(tol > 0) stop('with relative precision (tol > 0), bcov must be specified')
   f1 <- fe[[index[[1]]]]
   f2 <- fe[[index[[2]]]]
   nlev1 <- nlevels(f1)
@@ -234,19 +247,19 @@ covbias <- function(index,fe,X,tol=-0.01, epsvar, bcov, maxsamples=Inf) {
     d2 <- sqrt(colSums(FtM1x^2))
 #    tol12 <-  -(if(trtol==0) abs(tol)*(nlev1+nlev2) else trtol)
     tol12 <- -trtol
-    v <- cgsolve(invfunX, DtM1x, eps=tol12/(d1+d2)/3)
+    v <- cgsolve(invfunX, DtM1x, eps=tol12/(d1+d2)/3, name=name)
     MXv <- rowsum(MXfun(v[f1,]), f2)
-    w <- cgsolve(invfun, FtM1x, eps=tol12/sqrt(colSums(MXv^2))/3)
+    w <- cgsolve(invfun, FtM1x, eps=tol12/sqrt(colSums(MXv^2))/3, name=name)
     -colSums(w* MXv)
   }
   # our function does the inner product, not just matrix application. Signal to mctrace.
   attr(trfun,'IP') <- TRUE
   
   if(tol < 0) {
-    # scale by N and epsvar since it's trace level precision
+    # absolute precision, scale by N and epsvar since it's trace level precision
     eps <- tol*N/epsvar
   } else {
-    # relative precision
+    # relative precision after bias correction.
     eps <- function(tr) -tol*abs(bcov*N - epsvar*tr)/epsvar
   }
   epsvar*mctrace(trfun, N=N, tol=eps, trname=name,
@@ -255,7 +268,6 @@ covbias <- function(index,fe,X,tol=-0.01, epsvar, bcov, maxsamples=Inf) {
 
 bcvar <- function(fe, X, corrfactors, 
                   var1, var2, cov12, epsvar, tol=0.01, maxsamples=Inf) {
-  message('1st variance')
   delta1 <- varbias(corrfactors[[1]],fe,X,tol,epsvar,var1,maxsamples)
   if(is.null(X) && length(fe) == 2) {
     f1 <- fe[[corrfactors[[1]]]]
@@ -264,10 +276,8 @@ bcvar <- function(fe, X, corrfactors,
     delta2 <- delta1 - epsvar*(nlevels(f1)-nlevels(f2))/N
     delta12 <- epsvar*nlevels(f1)/N - delta1
   } else {
-    message('2nd variance')
     delta2 <- varbias(corrfactors[[2]],fe,X,tol,epsvar,var2,maxsamples)
     eps <- -tol*sqrt((var1-delta1)*(var2-delta2))
-    message('covariance')
     delta12 <- covbias(corrfactors,fe,X,eps,epsvar,maxsamples=maxsamples)
   }
   c(var1=var1-delta1, var2=var2-delta2, cov12=cov12-delta12,
@@ -275,3 +285,48 @@ bcvar <- function(fe, X, corrfactors,
 }
 
 
+# a function for computing the covariance matrix between
+# all the fixed effects
+fevcov <- function(est, alpha=getfe(est), tol=0.01) {
+  if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
+  if(length(tol) == 1) tol <- c(tol,-abs(tol))
+  if(length(tol) != 2 && !is.matrix(tol))
+      stop('tol must be either a matrix or of length 1 or 2')
+  K <- length(est$fe)
+  if(is.matrix(tol) && (ncol(tol) != K || nrow(tol) != K))
+      stop('tol matrix must be square, with size the number of fixed effects: ',K)
+  if(!is.matrix(tol)) {
+    tmp <- tol
+    tol <- matrix(0,K,K)
+    diag(tol) <- tmp[1]
+    tol[col(tol) != row(tol)] <- tmp[2]
+  }
+
+  # compute the biased variances
+  fe <- est$fe
+  effs <- lapply(names(fe), function(nm) alpha[alpha[,'fe']==nm, 'effect'][fe[[nm]]])
+  names(effs) <- names(fe)
+  bvcv <- matrix(0,K,K)
+  colnames(bvcv) <- rownames(bvcv) <- names(fe)
+  diag(bvcv) <- sapply(effs, var)
+  for(i in 1:(K-1)) {
+    for(j in (i+1):K)
+        bvcv[i,j] <- bvcv[j,i] <- cov(effs[[i]],effs[[j]])
+  }
+
+
+  # compute the variances
+  bias <- matrix(0,K,K)
+  colnames(bias) <- rownames(bias) <- names(fe)
+  epsvar <- sum(est$residuals^2)/est$df
+
+  diag(bias) <- sapply(1:K, function(i) varbias(i,fe,est$X,tol[i,j],epsvar, bvcv[i,i]))
+  # update off-diagonal tolerances by the variances
+  tol[col(tol) != row(tol)] <- -(abs(tol)*sqrt(tcrossprod(diag(bvcv)-diag(bias))))[col(tol)!=row(tol)]
+  # compute the covariances
+  for(i in 1:(K-1)) {
+    for(j in (i+1):K)
+        bias[i,j] <- bias[j,i] <- covbias(c(i,j),fe,est$X,tol[i,j],epsvar,bvcv[i,j])
+  }  
+  structure(bvcv-bias, bias=bias)
+}

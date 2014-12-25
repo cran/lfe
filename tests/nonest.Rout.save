@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2014-10-08 r66730) -- "Unsuffered Consequences"
+R Under development (unstable) (2014-12-21 r67196) -- "Unsuffered Consequences"
 Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -36,29 +36,7 @@ Loading required package: Matrix
 > y <- x + 0.25*x2 + 0.5*x3 + id.eff[id] + firm.eff[firm] + shoe.eff[shoe] + shirt.eff[shirt] + rnorm(length(x))
 > 
 > ## estimate
-> summary(est <- felm(y ~ x+x2 + x3 | id + firm + shoe + shirt))
-
-Call:
-   felm(formula = y ~ x + x2 + x3 | id + firm + shoe + shirt) 
-
-Residuals:
-      Min        1Q    Median        3Q       Max 
--1.57e+00 -3.40e-01  2.34e-10  3.08e-01  1.76e+00 
-
-Coefficients:
-   Estimate Std. Error t value Pr(>|t|)    
-x    0.9058     0.0815   11.12  < 2e-16 ***
-x2   0.2102     0.0785    2.68    0.008 ** 
-x3   0.5090     0.0845    6.02  7.8e-09 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-Residual standard error: 1.12 on 204 degrees of freedom
-Multiple R-squared: 0.958   Adjusted R-squared: 0.795 
-F-statistic:5.87 on 795 and 204 DF, p-value: <2e-16 
-*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE
-
-
+> est <- felm(y ~ x+x2 + x3 | id + firm + shoe + shirt)
 > cat('Components:',nlevels(est$cfactor),'largest:',sum(est$cfactor == '1'),'\n')
 Components: 1 largest: 1000 
 > ## extract the group fixed effects
@@ -190,4 +168,4 @@ F-statistic: 1.94e+07 on 8 and 992 DF,  p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  4.457   0.128   4.292 
+  5.677   0.230   5.868 
