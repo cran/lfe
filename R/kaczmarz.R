@@ -32,23 +32,49 @@ cgsol <- function(fl,R,eps=getOption('lfe.eps'), init=NULL,threads=NULL) {
   })
 }
 
-getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100, robust=FALSE, cluster=NULL) {
+getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100,
+                           robust=FALSE, cluster=NULL, lhs=NULL) {
 
-  R <- obj$r.residuals-obj$residuals
-  v <- kaczmarz(obj$fe,R,eps)
   if(is.character(ef)) {
     ef <- efactory(obj,opt=ef)
   }
   if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef, obj$fe)) {
     warning('Supplied function seems non-estimable')
   }
-  v <- ef(v,TRUE)
+
+  multlhs <- length(obj$lhs) > 1
+  if(is.null(lhs)) {
+    R <- obj$r.residuals-obj$residuals
+  } else {
+    if(!all(lhs %in% obj$lhs)) stop('lhs must be subset of ', paste(obj$lhs, collapse=' '))
+    R <- obj$r.residuals[,lhs, drop=FALSE] - obj$residuals[,lhs, drop=FALSE]
+  }
+  v <- kaczmarz(obj$fe,R,eps)
+
+  if(is.matrix(v) && ncol(v) > 1) {
+    v <- apply(v,2,ef,addnames=TRUE)
+    vtmp <- ef(v[,1],addnames=TRUE)
+    extra <- attr(vtmp, 'extra')
+    nm <- names(vtmp)
+  } else {
+    v <- ef(v,TRUE)
+    extra <- attr(v,'extra')
+    nm <- names(v)
+  }
   res <- data.frame(effect=v)
-  if(!is.null(attr(v,'extra'))) res <- cbind(res,attr(v,'extra'))
-  rownames(res) <- names(v)
+  if(multlhs) colnames(res) <- paste('effect',colnames(R),sep='.')
+  if(!is.null(extra)) res <- cbind(res,extra)
+  rownames(res) <- nm
   attr(res,'ef') <- ef
+
   if(se) {
-    res <- btrap(res,obj,bN,eps=eps, robust=robust, cluster=cluster)
+    if(multlhs) {
+      for(lh in colnames(R)) {
+        res <- btrap(res,obj,bN,eps=eps, robust=robust, cluster=cluster, lhs=lh)        
+      }
+    } else {
+      res <- btrap(res,obj,bN,eps=eps, robust=robust, cluster=cluster)
+    }
   }
   res
 }

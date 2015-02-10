@@ -85,199 +85,8 @@ ftest <- function(z, zr=NULL, vcov=z$vcv) {
 }
 
 
-summary.felm <- function(object,...,robust=!is.null(object$cse)) {
-  z <- object
-  res <- list()
-  res$p <- z$p
-  res$Pp <- z$Pp
-  if(res$Pp == 0) {
-    res <- list(residuals=as.vector(z$residuals),p=z$p,Pp=0,call=z$call)
-    class(res) <- 'summary.felm'
-    return(res)
-  }
-
-  res$terms <- z$terms
-  res$call <- z$call
-  res$badF <- FALSE
-  if(is.logical(robust) && robust) {
-    if(!is.null(object$cse)) {
-      coefficients <- cbind(z$beta,z$cse,z$ctval,z$cpval)
-      sdnam <- 'Cluster s.e.'
-      res$badF <- TRUE
-    } else {
-      coefficients <- cbind(z$beta,z$rse,z$rtval,z$rpval)
-      sdnam <- 'Robust s.e'
-      res$badF <- TRUE
-    }
-  } else {
-    sdnam <- 'Std. Error'
-    coefficients <- cbind(z$beta,z$se,z$tval,z$pval)
-  }
-  if(!is.null(coefficients)) {
-    dimnames(coefficients) <- 
-       list(names(z$beta),
-           c('Estimate',sdnam,'t value','Pr(>|t|)'))
-
-  }
-  res$coefficients <- coefficients
-  res$residuals <- as.vector(z$residuals)
-
-  qres <- quantile(res$residuals,na.rm=TRUE)
-  names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
-  res$qres <- qres
-
-  # compute
-  # residual se, df
-  # mrsq, adj rsq
-  # fstat, p-value
-
-  p <- z$p
-
-# should we subtract 1 for the intercept?
-# a similar adjustment is done in summary.felm when computing p
-
-  rdf <- z$N - p - 1
-  rss <- sum(z$residuals^2)
-
-
-  tss <- sum( (z$response - mean(z$response))^2)
-  mss <- tss - rss
-
-# things for 2. stage iv is different
-  if(!is.null(z$ivresid)) {
-    # residual from observed instrumented variables
-    # residuals from null model - residuals from full model
-    rs <- z$residuals - z$ivresid
-    resvar <- sum(rs^2)/rdf
-    r2 <- (tss-sum(rs^2))/tss
-  } else {
-    r2 <- mss/tss
-    resvar <- rss/rdf
-  }
-  # hmm, fstat should be computed differently when s.e. are robust or clustered.
-
-  res$fstat <- (mss/p)/resvar
-  res$pval <- pf(res$fstat,p,rdf,lower.tail=FALSE)
-
-
-  # use wald test if robust or clustered
-  if(robust) {
-    if(is.null(z$cse)) {
-      F <- ftest(z,vcov=z$robustvcv)
-    } else {
-      F <- try(ftest(z,vcov=z$clustervcv))
-      if(inherits(F,'try-error')) {
-          warning("can't compute cluster F-test")
-          F <- NULL
-      }
-    }
-    res$rob.fstat <- F[['F']]
-    res$rob.pval  <- F[['p']]
-  }
-
-  sigma <- sqrt(resvar)  
-  r2adj <- 1-(1-r2)*(z$N/rdf)
-
-  res$exactDOF <- z$exactDOF
-  if(!is.null(z$iv1fstat)) {
-    res$iv1fstat <- z$iv1fstat
-    res$iv1pval <- z$iv1fstat[['p']]
-    if(robust) {
-      if(is.null(z$cse))
-        if1 <- z$rob.iv1fstat
-      else
-        if1 <- z$clu.iv1fstat
-      res$rob.iv1fstat <- if1
-      res$rob.iv1pval <- if1[['p']]
-    }
-  }
-  res$df <- c(rdf,rdf)
-  res$rse <- sigma
-  res$rdf <- rdf
-  res$r2 <- r2
-  res$r2adj <- r2adj
-#  res$fstat <- fstat
-#  res$pval <- pval
-  res$fe <- z$fe
-  res$N <- z$N
-  res$na.action <- z$na.action
-  class(res) <- 'summary.felm'
-  res
-}
-
-print.summary.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
-  cat('\nCall:\n  ',deparse(x$call),'\n\n')
-  qres <- quantile(x$residuals)
-  cat('Residuals:\n')
-  names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
-  print(qres,digits=digits)
-
-  cat('\nCoefficients:\n')
-  if(x$Pp <= 0)
-    cat("(No coefficients)\n")
-  else {
-    printCoefmat(x$coefficients,digits=digits)
-    cat('\nResidual standard error:',format(signif(x$rse,digits)),'on',x$rdf,'degrees of freedom\n')
-    if (nzchar(mess <- naprint(x$na.action)))
-      cat("  (", mess, ")\n", sep = "")
-    cat('Multiple R-squared:',formatC(x$r2,digits=digits),'  Adjusted R-squared:',
-        formatC(x$r2adj,digits=digits),'\n')
-
-    if(x$badF)
-      cat('F-statistic(normal s.e.):')
-    else
-      cat('F-statistic:')
-    cat(formatC(x$fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$pval,digits=digits),'\n')
-    if(x$badF) {
-      cat('F-statistic(proj):',formatC(x$rob.fstat,digits=digits),'on',x$p,'and',x$rdf,'DF, p-value:',format.pval(x$rob.pval,digits=digits),'\n')
-    }
-
-    if(!is.null(x$iv1fstat)) {
-      if1 <- x$iv1fstat
-      if(x$badF)
-        cat('F-stat (excl i.v. n.s.e):')
-      else
-        cat('F-stat (excl i.v.):')
-
-      cat(formatC(if1[['F']],digits=digits),'on',
-          if1[['df1']],'and',if1[['df2']],'DF, p-value:',
-          format.pval(if1[['p']],digits=digits),'\n')      
-
-      if(x$badF) {
-        if1 <- x$rob.iv1fstat
-        cat('F-stat (excl i.v. proj):',formatC(if1[['F']],digits=digits),'on',
-          if1[['df1']],'and',if1[['df2']],'DF, p-value:',
-          format.pval(if1[['p']],digits=digits),'\n')
-      }
-      cat('*** F-test for excluded instruments assumes constant absorbed effects\n')
-    }
-
-    if(x$badF) {
-      cat('*** F-test for robust/clustered standard errors is unreliable\n')
-    }
-    if(length(x$fe) > 2 && !identical(x$exactDOF,'rM') && !x$exactDOF)
-      cat('*** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE\n')
-  }
-  cat('\n\n')
-  
-}
-
-vcov.felm <- function(object,...) return(object$vcv)
-
-xtable.felm <- function(x, caption=NULL, label=NULL, align=NULL, digits=NULL,
-                        display=NULL, ...) {
-    cl <- match.call(expand.dots=FALSE)
-    do.call(getS3method('xtable','lm'), as.list(cl)[-1])
-}
-
-xtable.summary.felm <- function(x, caption=NULL, label=NULL, align=NULL, digits=NULL,
-                                display=NULL, ...) {
-    cl <- match.call(expand.dots=FALSE)
-    do.call(getS3method('xtable','summary.lm'), as.list(cl)[-1])
-}
-
 mkgraph <- function(f1,f2) {
-  require(igraph)
+  if(!requireNamespace('igraph', quietly=TRUE)) stop('Package igraph not found')
 #  graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)
 #  graph.edgelist(cbind(500000000+as.integer(f1),f2), directed=FALSE)
   igraph::graph.adjacency(tcrossprod(do.call(rBind,
@@ -286,6 +95,7 @@ mkgraph <- function(f1,f2) {
 }
 
 diamgraph <- function(flist,approx=TRUE) {
+  if(!requireNamespace('igraph', quietly=TRUE)) stop('Package igraph not found')
   gr <- mkgraph(flist[[1]],flist[[2]])
 # find largest cluster
   cl <- igraph::clusters(gr)$membership
@@ -312,44 +122,6 @@ diammatrix <- function(flist, approx=TRUE) {
   val[row(val) > col(val)] <- t(val)[row(val) > col(val)]
   val
 }
-
-print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
-  z <- x
-  if(z$p == 0) {
-    cat('(No coefficients)\n')
-    return()
-  }
-  print(coef(x),digits=digits)
-}
-
-fixef.felm <- function(object,...) {
-  fe <- getfe(object,...)
-  f <- fe[,'fe']
-  l <- lapply(levels(f),function(n) {v <- fe[f == n,'effect']; names(v) <- as.character(fe[f==n,'idx']); v})
-  names(l) <- levels(f)
-  l
-}
-
-update.felm <- function (object, formula., ..., evaluate = TRUE) 
-{
-    if (is.null(call <- getCall(object))) 
-        stop("need an object with call component")
-    extras <- match.call(expand.dots = FALSE)$...
-    if (!missing(formula.)) 
-        call$formula <- formula(update(as.Formula(call$formula), formula.))
-    if (length(extras)) {
-        existing <- !is.na(match(names(extras), names(call)))
-        for (a in names(extras)[existing]) call[[a]] <- extras[[a]]
-        if (any(!existing)) {
-            call <- c(as.list(call), extras[!existing])
-            call <- as.call(call)
-        }
-    }
-    if (evaluate) 
-        eval(call, parent.frame())
-    else call
-}
-
 
 # if(!exists('fixef')) fixef <- function(object,...) UseMethod('fixef')
 
@@ -438,4 +210,17 @@ ilpretty <- function(il) {
          } else {
            paste(x[[1]],x[[length(x)]],sep=':')
          }), collapse=' ')
+}
+
+makefitnames <- function(s) paste('`',s,'(fit)`',sep='')
+delete.icpt <- function(x) {
+  asgn <- attr(x,'assign')
+  icpt <- asgn == 0
+  if(!length(icpt)) return(x)
+  asgn <- asgn[!icpt]
+  ctr <- attr(x,'contrasts')
+  x <- x[,!icpt,drop=FALSE]
+  attr(x,'assign') <- asgn
+  attr(x,'contrasts') <- ctr
+  x
 }

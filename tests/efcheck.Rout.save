@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2014-12-21 r67196) -- "Unsuffered Consequences"
-Copyright (C) 2014 The R Foundation for Statistical Computing
+R Under development (unstable) (2015-01-28 r67639) -- "Unsuffered Consequences"
+Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -49,8 +49,8 @@ id.6  2.6178   3    1 id   6
 id.7  1.1520   2    1 id   7
 > tail(alpha <- getfe(est,ef='ln'))
 Warning in is.estimable(ef, obj$fe) :
-  non-estimable function, largest error 0.4 in coordinate 3 ("id.3")
-Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
+  non-estimable function, largest error 0.5 in coordinate 3 ("id.3")
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster,  :
   Supplied function seems non-estimable
          effect obs comp   fe idx
 firm.29 -1.1076   2    1 firm  29
@@ -209,4 +209,4 @@ ln : FALSE
 > 
 > proc.time()
    user  system elapsed 
-  6.448   0.311   6.747 
+  5.006   0.116   4.887 

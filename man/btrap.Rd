@@ -9,7 +9,7 @@
 \usage{
 btrap(alpha, obj, N=100, ef=NULL,
       eps=getOption('lfe.eps'), threads=getOption('lfe.threads'),
-      robust=FALSE, cluster=NULL)
+      robust=FALSE, cluster=NULL, lhs=NULL)
 }
 
 
@@ -25,6 +25,8 @@ btrap(alpha, obj, N=100, ef=NULL,
 \item{robust}{logical. Should heteroskedastic standard errors be
   estimated?}
 \item{cluster}{logical or factor. Estimate clustered standard errors.}
+\item{lhs}{character vector. Specify which left hand side if \code{obj} has
+  multiple lhs.}
 }
 
 \value{
@@ -84,7 +86,7 @@ ef <- function(v,addnames) {
   w
 }
 # check that it's estimable
-lfe:::is.estimable(ef,est$fe)
+is.estimable(ef,est$fe)
 
 head(btrap(alpha,est,ef=ef))
 options(oldopts)

@@ -14,6 +14,7 @@ $exactDF = 0;
 $robust = 'FALSE';
 $usecg = 'FALSE';
 $accel = 1;
+$ivtest = 0;
 while(<>) {
   chomp($_);
   # strip comments
@@ -28,9 +29,9 @@ while(<>) {
   } elsif($cmd eq 'dummy') {
       @dummies = @line;
   } elsif($cmd eq 'response') {
-    $resp = shift @line;
+      die "keyword 'response' no longer supported";
   } elsif($cmd eq 'covars') {
-    @covars = @line;
+      die "keyword 'covars' no longer supported";
   } elsif($cmd eq 'exactdf') {
       $exactDF = 1;
   } elsif($cmd eq 'iv') {
@@ -43,7 +44,7 @@ while(<>) {
   } elsif ($cmd eq 'model') {
       $model = join(' ',@line);
   } elsif($cmd eq 'fe') {
-    @fe = @line;
+      die "keyword 'fe' no longer supported";
   } elsif($cmd eq 'se') {
       $bN = 0 + shift(@line);
       if($bN == 0) {$bN = 100;}
@@ -53,6 +54,10 @@ while(<>) {
       $randkac=1;
   } elsif($cmd eq 'nofe') {
       $nofe = 1;
+  } elsif($cmd eq 'test') {
+      $testvars = '"'. join('","',@line) . '"';
+  } elsif($cmd eq 'ivftest') {
+      $ivtest = 1;
   } elsif($cmd eq 'savecomp') {
       $savecomp = 1;
   } elsif($cmd eq 'analyze') {
@@ -89,19 +94,19 @@ if($datafile =~ m/\.dta$/i) {
 
 # either covars and response must be specified
 # or model
-if(defined($model)) {
-    if(defined(@covars) || defined($resp)) {
-	print STDERR "WARNING: model line overrides covars and response \n";
-    }
-} elsif(!defined(@covars) || !defined($resp)) {
-    die "Either both covars and response must be defined, or model\n";
-} else {
-    $model = $resp . "~" . join('+',@covars);
-}
+#if(defined($model)) {
+#    if(defined(@covars) || defined($resp)) {
+#	print STDERR "WARNING: model line overrides covars and response \n";
+#    }
+#} elsif(!defined(@covars) || !defined($resp)) {
+#    die "Either both covars and response must be defined, or model\n";
+#} else {
+#    $model = $resp . "~" . join('+',@covars);
+#}
 
-if(defined(@fe)) {
-  $model .= '+G('.join(')+G(',@fe).')'
-}
+#if(defined(@fe)) {
+#  $model .= '+G('.join(')+G(',@fe).')'
+#}
 
 
 # That's it, now, generate R-code
@@ -230,18 +235,56 @@ if(defined($iv)) {
 } else {
   print "est <- felm($model,data=tab$cvar$edf)\n";
 }
-if(defined($iv)) {
 print "
-cat('First step estimation:\\n')
-invisible(lapply(est\$step1,function(z) print(summary(z,robust=$robust$cvar))))
-cat('Second step estimation:\\n')
+robust <- $robust || !is.null(est\$clustervar)
+if(!is.null(est\$stage1)) {
+  cat('First stage estimation:\\n')
+  for(lh in est\$stage1\$lhs) {
+    print(summary(est\$stage1, robust=robust, lhs=lh))
+  }
+  cat('Second stage estimation:\\n')
+}
+if(length(est\$lhs) > 1) {
+  for(lh in est\$lhs) {
+    print(summary(est, robust=$robust, lhs=lh))
+  }
+} else {
+  print(summary(est, robust=$robust))
+}
+";
+
+if(defined($testvars)) {
+print "
+  message(date(), ' Computing F-tests for joint significance of endog. vars')
+  for(lh in est\$lhs) {
+   W <- waldtest(est, c($testvars), lhs=lh)
+   message(\"F-test of joint IV significance(lhs=\",lh,\"): \", 
+       formatC(W['F']), \" on \", W['df1'], \" and \", W['df2'], 
+       \" df, p-value: \", format.pval(W['p.F']))
+  }
+  cat('\n')
 ";
 }
-print "
-print(summary(est,robust=$robust$cvar))
 
+if($ivtest) {
+    print "
+if(!is.null(est\$stage1)) {
+message(date(), ' Computing conditional F-tests for IV')
+print(condfstat(est));
+} else {
+message('**** conditional F-test specified, but no IV performed')
+}
+";
+}
+
+print "
+if(length(est\$lhs) == 1) {
+  se <- est\$se
+} else {
+  se <- do.call(cbind, lapply(est\$STATS, function(s) s\$se))
+}
 sink('coef.csv')
-print(data.frame(value=est\$coefficients, se=est\$se, row.names=names(est\$coefficients)))
+print(data.frame(value=est\$coefficients, se=se, row.names=rownames(est\$coefficients)))
 sink(NULL)
 cat(date(),'Coefficients written to coef.csv\\n')
 ";
@@ -279,7 +322,7 @@ print "
 
 # We need to save some memory by ditching the large parts of est
 # (the qr and stuff, keep only what's needed)
-est <- est[c('fe','residuals','refnames','r.residuals','cfactor')]
+est <- est[c('fe','residuals','refnames','r.residuals','cfactor','lhs')]
 invisible(gc())
 class(est) <- NULL
 ";
@@ -289,6 +332,7 @@ if($bN > 0) {
     print "fes <- getfe(est)\n";
 }
 print "
+lhs <- est\$lhs
 rm(est)
 invisible(gc())
 cat(date(),'Fixed effects found; just doing some bookkeeping now...\\n')
@@ -299,6 +343,11 @@ print "
 
 # split the frame into categories
 frms <- list()
+effnam <- 'effect'
+senam <- 'se'
+if(length(lhs) > 1) effnam <- paste('effect',lhs,sep='.')
+if(length(lhs) > 1) senam <- paste('se',lhs,sep='.')
+
 for(nm in levels(fes[,'fe'])) {
 
   whch <- which(fes[,'fe'] == nm)
@@ -308,9 +357,9 @@ for(nm in levels(fes[,'fe'])) {
   rownames(fr) <- fr[,nm]
 ";
 if($bN > 0) {
-    print "fr <- fr[,c(nm,'effect','se','comp','obs')]\n";
+    print "fr <- fr[,c(nm,effnam,senam,'comp','obs')]\n";
 } else {
-    print "fr <- fr[,c(nm,'effect','comp','obs')]\n";
+    print "fr <- fr[,c(nm,effnam,'comp','obs')]\n";
 }
 
 print "
@@ -335,14 +384,16 @@ if($merge) {
 cat(date(),'Doing some more bookkeeping, i.e. merging...\\n')
 class(tab) <- 'list'
 tab[['comp']] <- cf
-for(f in names(frms)) {
+for(en in effnam) {
+ for(f in names(frms)) {
    fr <- frms[[f]]
    fact <- tab[[f]]
-   effnam <- paste(f,'.eff',sep='')
+   eff <- paste(f,en,sep='.')
 
-   tab[[effnam]] <- rep(0,length(fact))
-   split(tab[[effnam]],fact) <- fr[,'effect']
+   tab[[eff]] <- rep(0,length(fact))
+   split(tab[[eff]],fact) <- fr[,en]
 #   tab[[effnam]] <- fr[fact,'effect'] 
+ }
 }
 class(tab) <- 'data.frame'
 

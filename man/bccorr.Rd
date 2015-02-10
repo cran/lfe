@@ -13,7 +13,7 @@ as described in \cite{Gaure (2014)}.
 
 \usage{bccorr(est, alpha=getfe(est), corrfactors=1L:2L,
                   nocovar=is.null(est$X) && length(est$fe)==2,
-                  tol=0.01, maxsamples=Inf)}
+                  tol=0.01, maxsamples=Inf, lhs=NULL)}
 
 \arguments{
   \item{est}{an object of class '"felm"', the result of a call to
@@ -30,6 +30,8 @@ as described in \cite{Gaure (2014)}.
   \item{tol}{The absolute tolerance for the bias-corrected correlation.} 
 
   \item{maxsamples}{Maximum number of samples for the trace sample means estimates}
+
+  \item{lhs}{character. Name of left hand side if multiple left hand sides.}
 }
 
 \value{

@@ -25,7 +25,7 @@ narowsum <- rowsum
 
 bccorr <- function(est, alpha=getfe(est), corrfactors=1L:2L,
                    nocovar=is.null(est$X) && length(est$fe)==2,
-                   tol=0.01, maxsamples=Inf) {
+                   tol=0.01, maxsamples=Inf, lhs=NULL) {
 
   if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
   if(length(est$fe) == 2 && nlevels(est$cfactor) != 1) stop('Bias correction only makes sense on data with 1 component')
@@ -34,33 +34,46 @@ bccorr <- function(est, alpha=getfe(est), corrfactors=1L:2L,
   if(is.character(corrfactors)) corrfactors <- match(corrfactors, names(est$fe))
   if(min(corrfactors) < 1 || max(corrfactors) > length(est$fe))
       stop('corrfactors specifies too small or large index')
-
-  fe <- est$fe
-  f1 <- fe[[corrfactors[[1]]]]
-  f2 <- fe[[corrfactors[[2]]]]
-  nf1 <- names(fe)[[corrfactors[[1]]]]
-  nf2 <- names(fe)[[corrfactors[[2]]]]
+  if(!('fe' %in% colnames(alpha))) stop('alpha must have an "fe" column')
+  
+#  fe <- est$fe
+  f1 <- est$fe[[corrfactors[[1]]]]
+  f2 <- est$fe[[corrfactors[[2]]]]
+  nf1 <- names(est$fe)[[corrfactors[[1]]]]
+  nf2 <- names(est$fe)[[corrfactors[[2]]]]
   if(!is.null(attr(f1,'x'))) stop('Interacted factors "',nf1,'" are not supported')
   if(!is.null(attr(f2,'x'))) stop('Interacted factors "',nf2,'" are not supported')
-  if(!all(c('fe','effect') %in% colnames(alpha)))
-      stop('alpha must contain columns "effect" and "fe"')
-
-  d1 <- alpha[alpha['fe']==nf1,'effect'][f1]
-  d2 <- alpha[alpha['fe']==nf2,'effect'][f2]
+  effnam <- 'effect'
+  if(length(est$lhs) == 1) lhs <- est$lhs
+  if(!('effect' %in% colnames(alpha))) {
+    if(is.null(lhs))
+        stop('Please specify lhs=[one of ',paste(est$lhs, collapse=','),']')
+    effnam <- paste('effect',lhs,sep='.')
+    if(!(effnam %in% colnames(alpha))) {
+      stop("Can't find effect-column in alpha")
+    }
+  }
+  resid <- est$residuals[,lhs]
+  d1 <- alpha[alpha['fe']==nf1,effnam][f1]
+  d2 <- alpha[alpha['fe']==nf2,effnam][f2]
 
   var1 <- var(d1)
   var2 <- var(d2)
   cov12 <- cov(d1,d2)
 
-  biascorr <- bcvar(if(nocovar && length(fe) > 2) fe[corrfactors] else fe,
-                    if(nocovar) NULL else est$X,
-                    corrfactors,
-                    var1, var2, cov12,
-                    sum(est$residuals^2)/est$df,
-                    tol,maxsamples)
-  delta1 <- biascorr[['delta1']]
-  delta2 <- biascorr[['delta2']]
-  delta12 <- biascorr[['delta12']]
+  delta1 <- varbias(corrfactors[[1]],est,tol,var1,maxsamples,resid=resid)
+  epsvar <- sum(est$residuals^2)/est$df
+  if(nocovar) {
+    f1 <- est$fe[[corrfactors[[1]]]]
+    f2 <- est$fe[[corrfactors[[2]]]]
+    N <- length(f1)
+    delta2 <- delta1 - epsvar*(nlevels(f1)-nlevels(f2))/N
+    delta12 <- epsvar*nlevels(f1)/N - delta1
+  } else {
+    delta2 <- varbias(corrfactors[[2]],est,tol,var2,maxsamples, resid=resid)
+    eps <- -tol*sqrt((var1-delta1)*(var2-delta2))
+    delta12 <- covbias(corrfactors,est,eps,maxsamples=maxsamples,resid=resid)
+  }
 
   vartheta <- var1 - delta1
   varpsi <- var2 - delta2
@@ -76,16 +89,40 @@ bccorr <- function(est, alpha=getfe(est), corrfactors=1L:2L,
 
 }
 
-varbias <- function(index,fe,X,tol=0.01,epsvar,bvar, maxsamples=Inf) {
-  if(length(index) != 1) stop("index must have length 1")
-  f <- fe[[index]]
-  name <- paste('var(',names(fe)[[index]],')', sep='')
-  N <- length(f)
-  if(!is.null(X) && nrow(X) != N) stop("X must be of same length as factor")
-  nlev <- nlevels(f)
-  restf <- fe[-index]
+halftrace <- function(x, f, restf, MFX, tol, lmean, name) {
+  if(is.null(MFX)) {
+    invfun <- function(v) {
+      rowsum(demeanlist(v[f,], restf), f)
+    }
+  } else {
+    invfun <- function(v) {
+      rowsum(demeanlist(demeanlist(v[f,],MFX), restf), f)
+    }
+  }
 
-# First, make a factor list for projecting out things.
+  DtM1x <- rowsum(demeanlist(x,lmean), f)
+  # we use absolute tolerance, mctrace wil give us a trtol.
+  # we divide by the L2-norm of DtM1x, since we take the
+  # inner product with this afterwards
+  tol1 <- -tol/sqrt(colSums(DtM1x^2))
+  v <- cgsolve(invfun, DtM1x, eps=tol1,name=name)
+  if(!is.null(MFX))
+      Rx <- demeanlist(v[f,],MFX)
+  else
+      Rx <- demeanlist(v[f,],restf)
+  Rx
+}
+
+varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf, robust=!is.null(est$clustervar), resid) {
+  if(length(index) != 1) stop("index must have length 1")
+  f <- est$fe[[index]]
+  restf <- est$fe[-index]
+  name <- paste('var(',names(est$fe)[[index]],')', sep='')
+  N <- length(f)
+  nlev <- nlevels(f)
+
+
+# First, make a factor list for projecting out mean.
   fmean <- factor(rep(1,N))
   lmean <- list(fmean)
 
@@ -93,39 +130,81 @@ varbias <- function(index,fe,X,tol=0.01,epsvar,bvar, maxsamples=Inf) {
 # use M_{F,X} = M_F M_{M_F X}
 # precompute and orthonormalize M_F X
 
-  if(!is.null(X)) {
-    MFX <- list(structure(fmean,x=orthonormalize(demeanlist(X,restf))))
+  if(!is.null(est$X)) {
+    MFX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,restf))))
     invfun <- function(v) {
       rowsum(demeanlist(demeanlist(v[f,],MFX), restf), f)
     }
   } else {
+    MFX <- NULL
     invfun <- function(v) {
       rowsum(demeanlist(v[f,], restf), f)
     }
   }
   
+  if(robust) {
+    # residuals present, do cluster robust correction
+    # create all the cluster interactions, so we don't have to do
+    # it each time in the iteration
+    docluster <- !is.null(est$clustervar)
+    if(docluster) {
+      d <- length(est$clustervar)
+      cia <- list()
+      for(i in 1:(2^d-1)) {
+        # Find out which ones to interact
+        iac <- as.logical(intToBits(i))[1:d]
+        # interact the factors
+        cia[[i]] <- factor(do.call(paste,c(est$clustervar[iac],sep='\004')))
+      }
+    }
+    trfun <- function(x,trtol) {
+      # return crude estimate of the trace
+      if(trtol == 0) return(abs(nlev))
+      Rx <- halftrace(x, f, restf, MFX, trtol, lmean, name)
+
+      # now apply cluster stuff
+      # first, scale with residuals
+      .Call(C_scalecols, Rx, resid)
+      if(!docluster) {
+        # It's heteroscedastic
+        return(colSums(Rx * Rx))
+      } else {
+        # it's one or more clusters, do the Cameron et al detour
+        result <- vector('numeric',ncol(Rx))
+        for(i in 1:(2^d-1)) {
+          b <- rowsum(Rx,cia[[i]])
+          # odd number is positive, even is negative
+          sgn <- 2*(sum(as.logical(intToBits(i))[1:d]) %% 2) - 1
+          result <- result + sgn * colSums(b * b)
+        }
+        return(result)
+      }
+    }
+    epsvar <- 1  # now incorporated in the robust variance matrix, so don't scale
+  } else {
+    trfun <- function(x,trtol) {
+      # return crude estimate of the trace
+      if(trtol == 0) return(abs(nlev))
+      DtM1x <- rowsum(demeanlist(x,lmean), f)
+      # we use absolute tolerance, mctrace wil give us a trtol.
+      # we divide by the L2-norm of DtM1x, since we take the
+      # inner product with this afterwards
+      tol1 <- -trtol/sqrt(colSums(DtM1x^2))/2
+      v <- cgsolve(invfun, DtM1x, eps=tol1,name=name)
+      colSums(DtM1x * v)
+    }
+    epsvar <- sum(resid^2)/est$df
+  }
+  attr(trfun,'IP') <- TRUE
 
   # We want precision in the final estimate to be, say, 1%
   # Since we subtract the bias from the biased estimate, the precision
   # in the trace computation depends on the current value of the trace
   # i.e. absolute precision should be 0.01*(sum(d1^2) - epsvar*tr)/epsvar
-
   epsfun <- function(tr) -abs(tol)*abs(bvar*N - epsvar*tr)/epsvar
   # the tolerance before mctrace has got a clue about where we are
   # is a problem. If the bias is very large compared to the variance, we will
   # be in trouble. 
-  trfun <- function(x,trtol) {
-    # return crude estimate of the trace
-    if(trtol == 0) return(abs(nlev))
-    DtM1x <- rowsum(demeanlist(x,lmean), f)
-    # we use absolute tolerance, mctrace wil give us a trtol.
-    # we divide by the L2-norm of DtM1x, since we take the
-    # inner product with this afterwards
-    tol1 <- -trtol/sqrt(colSums(DtM1x^2))/2
-    v <- cgsolve(invfun, DtM1x, eps=tol1,name=name)
-    colSums(DtM1x * v)
-  }
-  attr(trfun,'IP') <- TRUE
   res <- epsvar*mctrace(trfun,N=N,tol=epsfun, trname=name,
                  maxsamples=maxsamples)/N
 }
@@ -176,13 +255,25 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01, biascorrect=FALSE) 
   (-trpart+meanpart)/N^2
 }
 
-varvars <- function(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE) {
+varvars <- function(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE, lhs=NULL) {
   if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
   fe <- est$fe
   e <- length(fe)
   if(length(tol) == 1) tol <- rep(tol,e)
-  effs <- lapply(names(fe), function(nm) alpha[alpha[,'fe']==nm, 'effect'])
-  resvar <- sum(est$residuals^2)/est$df
+
+  if(length(est$lhs) > 1 && is.null(lhs))
+      stop('Please specify lhs=[one of ',paste(est$lhs, collapse=','),']')      
+  if(length(est$lhs) == 1) lhs <- est$lhs
+  effnam <- 'effect'
+  if(! ('effect' %in% colnames(alpha))) {
+    effnam <- paste('effect',lhs,sep='.')
+    if(!(effnam %in% colnames(alpha))) {
+      stop("Can't find effect-column in alpha")
+    }
+  }
+
+  effs <- lapply(names(fe), function(nm) alpha[alpha[,'fe']==nm, effnam])
+  resvar <- sum(est$residuals[,lhs]^2)/est$df
   sapply(1:e, function(index) {
     varvar(index, fe, est$X, effs[[index]], resvar, tol[index], biascorrect)
   })
@@ -192,36 +283,34 @@ varvars <- function(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE) {
 # covariance. In this case, the biased covariance (bcov) and residual
 # variance (epsvar) must be specified. A negative tolerance is an
 # absolute tolerance
-covbias <- function(index,fe,X,tol=0.01, epsvar, bcov, maxsamples=Inf) {
+covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid) {
   if(length(index) != 2) stop("index must have length 2")
-  if(length(fe) < 2) stop("fe must have length >= 2")
-  if(tol > 0) stop('with relative precision (tol > 0), bcov must be specified')
-  f1 <- fe[[index[[1]]]]
-  f2 <- fe[[index[[2]]]]
+  if(length(est$fe) < 2) stop("fe must have length >= 2")
+
+  f1 <- est$fe[[index[[1]]]]
+  f2 <- est$fe[[index[[2]]]]
   nlev1 <- nlevels(f1)
   nlev2 <- nlevels(f2)
   N <- length(f1)
-  name <- paste('cov(',paste(names(fe)[index],collapse=','),')',sep='')
-  no2list <- fe[-index[[2]]]
-  restf <- fe[-index]
+  name <- paste('cov(',paste(names(est$fe)[index],collapse=','),')',sep='')
+  no2list <- est$fe[-index[[2]]]
+  restf <- est$fe[-index]
   fmean <- factor(rep(1,N))
   lmean <- list(fmean)
-
-  if(length(f2) != N) stop("error factors must have the same length")
-  if(!is.null(X)) {
-    if(nrow(X) != N) stop("X must have same length as factors")
-    MDX <- list(structure(fmean,x=orthonormalize(demeanlist(X,no2list))))
+  epsvar <- sum(resid^2)/est$df
+  if(!is.null(est$X)) {
+    MDX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,no2list))))
     invfun <- function(v) {
       rowsum(demeanlist(demeanlist(v[f2,],MDX), no2list), f2)
     }
     if(length(restf) > 0) {
-      MX <- list(structure(fmean,x=orthonormalize(demeanlist(X,restf))))
+      MX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,restf))))
       MXfun <- function(v) demeanlist(demeanlist(v, MX), restf)
       invfunX <- function(v) {
         rowsum(MXfun(v[f1,]), f1)
       }
     } else {
-      MX <- list(structure(fmean, x=orthonormalize(X)))
+      MX <- list(structure(fmean, x=orthonormalize(est$X)))
       MXfun <- function(v) demeanlist(v, MX)
       invfunX <- function(v) {
         rowsum(MXfun(v[f1,]), f1)
@@ -245,50 +334,39 @@ covbias <- function(index,fe,X,tol=0.01, epsvar, bcov, maxsamples=Inf) {
     FtM1x <- rowsum(M1x,f2)
     d1 <- sqrt(colSums(DtM1x^2))
     d2 <- sqrt(colSums(FtM1x^2))
-#    tol12 <-  -(if(trtol==0) abs(tol)*(nlev1+nlev2) else trtol)
-    tol12 <- -trtol
-    v <- cgsolve(invfunX, DtM1x, eps=tol12/(d1+d2)/3, name=name)
+    v <- cgsolve(invfunX, DtM1x, eps=-trtol/(d1+d2)/3, name=name)
     MXv <- rowsum(MXfun(v[f1,]), f2)
-    w <- cgsolve(invfun, FtM1x, eps=tol12/sqrt(colSums(MXv^2))/3, name=name)
+    w <- cgsolve(invfun, FtM1x, eps=-trtol/sqrt(colSums(MXv^2))/3, name=name)
     -colSums(w* MXv)
   }
   # our function does the inner product, not just matrix application. Signal to mctrace.
   attr(trfun,'IP') <- TRUE
   
-  if(tol < 0) {
-    # absolute precision, scale by N and epsvar since it's trace level precision
-    eps <- tol*N/epsvar
-  } else {
-    # relative precision after bias correction.
-    eps <- function(tr) -tol*abs(bcov*N - epsvar*tr)/epsvar
-  }
+  # absolute precision, scale by N and epsvar since it's trace level precision
+  eps <- -abs(tol)*N/epsvar
+
   epsvar*mctrace(trfun, N=N, tol=eps, trname=name,
                  maxsamples=maxsamples)/N
 }
 
-bcvar <- function(fe, X, corrfactors, 
-                  var1, var2, cov12, epsvar, tol=0.01, maxsamples=Inf) {
-  delta1 <- varbias(corrfactors[[1]],fe,X,tol,epsvar,var1,maxsamples)
-  if(is.null(X) && length(fe) == 2) {
-    f1 <- fe[[corrfactors[[1]]]]
-    f2 <- fe[[corrfactors[[2]]]]
-    N <- length(f1)
-    delta2 <- delta1 - epsvar*(nlevels(f1)-nlevels(f2))/N
-    delta12 <- epsvar*nlevels(f1)/N - delta1
-  } else {
-    delta2 <- varbias(corrfactors[[2]],fe,X,tol,epsvar,var2,maxsamples)
-    eps <- -tol*sqrt((var1-delta1)*(var2-delta2))
-    delta12 <- covbias(corrfactors,fe,X,eps,epsvar,maxsamples=maxsamples)
-  }
-  c(var1=var1-delta1, var2=var2-delta2, cov12=cov12-delta12,
-    delta1=delta1, delta2=delta2, delta12=delta12)
-}
-
-
 # a function for computing the covariance matrix between
 # all the fixed effects
-fevcov <- function(est, alpha=getfe(est), tol=0.01) {
+fevcov <- function(est, alpha=getfe(est), tol=0.01, robust=!is.null(est$clustervar), maxsamples=Inf, lhs=NULL) {
   if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
+
+  if(length(est$lhs) > 1 && is.null(lhs))
+      stop('Please specify lhs=[one of ',paste(est$lhs, collapse=','),']')      
+  if(length(est$lhs) == 1) lhs <- est$lhs
+  effnam <- 'effect'
+  if(! ('effect' %in% colnames(alpha))) {
+    effnam <- paste('effect',lhs,sep='.')
+    if(!(effnam %in% colnames(alpha))) {
+      stop("Can't find effect-column in alpha")
+    }
+  }
+  if(is.na(match('fe', colnames(alpha))))
+      stop("alpha should contain columns 'fe' and 'effect'")
+
   if(length(tol) == 1) tol <- c(tol,-abs(tol))
   if(length(tol) != 2 && !is.matrix(tol))
       stop('tol must be either a matrix or of length 1 or 2')
@@ -304,13 +382,13 @@ fevcov <- function(est, alpha=getfe(est), tol=0.01) {
 
   # compute the biased variances
   fe <- est$fe
-  effs <- lapply(names(fe), function(nm) alpha[alpha[,'fe']==nm, 'effect'][fe[[nm]]])
+  effs <- lapply(names(fe), function(nm) alpha[alpha[,'fe']==nm, effnam][fe[[nm]]])
   names(effs) <- names(fe)
   bvcv <- matrix(0,K,K)
   colnames(bvcv) <- rownames(bvcv) <- names(fe)
-  diag(bvcv) <- sapply(effs, var)
-  for(i in 1:(K-1)) {
-    for(j in (i+1):K)
+#  diag(bvcv) <- sapply(effs, var)
+  for(i in 1:K) {
+    for(j in i:K)
         bvcv[i,j] <- bvcv[j,i] <- cov(effs[[i]],effs[[j]])
   }
 
@@ -318,15 +396,16 @@ fevcov <- function(est, alpha=getfe(est), tol=0.01) {
   # compute the variances
   bias <- matrix(0,K,K)
   colnames(bias) <- rownames(bias) <- names(fe)
-  epsvar <- sum(est$residuals^2)/est$df
+  resid <- est$residuals[,lhs]
+  diag(bias) <- sapply(1:K, function(i) varbias(i, est, tol[i,i], bvcv[i,i], maxsamples, resid=resid))
 
-  diag(bias) <- sapply(1:K, function(i) varbias(i,fe,est$X,tol[i,j],epsvar, bvcv[i,i]))
   # update off-diagonal tolerances by the variances
-  tol[col(tol) != row(tol)] <- -(abs(tol)*sqrt(tcrossprod(diag(bvcv)-diag(bias))))[col(tol)!=row(tol)]
+  offdiag <- col(tol) != row(tol)
+  tol[offdiag] <- -(abs(tol)*sqrt(tcrossprod(diag(bvcv)-diag(bias))))[offdiag]
   # compute the covariances
   for(i in 1:(K-1)) {
     for(j in (i+1):K)
-        bias[i,j] <- bias[j,i] <- covbias(c(i,j),fe,est$X,tol[i,j],epsvar,bvcv[i,j])
+        bias[i,j] <- bias[j,i] <- covbias(c(i,j),est,tol[i,j],maxsamples, resid=resid)
   }  
   structure(bvcv-bias, bias=bias)
 }

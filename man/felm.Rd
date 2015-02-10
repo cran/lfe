@@ -13,22 +13,14 @@ results in a manageable number of coefficients, you are probably better
 off by using \code{\link{lm}}.
 }
 
-\usage{ felm(formula, data, iv=NULL, clustervar=NULL, exactDOF=FALSE,
-subset, na.action, contrasts=NULL, ...) }
+\usage{ felm(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NULL, ...) }
 
 \arguments{
   \item{formula}{an object of class '"formula"' (or one that can be
-  coerced to that class: a symbolic description of the model to be
+  coerced to that class): a symbolic description of the model to be
   fitted. Similarly to 'lm'.  See Details.}
 
   \item{data}{a data frame containing the variables of the model.}
-
-  \item{iv}{a formula describing an instrumented variable. Estimated via
-  two step OLS. Deprecated, replaced by multi part formula specification.}
-  
-  \item{clustervar}{a string or factor.  Either the name of a variable
-        or a factor, or a list thereof. Used for computing clustered
-        standard errors. Deprecated, replaced by multi part formula specification.}
 
   \item{exactDOF}{logical. If more than two factors, the degrees
         of freedom used to scale the covariance matrix (and the standard
@@ -56,21 +48,31 @@ subset, na.action, contrasts=NULL, ...) }
 
   \item{contrasts}{an optional list. See the \code{contrasts.arg} of \code{model.matrix.default}.}
 
-  \item{...}{other arguments. The \code{clustervar}
-    and \code{iv} arguments will be removed from the argument list at a
-    later time, but will continue to be supported in this field.
-  Currently, the only argument supported in this field is the 'logical'
-    \code{keepX} to include a copy of the expanded data matrix in the
-    return value, as needed by \code{\link{bccorr}}.
+  \item{...}{other arguments.
+    \itemize{
+      \item \code{keepX} logical. to include a copy of the expanded data matrix in the return value, as needed by
+      \code{\link{bccorr}} and \code{\link{fevcov}} for proper bias
+      correction.
+      \item \code{nostats} logical. Don't include covariance matrices in the
+      output, just the estimated coefficients and various descriptive
+      information. For IV, \code{nostats} can be a logical vector of
+      length 2, with the last value being used for the 1st stages.
+      \item \code{iv, clustervar} deprecated.  These arguments will be removed at a
+      later time, but is still supported in this field. Users are \emph{STRONGLY}
+      encouraged to use multipart formulas instead.  In particular, not
+      all functionality is supported with the deprecated syntax;
+      iv-estimations actually run a lot faster if multipart formulas are
+      used, due to new algorithms which I didn't bother to shoehorn in
+      place for the deprecated syntax.
+    }
   }
 }
-
 \value{
   \code{felm} returns an object of \code{class} \code{"felm"}.  It is
   quite similar to an \code{"lm"} object, but not entirely compatible.
 
   The generic \code{summary}-method will yield a summary which may be \code{print}'ed.
-  The object has some resemblance to the an \code{lm} object, and some
+  The object has some resemblance to an \code{'lm'} object, and some
   postprocessing methods designed for \code{lm} may happen to work. It
   may however be necessary to coerce the object to succeed with this.
 
@@ -83,26 +85,32 @@ subset, na.action, contrasts=NULL, ...) }
   \item{response}{a numerical vector. The response vector.}
   \item{fitted.values}{a numerical vector. The fitted values.}
   \item{residuals}{a numerical vector. The residuals of the full
-  system, with dummies.}
+  system, with dummies.  For IV-estmations, this is the residuals
+  when the original endogenous variables are used, not their predictions
+  from the 1st stage.}
   \item{r.residuals}{a numerical vector. Reduced residuals, i.e. the residuals resulting from
   predicting \emph{without} the dummies.}
+  \item{iv.residuals}{numerical vector. When using instrumental
+  variables, residuals from 2. stage, i.e. when predicting with the
+  predicted endogenous variables from the 1st stage.}
   \item{cfactor}{factor of length N. The factor describing the connected
     components of the two first terms in the second part of the model formula.}
   \item{vcv}{a matrix. The variance-covariance matrix.}
   \item{fe}{list of factors. A list of the terms in the second part of
   the model formula.}
 
-  \item{step1}{list of '\code{felm}' objects for the IV 1. step(s), if
-    used.}
+  \item{stage1}{The '\code{felm}' objects for the IV 1st stage, if
+    used. The 1st stage has multiple left hand sides if there are more
+    than one instrumented variable.}
   
-  \item{iv1fstat}{numerical vector. For IV 1. steps, F-value for
+  \item{iv1fstat}{list of numerical vectors. For IV 1st stage, F-value for
     excluded instruments, the number of parameters in restricted model
     and in the unrestricted model.}
     
   \item{X}{matrix. The expanded data matrix, i.e. from the first part of
   the formula. To save memory with large datasets, it is only included if
   \code{felm(keepX=TRUE)} is specified.  Must be included if
-  \code{\link{bccorr}} is to be used for correcting limited mobility bias.
+  \code{\link{bccorr}} or \code{\link{fevcov}} is to be used for correcting limited mobility bias.
   }
 
 }
@@ -121,6 +129,8 @@ factors to be used for computing cluster robust standard errors.
 Parts that are not used should be specified as \code{0}, except if it's
 at the end of the formula, where they can be omitted.  The parentheses
 are needed in the third part since \code{|} has higher precedence than \code{~}.
+As of lfe version 2.0, multiple left hand sides like
+\code{y|w|x ~ x1 + x2 |f1+f2|...} are allowed.
 
 Interactions between a covariate \code{x} and a factor \code{f} can be
 projected out with the syntax \code{x:f}. 
@@ -134,8 +144,10 @@ factor. I.e. in \code{y ~ x1 | x:f1 + f2}, the \code{f1} must be a
 factor, whereas it will work as expected if \code{f2} is an integer vector.
 
 In older versions of \pkg{lfe} the syntax was \code{felm(y ~ x1 + x2 + G(f1)
-  + G(f2), iv=list(Q ~ x3+x4, W ~ x3+x4),
-  clustervar=c('clu1','clu2'))}. This syntax still works.
++ G(f2), iv=list(Q ~ x3+x4, W ~ x3+x4),
+clustervar=c('clu1','clu2'))}. This syntax still works, but yields a
+warning. Users are \emph{strongly} encouraged to change to the new
+multipart formula syntax.  The old syntax will be removed at a later time.
 
 The standard errors are adjusted for the reduced degrees of freedom
 coming from the dummies which are implicitly present.  In the case of
@@ -150,7 +162,7 @@ for sparse matrices which may cause it to return the wrong value. A fix is under
 For the iv-part of the formula, it is only necessary to include the instruments on the
 right hand side.  The other explanatory covariates, from the first and
 second part of \code{formula}, are added automatically
-in the first stage regressions.  See the examples. 
+in the first stage regression.  See the examples. 
 
 The \code{contrasts} argument is similar to the one in \code{lm()}, it
 is used for factors in the first part of the formula. The factors in the
@@ -159,32 +171,26 @@ second part are analyzed as part of a possible subsequent \code{getfe()} call.
 The old syntax with a single part formula with the \code{G()} syntax for the factors to transform
 away is still supported, as well as the \code{clustervar} and \code{iv}
 arguments, but users are encouraged to move to the new multi part
-formulas as described here.  In an upcoming version of \pkg{lfe}, the \code{clustervar}
-and \code{iv} arguments will be moved to the \code{...} argument list.
-In the event that you use these arguments, and rewriting to the new syntax
-is impractical, you should make sure to name them (i.e. not use them as
-positional arguments). \code{felm} will issue a warning if these two
-arguments are not named.
+formulas as described here.  The \code{clustervar}
+and \code{iv} arguments have been moved to the \code{...} argument list.
+They will be removed in some future update.
 
-Note that the way missing values (NAs) in IV estimations are handled in
-\pkg{lfe} currently may
-lead to problems. Missing values are removed independently in the first
-and second stages. Thus, if the instruments have missing values where
-the other covariates have not, more
-observations are removed in the first stage than in the second, leading
-to problems, confusion and general havoc.
+}
 
-An alternative to clustered standard errors is to project out the
-cluster factors (put them in the second part of the formula)
-and use heteroskedastic standard errors.
-
-Note that the F-test which is computed by \code{\link{summary.felm}} is
-unreliable for robust standard errors.
+\note{
+  For technical reasons, when running IV-estimations, the data frame supplied in the \code{data}
+  argument to \code{felm}, should \emph{not} contain variables with
+  names ending in \code{'(fit)'}.  Variables with such names are used
+  internally by \code{felm}, and may then accidentally be looked up in the
+  data frame instead of the local environment where they are
+  defined. 
 }
 
 \seealso{
   \code{\link{getfe}}
   \code{\link{summary.felm}}
+  \code{\link{condfstat}}
+  \code{\link{waldtest}}
 }
 
 \examples{
@@ -208,9 +214,10 @@ y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + u
 ## estimate and print result
 est <- felm(y ~ x+x2| id + firm)
 summary(est)
+\dontrun{
 ## compare with lm
 summary(lm(y ~ x + x2 + id + firm-1))
-
+}
 
 # make an example with 'reverse causation'
 # Q and W are instrumented by x3 and the factor x4. Report robust s.e.
@@ -223,8 +230,9 @@ W <- 0.7*x3 - 2*x + 0.1*x2 - 0.7*id.eff[id] + 0.8*cos(x4) - 0.2*y+ rnorm(length(
 # add them to the outcome
 y <- y + Q + W
 
-ivest <- felm(y ~ x + x2 | id+firm | (Q|W ~x3|factor(x4)))
+ivest <- felm(y ~ x + x2 | id+firm | (Q|W ~x3+factor(x4)))
 summary(ivest,robust=TRUE)
+condfstat(ivest)
 \dontrun{
 # compare with the not instrumented fit:
 summary(felm(y ~ x + x2 +Q + W |id+firm))

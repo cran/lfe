@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2014-12-21 r67196) -- "Unsuffered Consequences"
-Copyright (C) 2014 The R Foundation for Statistical Computing
+R Under development (unstable) (2015-01-28 r67639) -- "Unsuffered Consequences"
+Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -59,8 +59,8 @@ Components: 1 largest: 1000
 +   }
 + }
 Warning in is.estimable(ef, obj$fe) :
-  non-estimable function, largest error 0.01 in coordinate 176 ("id.177")
-Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
+  non-estimable function, largest error 0.02 in coordinate 476 ("shoe.79")
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster,  :
   Supplied function seems non-estimable
 
 Call:
@@ -168,4 +168,4 @@ F-statistic: 1.94e+07 on 8 and 992 DF,  p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  5.677   0.230   5.868 
+  4.106   0.092   4.100 

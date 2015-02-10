@@ -9,7 +9,8 @@
 }
 \usage{
 getfe(obj, references=NULL, se=FALSE,
-      method='kaczmarz', ef='ref', bN=100, robust=FALSE, cluster=obj[['clustervar']]) 
+      method='kaczmarz', ef='ref', bN=100, robust=FALSE,
+      cluster=obj[['clustervar']], lhs=NULL) 
 }
 
 \arguments{
@@ -52,6 +53,10 @@ getfe(obj, references=NULL, se=FALSE,
   estimated?}
 
 \item{cluster}{logical or factor. Estimate clustered standard errors.}
+
+\item{lhs}{character vector. Specify which left hand side if \code{obj} has
+  multiple lhs.}
+
 
 }
 

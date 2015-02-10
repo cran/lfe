@@ -47,8 +47,7 @@ of \pkg{Rcgmin}.  This may or may not be faster.
   f3 <- factor(sample(10000,length(f1),replace=TRUE))
   f4 <- factor(sample(8000,length(f1),replace=TRUE))
 ## the matrix of dummies
-  D <- t(rBind(as(f1,'sparseMatrix'),as(f2,'sparseMatrix'),
-as(f3,'sparseMatrix'), as(f4,'sparseMatrix')))
+  D <- t(do.call(rBind, lapply(list(f1,f2,f3,f4),as,'sparseMatrix')))
   dim(D)
 ## an x
   truex <- runif(ncol(D))

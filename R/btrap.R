@@ -1,6 +1,7 @@
 
-btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOption('lfe.threads'), robust=FALSE,
-                  cluster=NULL) {
+btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
+                  threads=getOption('lfe.threads'), robust=FALSE,
+                  cluster=NULL, lhs=NULL) {
   # bootstrap the stuff. The name 'btrap' is chosen to instill a feeling of being trapped
   # (in some long running stuff which will never complete)
   # bootstrapping is really to draw residuals over again, i.e. to change
@@ -29,8 +30,12 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
     rownames(alpha) <- names(v)
     if(!is.null(attr(v,'extra'))) alpha <- cbind(alpha,attr(v,'extra'))
   }
-  R <- obj$r.residuals-obj$residuals
 
+  if(is.null(lhs))
+      R <- obj$r.residuals-obj$residuals
+  else
+      R <- obj$r.residuals[,lhs]-obj$residuals[,lhs]
+  
   # We use the variance in PY-PXbeta to generate variation V (i.e. the full.residuals),
   # this is the outcome residuals, so the correct way to do it.
   # Then we compute W=(I-P)V.  Now, W is a vector which has constant
@@ -40,8 +45,12 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
   # this may as well be done after kaczmarz solution, it makes no difference
   Rvec <- as.vector(R)  
   sefact <- sqrt(obj$N/obj$df)
-  smpdraw <- as.vector(obj$residuals)
-  if(!is.null(obj$ivresid)) smpdraw <- smpdraw - obj$ivresid
+  if(is.null(lhs)) {
+    smpdraw <- as.vector(obj$residuals)
+  }  else {
+    smpdraw <- as.vector(obj$residuals[,lhs])
+  }
+
 
   # Now, we want to do everything in parallel, so we should allocate up a set
   # of vectors, but we don't want to blow the memory.  Stick to allocating two
@@ -105,7 +114,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),threads=getOp
       sename <- 'clusterse'
   else
       sename <- 'se'
-
+  if(!is.null(lhs)) sename <- paste(sename,lhs,sep='.')
   alpha[,sename] <- sqrt(vsq/newN - (vsum/newN)**2)/(1-0.75/newN-7/32/newN**2-9/128/newN**3)
 
   return(alpha)

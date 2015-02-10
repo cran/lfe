@@ -1,11 +1,30 @@
-Dec 25, 2014.  1.8-1440 -- Added fevcov() and varvars(). Discovered error in the 
-	handling of mutexes on Windows. Race condition. Fixed.  Rewritten handling of
-	the extra IV-variables. Didn't work properly before, see Gomez on Oct 8 below.
-	
-Dec 15, 2014.  1.7-1412 -- Put bccorr() back in.	
-	
+Feb  6, 2015.  2.0-1544 -- Rewritten to build a single model frame. Fixes problems with missing
+	values different in 1st and 2nd stages in IV.
+
+Jan 31, 2015.  2.0-1486 -- Added support for conditional F statistic for multiple endogenous variables in IV. (condfstat)
+
+Jan 29, 2015.  2.0-1471 -- Added support for multiple left hand sides.
+	** DEPRECATED iv and clustervar args to felm(). Still works with warning.
+	** CHANGED 1st stage IV. to multiple lhs. $step1 is deprecated, $stage1 is a single
+	   'felm' object with multiple left hand sides.
+	   Some other changes to the content of a felm-object when doing IV.
+
+Jan 27, 2015.  1.9-1457 -- Replaced ivtest() with a more general waldtest()
+
+Jan 16, 2015.  1.9-1445 -- Added ivtest() to test endogenous variables for joint significance.
+	Added cluster-support to fevcov/bccorr, currently only for the diagonal.
+
+Dec 25, 2014.  1.8-1441 -- On CRAN.
+
+Dec 25, 2014.  1.8-1440 -- Added fevcov() and varvars(). Discovered error in the
+	handling of mutexes on Windows. Race condition. Fixed.  Rewritten
+	handling of the extra IV-variables. Didn't work properly before,
+	see Gomez on Oct 8 below.
+
+Dec 15, 2014.  1.7-1412 -- Put bccorr() back in.
+
 Oct 9, 2014.   1.7-1402 -- On CRAN. bccorr() not public for now.
-	
+
 Oct 8, 2014.   1.7 -- Fixed a bug which prevents calling felm() with IV from within
 	a function.  Reported by Matthieu Gomez gomez.matthieu@gmail.com
 

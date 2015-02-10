@@ -33,10 +33,10 @@ y <- x1 + x2 + x3 + err
 data <- data.frame(y,x1,x2,x3,f1,clu1,clu2,clu3)
 clu <- list('clu1', 'clu2', 'clu3')
 summary(felm(y ~ x1 + x2 + f1|0|0|clu1+clu2+clu3, data))
-gclu <- structure(clu, method='gaure')
-summary(felm(y ~ x1 + x2 + f1|0|0|clu1+clu2+clu3, data, cmeth='gaure'))
-summary(est <- felm(y ~ x1 + x2 | f1, data, clustervar=gclu))
-ef <- structure(function(x,addnames) {
-    c(x[1],x[2:8]-x[1])
-}, verified=TRUE)
-getfe(est,ef=ef,se=TRUE, bN=200)
+#gclu <- structure(clu, method='gaure')
+#summary(felm(y ~ x1 + x2 + f1|0|0|clu1+clu2+clu3, data, cmeth='gaure'))
+#summary(est <- felm(y ~ x1 + x2 | f1, data, clustervar=gclu))
+#ef <- structure(function(x,addnames) {
+#    c(x[1],x[2:8]-x[1])
+#}, verified=TRUE)
+#getfe(est,ef=ef,se=TRUE, bN=200)

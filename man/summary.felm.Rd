@@ -5,12 +5,15 @@
 \code{summary} method for class \code{"felm"}.
 }
 
-\usage{ \method{summary}{felm}(object, ..., robust=!is.null(object$cse)) }
+\usage{ \method{summary}{felm}(object, ..., robust=!is.null(object$clustervar),
+lhs=NULL) }
 
 \arguments{
   \item{object}{an object of class \code{"felm"}, a result of a call to \code{felm}.}
-  \item{robust}{logical.}
   \item{...}{further arguments passed to or from other methods.}
+  \item{robust}{logical. Use robust standard errors. See notes.}
+  \item{lhs}{character. If multiple left hand sides, specify the name of
+  the one to obtain a summary for.}
 }
 
 \value{
@@ -25,7 +28,9 @@
   system, with dummies.}
   \item{p}{an integer. The total number of coefficients, including those
     projected out.}
-  \item{coefficients}{a p x 4 matrix with columns for the estimated
+  \item{Pp}{an integer. The number of coefficients, excluding those
+    projected out.}
+  \item{coefficients}{a Pp x 4 matrix with columns for the estimated
     coefficients, their standard errors, t-statistic and corresponding
     (two-sided) p-value.}
   \item{rse}{residual standard error.}
@@ -33,11 +38,14 @@
   \item{r2adj}{Adjusted R^2.}
   \item{fstat}{F-statistic.}
   \item{pval}{P-values.}
+  \item{P.fstat}{Projected F-statistic. The result of a call to \code{\link{waldtest}}}
   \item{fe}{list of factors. A list of the terms in the second part of
   the model.}
+  \item{lhs.}{character. If \code{object} is the result of an estimation
+  with multiple left hand sides, the actual argument \code{lhs} will be
+  copied to this field.}
   \item{iv1fstat}{F-statistic for excluded instruments in 1. step IV, see \code{\link{felm}}.}
   \item{iv1pval}{P-value for \code{iv1fstat}.}
-
 }
 
 \note{
@@ -47,20 +55,21 @@ small-sample corrected.
 
 If the \code{robust} parameter is \code{FALSE}, the returned object will
 contain ordinary standard errors. If the \code{robust} parameter is
-\code{TRUE}, clustered standard errors are reported if a cluster was specified in the call to \code{felm}; if not,
-heteroskedastic robust standard error are reported.
-The F-statistic is not reliable for robust and clustered errors, the
-reason being that the author has not yet figured out how to compute it
-without the full covariance matrix for the dummies that have been
-projected out.  In this case, the \code{print} method will report the F-statistic
-under the assumption of normally distributed residuals (which can be
-computed from the residuals only), and an
-F-statistic (via a Wald-statistic) for robust/clustered errors which does not take into account
-the covariates which have been projected out.
+\code{TRUE}, clustered standard errors are reported if a cluster was
+specified in the call to \code{felm}; if not, heteroskedastic robust
+standard errors are reported.
+
+Several F-statistics reported. The \code{P.fstat} is for
+the projected system.  I.e. a joint test on whether all the \code{Pp} coefficients
+in \code{coefficients} are zero.  Then there are \code{fstat} and
+\code{pval} which is a test on all the coefficients including the ones
+projected out, except for an intercept.  This statistic assumes i.i.d.
+errors and is not reliable for robust or clustered data.
 
 For a 1st stage IV-regression, an F-statistic against the model with
-omitted instruments is also computed, but this one also assumes that the
-coefficients for the absorbed dummies are equal, so
-that the covariance comes from the ordinary covariates only.
+excluded instruments is also computed. 
 }
 
+\seealso{
+\code{\link{waldtest}}
+}

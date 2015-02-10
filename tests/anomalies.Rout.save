@@ -1,0 +1,258 @@
+
+R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
+Copyright (C) 2015 The R Foundation for Statistical Computing
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(lfe)
+Loading required package: Matrix
+> set.seed(42)
+> options(digits=3, warn=1)
+> x <- rnorm(1000)
+> x1 <- rnorm(1000)
+> x2 <- rnorm(1000) 
+> z1 <- rnorm(1000)
+> z2 <- rnorm(1000)
+> Q <- rnorm(1000) 
+> f1 <- sample(8,length(x), repl=T)
+> f2 <- factor(sample(8,length(x), repl=T))
+> clu <- factor(sample(30,length(x), replace=T))
+> cluerr <- rnorm(nlevels(clu))[clu]
+> err <- abs(x)*rnorm(length(x)) + cluerr
+> y <- x +rnorm(nlevels(clu),sd=0.3)[clu] +  log(f1) + err
+> f1 <- factor(f1)
+> dat <- data.frame(y, x, f1=f1, f2, cluster=clu)
+> 
+> # deprecated stuff
+> summary(felm(y ~x + f1+f2, dat, clustervar='clu'))
+Warning in felm(y ~ x + f1 + f2, dat, clustervar = "clu") :
+  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+
+Call:
+   felm(formula = y ~ x + f1 + f2, data = dat, clustervar = "clu") 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-8.292 -0.872 -0.079  1.015  5.878 
+
+Coefficients:
+            Estimate Cluster s.e. t value Pr(>|t|)    
+(Intercept)   0.3715       0.3018    1.23  0.21861    
+x             0.8683       0.0986    8.81  < 2e-16 ***
+f12           0.5880       0.1652    3.56  0.00039 ***
+f13           0.9722       0.2083    4.67  3.5e-06 ***
+f14           1.4487       0.2075    6.98  5.4e-12 ***
+f15           1.7762       0.1729   10.27  < 2e-16 ***
+f16           1.8098       0.2003    9.04  < 2e-16 ***
+f17           2.0102       0.1587   12.67  < 2e-16 ***
+f18           2.2119       0.1731   12.77  < 2e-16 ***
+f22          -0.1896       0.1762   -1.08  0.28227    
+f23          -0.2753       0.1769   -1.56  0.12002    
+f24          -0.0062       0.1647   -0.04  0.96997    
+f25          -0.0209       0.1862   -0.11  0.91060    
+f26          -0.3437       0.1870   -1.84  0.06637 .  
+f27          -0.1573       0.3306   -0.48  0.63438    
+f28          -0.2387       0.2005   -1.19  0.23409    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.62 on 984 degrees of freedom
+Multiple R-squared: 0.34   Adjusted R-squared: 0.329 
+F-statistic(excl fe, iid):33.8 on 15 and 984 DF, p-value: <2e-16 
+F-statistic(proj): 71.4 on 16 and 29 DF, p-value: <2e-16 
+
+
+> summary(felm(y ~ x + G(f1)+G(f2), dat, clustervar=clu))
+Warning in felm(y ~ x + G(f1) + G(f2), dat, clustervar = clu) :
+  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+Warning in ..oldfelm(formula = y ~ x + G(f1) + G(f2), data = dat, clustervar = clu) :
+  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+Warning in oldparseformula(form, data) :
+  The G() syntax is deprecated, please use multipart formulas instead
+
+Call:
+   ..oldfelm(formula = y ~ x + G(f1) + G(f2), data = dat, clustervar = clu) 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-8.292 -0.872 -0.079  1.015  5.878 
+
+Coefficients:
+  Estimate Cluster s.e. t value Pr(>|t|)    
+x   0.8684       0.0986    8.81   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.62 on 984 degrees of freedom
+Multiple R-squared: 0.34   Adjusted R-squared: 0.329 
+F-statistic(excl fe, iid):33.8 on 15 and 984 DF, p-value: <2e-16 
+F-statistic(proj): 77.5 on 1 and 29 DF, p-value: 1.09e-09 
+
+
+> summary(felm(y ~ x | f1+f2, dat, clustervar=clu))
+Warning in felm(y ~ x | f1 + f2, dat, clustervar = clu) :
+  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+
+Call:
+   felm(formula = y ~ x | f1 + f2, data = dat, clustervar = clu) 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-8.292 -0.872 -0.079  1.015  5.878 
+
+Coefficients:
+  Estimate Cluster s.e. t value Pr(>|t|)    
+x   0.8684       0.0986    8.81   <2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.62 on 984 degrees of freedom
+Multiple R-squared: 0.34   Adjusted R-squared: 0.329 
+F-statistic(excl fe, iid):33.8 on 15 and 984 DF, p-value: <2e-16 
+F-statistic(proj): 77.5 on 1 and 29 DF, p-value: 1.09e-09 
+
+
+> 
+> #anomalies. No variables, etc.
+> summary(felm(y ~ 1 | f1|0|cluster, dat))
+
+Call:
+   felm(formula = y ~ 1 | f1 | 0 | cluster, data = dat) 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+    NA     NA     NA     NA     NA 
+
+Coefficients:
+(No coefficients)
+
+
+> summary(felm(y ~ 0 | f1|0|cluster, dat))
+
+Call:
+   felm(formula = y ~ 0 | f1 | 0 | cluster, data = dat) 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+    NA     NA     NA     NA     NA 
+
+Coefficients:
+(No coefficients)
+
+
+> summary(felm(y ~ 0 | 0|0|cluster, dat))
+
+Call:
+   felm(formula = y ~ 0 | 0 | 0 | cluster, data = dat) 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+    NA     NA     NA     NA     NA 
+
+Coefficients:
+(No coefficients)
+
+
+> 
+> est <- felm(y ~ x | 0 | (x1 | x2 ~ z1 + z2))
+> summary(est)
+
+Call:
+   felm(formula = y ~ x | 0 | (x1 | x2 ~ z1 + z2)) 
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-13.447  -2.924  -0.216   2.948  13.448 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)    1.588      0.149   10.64  < 2e-16 ***
+x              0.829      0.207    4.01  6.4e-05 ***
+`x1(fit)`     -1.008      4.267   -0.24     0.81    
+`x2(fit)`     -3.763      8.433   -0.45     0.66    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 4.43 on 996 degrees of freedom
+Multiple R-squared:   -4   Adjusted R-squared: -4.02 
+F-statistic(excl fe):  14 on 3 and 996 DF, p-value: 6.41e-09 
+F-statistic(proj): 42.4 on 4 and 996 DF, p-value: <2e-16 
+
+
+> for(lh in est$stage1$lhs) print(summary(est$stage1, lhs=lh))
+Summary for outcome x1 
+
+Call:
+   NULL 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-2.825 -0.660  0.003  0.643  3.528 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)  
+(Intercept) -0.00361    0.03119   -0.12    0.908  
+x            0.00895    0.03111    0.29    0.774  
+z1           0.05904    0.03153    1.87    0.061 .
+z2           0.01201    0.03065    0.39    0.695  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 0.986 on 996 degrees of freedom
+Multiple R-squared: 0.00381   Adjusted R-squared: -0.000193 
+F-statistic(excl fe):1.27 on 3 and 996 DF, p-value: 0.284 
+F-statistic(proj): 0.959 on 4 and 996 DF, p-value: 0.429 
+F-statistic(excl instr.):1.85 on 2 and 996 DF, p-value: 0.157 
+
+
+Summary for outcome x2 
+
+Call:
+   NULL 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-3.160 -0.649  0.011  0.665  3.551 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept) -0.00456    0.03261   -0.14     0.89
+x           -0.02166    0.03252   -0.67     0.51
+z1          -0.02110    0.03296   -0.64     0.52
+z2          -0.02108    0.03204   -0.66     0.51
+
+Residual standard error: 1.03 on 996 degrees of freedom
+Multiple R-squared: 0.00133   Adjusted R-squared: -0.00268 
+F-statistic(excl fe):0.442 on 3 and 996 DF, p-value: 0.723 
+F-statistic(proj): 0.334 on 4 and 996 DF, p-value: 0.855 
+F-statistic(excl instr.):0.434 on 2 and 996 DF, p-value: 0.648 
+
+
+> condfstat(est,type=NULL)
+            x1    x2
+iid F    0.282 0.226
+robust F 0.267 0.224
+attr(,"df1")
+[1] 1
+> 
+> est0 <- felm( y ~ 1|0|(Q~z1))
+> condfstat(est0)
+          Q
+iid F 0.148
+attr(,"df1")
+[1] 2
+> 
+> proc.time()
+   user  system elapsed 
+  2.943   0.087   2.517 

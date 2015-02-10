@@ -74,6 +74,9 @@ column \code{icpt} deleted.
 If \code{mtx} is a list of vectors and matrices, a list of the same
 length is returned, with the same vector and matrix-pattern, but the
 matrices have the column \code{icpt} deleted.
+
+If \code{mtx} is a \code{'data.frame'}, a \code{'data.frame'} with
+the same attributes are returned.
 }
 \note{
 In the case that the design-matrix is too large for R, i.e. with more

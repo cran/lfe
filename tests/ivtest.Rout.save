@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2014-12-21 r67196) -- "Unsuffered Consequences"
-Copyright (C) 2014 The R Foundation for Statistical Computing
+R Under development (unstable) (2015-02-04 r67720) -- "Unsuffered Consequences"
+Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -29,10 +29,10 @@ Loading required package: Matrix
 > 
 > ## left hand side
 > u <- rnorm(length(x))
-> x3 <- rnorm(length(x))
-> x4 <- rnorm(length(x))
-> Q <- 0.3*x3 + x + 0.2*x2 + id.eff[id] + 0.15*u + rnorm(length(x),sd=0.2)
-> R <- 0.001*x3 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
+> x3 <- 0.2*x + 0.3*x2 + rnorm(length(x))
+> x4 <- 0.1*x - 0.2*x2 + rnorm(length(x))
+> Q <- 0.3*x3 + 0.4*x4 + x + 0.2*x2 + id.eff[id] + 0.15*u + rnorm(length(x),sd=0.2)
+> R <- 0.3*x3 + 0.33*x4 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
 > y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 > 
 > ## estimate and print result
@@ -43,116 +43,122 @@ Call:
    felm(formula = y ~ x + x2 | id + firm | (Q | R ~ x3 + x4)) 
 
 Residuals:
-    Min      1Q  Median      3Q     Max 
--3.0408 -0.7225 -0.0161  0.7717  2.7743 
+   Min     1Q Median     3Q    Max 
+-5.552 -1.348  0.001  1.271  6.079 
 
 Coefficients:
-         Estimate Robust s.e t value Pr(>|t|)    
-x          -0.274      1.165   -0.24     0.81    
-x2         -1.964      2.615   -0.75     0.45    
-`Q(fit)`    1.273      0.274    4.66  4.5e-06 ***
-`R(fit)`    5.881      5.274    1.12     0.27    
+         Estimate Robust s.e t value Pr(>|t|)  
+x           3.095      1.765    1.75     0.08 .
+x2         -0.586      0.938   -0.62     0.53  
+`Q(fit)`   -1.724      2.321   -0.74     0.46  
+`R(fit)`    4.219      2.734    1.54     0.12  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-Residual standard error: 1.77 on 384 degrees of freedom
-Multiple R-squared: 0.818   Adjusted R-squared: 0.81 
-F-statistic(normal s.e.): 131 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj): 49.1 on 15 and 384 DF, p-value: <2e-16 
-*** F-test for robust/clustered standard errors is unreliable
+Residual standard error: 1.94 on 384 degrees of freedom
+Multiple R-squared: 0.807   Adjusted R-squared: 0.799 
+F-statistic(excl fe, iid): 125 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj):  217 on 4 and 384 DF, p-value: <2e-16 
 
 
-> clu <- factor(sample(10,length(x), replace=TRUE))
-> # try it from a function
+> # try it from within a function 
+> fr <- data.frame(y,x,id,firm,Q,R,x3,x4)
 > fun <- function() {
 +   Y <- y
 +   S <- Q
-+   felm(Y ~ x+x2 | id + firm |(S|R ~ x3+x4), cluster=clu)
-+   fr <- data.frame(y,x,x2,id,firm,Q,R,x3,x4)
-+   felm(y ~ x+x2 | id + firm |(Q|R ~ x3+x4), data=fr, cluster=clu)
++   clu <- factor(sample(10,length(x), replace=TRUE))
++   felm(Y ~ x+x2 | id + firm |(Q|R ~ x3+x4), cluster=clu)
++   fr <- data.frame(y,x,x2,id,firm,Q,R,x3,x4,clu)
++   # test whether it finds names in the wrong place.
++   `S(fit)` <- as.name('a')
++   R <- as.name('b')
++   felm(y ~ x+x2 | id + firm |(S|R ~ x3+x4)|clu, data=fr)
 + }
 > est <- fun()
+Warning in felm(Y ~ x + x2 | id + firm | (Q | R ~ x3 + x4), cluster = clu) :
+  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+> rm(x2)
 > summary(est, robust=TRUE)
 
 Call:
-   felm(formula = y ~ x + x2 | id + firm | (Q | R ~ x3 + x4), data = fr,      clustervar = clu) 
+   felm(formula = y ~ x + x2 | id + firm | (S | R ~ x3 + x4) | clu,      data = fr) 
 
 Residuals:
-    Min      1Q  Median      3Q     Max 
--3.0408 -0.7225 -0.0161  0.7717  2.7743 
+   Min     1Q Median     3Q    Max 
+-5.552 -1.348  0.001  1.271  6.079 
 
 Coefficients:
-         Estimate Cluster s.e. t value Pr(>|t|)    
-x          -0.274        1.455   -0.19     0.85    
-x2         -1.964        3.037   -0.65     0.52    
-`Q(fit)`    1.273        0.318    4.00  7.6e-05 ***
-`R(fit)`    5.881        5.997    0.98     0.33    
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+         Estimate Cluster s.e. t value Pr(>|t|)
+x           3.095        1.940    1.60     0.11
+x2         -0.586        1.094   -0.54     0.59
+`S(fit)`   -1.724        2.545   -0.68     0.50
+`R(fit)`    4.219        3.041    1.39     0.17
 
-Residual standard error: 1.77 on 384 degrees of freedom
-Multiple R-squared: 0.818   Adjusted R-squared: 0.81 
-F-statistic(normal s.e.): 131 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj):  118 on 15 and 384 DF, p-value: <2e-16 
-*** F-test for robust/clustered standard errors is unreliable
+Residual standard error: 1.94 on 384 degrees of freedom
+Multiple R-squared: 0.807   Adjusted R-squared: 0.799 
+F-statistic(excl fe, iid): 125 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj):  696 on 4 and 9 DF, p-value: 3.37e-11 
 
 
-> for(s1 in est$step1) print(summary(s1))
+> for(lh in est$stage1$lhs) print(summary(est$stage1, lhs=lh))
+Summary for outcome S 
 
 Call:
-   felm(formula = Q ~ x + x2 + (x3 + x4) | id + firm + 0, data = fr,      clustervar = clu) 
+   NULL 
 
 Residuals:
     Min      1Q  Median      3Q     Max 
 -0.7738 -0.1703  0.0109  0.1804  0.7101 
 
 Coefficients:
-    Estimate Cluster s.e. t value Pr(>|t|)    
-x   1.016396     0.012886   78.87   <2e-16 ***
-x2  0.201962     0.010641   18.98   <2e-16 ***
-x3  0.321484     0.014920   21.55   <2e-16 ***
-x4 -0.000384     0.012235   -0.03     0.97    
+   Estimate Cluster s.e. t value Pr(>|t|)    
+x    1.0121       0.0125    81.2   <2e-16 ***
+x2   0.1954       0.0114    17.1   <2e-16 ***
+x3   0.3215       0.0149    21.6   <2e-16 ***
+x4   0.3996       0.0122    32.7   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.261 on 384 degrees of freedom
-Multiple R-squared: 0.971   Adjusted R-squared: 0.97 
-F-statistic(normal s.e.): 856 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj):  622 on 15 and 384 DF, p-value: <2e-16 
-F-stat (excl i.v. n.s.e): 291 on 2 and 384 DF, p-value: <2e-16 
-F-stat (excl i.v. proj):  590 on 2 and 384 DF, p-value: <2e-16 
-*** F-test for excluded instruments assumes constant absorbed effects
-*** F-test for robust/clustered standard errors is unreliable
+Multiple R-squared: 0.976   Adjusted R-squared: 0.975 
+F-statistic(excl fe, iid):1.03e+03 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj): 5.5e+03 on 4 and 9 DF, p-value: 3.1e-15 
+F-statistic(excl instr.): 543 on 2 and 9 DF, p-value: 4.15e-10 
 
 
+Summary for outcome R 
 
 Call:
-   felm(formula = R ~ x + x2 + (x3 + x4) | id + firm + 0, data = fr,      clustervar = clu) 
+   NULL 
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--0.68319 -0.14386 -0.00862  0.14153  0.66717 
+    Min      1Q  Median      3Q     Max 
+-0.6832 -0.1439 -0.0086  0.1415  0.6672 
 
 Coefficients:
-    Estimate Cluster s.e. t value Pr(>|t|)    
-x   0.210119     0.012505   16.80   <2e-16 ***
-x2  0.495201     0.012567   39.41   <2e-16 ***
-x3 -0.000712     0.012345   -0.06     0.95    
-x4 -0.015781     0.014154   -1.11     0.27    
+   Estimate Cluster s.e. t value Pr(>|t|)    
+x    0.2120       0.0129    16.4   <2e-16 ***
+x2   0.4926       0.0148    33.2   <2e-16 ***
+x3   0.2983       0.0123    24.2   <2e-16 ***
+x4   0.3142       0.0142    22.2   <2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.231 on 384 degrees of freedom
-Multiple R-squared: 0.942   Adjusted R-squared: 0.939 
-F-statistic(normal s.e.): 415 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj):  124 on 15 and 384 DF, p-value: <2e-16 
-F-stat (excl i.v. n.s.e):0.913 on 2 and 384 DF, p-value: 0.402 
-F-stat (excl i.v. proj): 1.61 on 2 and 384 DF, p-value: 0.201 
-*** F-test for excluded instruments assumes constant absorbed effects
-*** F-test for robust/clustered standard errors is unreliable
+Multiple R-squared: 0.958   Adjusted R-squared: 0.956 
+F-statistic(excl fe, iid): 583 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj): 1.88e+03 on 4 and 9 DF, p-value: 3.92e-13 
+F-statistic(excl instr.):2.07e+03 on 2 and 9 DF, p-value: 1.03e-12 
 
 
+> print(condfstat(est,NULL))
+               S      R
+iid F     3.5305 3.5298
+robust F  4.0320 4.0746
+cluster F 3.3712 3.4076
+attr(,"df1")
+[1] 1
 > 
 > proc.time()
    user  system elapsed 
- 15.724   0.356  15.724 
+  3.259   0.284   3.191 

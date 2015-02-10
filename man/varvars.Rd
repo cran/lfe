@@ -14,7 +14,7 @@ expectation. The function \code{varvars} estimates the variance
 of these estimates.  
 }
 
-\usage{varvars(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE)}
+\usage{varvars(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE, lhs=NULL)}
 
 \arguments{
   \item{est}{an object of class '"felm"', the result of a call to
@@ -26,6 +26,7 @@ of these estimates.
 
   \item{biascorrect}{logical. Should the estimates be bias corrected?}
 
+  \item{lhs}{character. Name of left hand side if multiple left hand sides.}
 }
 
 \value{

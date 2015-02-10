@@ -1,0 +1,48 @@
+February 2015 - version 2.0
+===========================
+
+In release 2.0 of lfe, there is better support for matrices as
+covariates, both on the left and right hand side of the equation, and
+in the instrumental variable specification.  It is also possible to
+explicitly include multiple left hand sides, e.g. with formulas like
+'y|z|w ~ X |f1 + f2'.  The content of 'felm' objects have changed
+slightly to accomodate this, and generic functions like vcov() and
+coef() have gained an extra argument 'lhs' to specify which left hand
+side to retrieve information about.
+
+Two new functions, waldtest() and condfstat() have been included to
+test linear restrictions on parameters, and to compute conditional F
+statistics to test for weak instruments in the IV estimations.
+Observations with missing values are now correctly removed in IV-estimations.
+
+The old syntax, with 'G()' to specify factors to project out, has been
+deprecated. It still works, but will yield a warning.  Similarly with
+the arguments 'iv' and 'clustervar' to felm().
+
+
+December 2014 - version 1.8
+===========================
+
+Two new functions were added, fevcov() and bccorr(), to compute
+limited mobility bias corrections for covariances (and correlations)
+between high dimensional factors.  See citation('lfe') for reference
+to article describing it.
+
+
+March 2014 - version 1.7
+========================
+
+Support for multiway clustering added.  Multiway clusters are specified
+in the 4th part of the formula, like y ~ x | f1+f2 | 0 | c1+c2
+
+
+December 2013 - version 1.6
+===========================
+
+Added support for projecting out interactions between continuous covariates and factors.
+
+
+October 2013 - version 1.5
+==========================
+
+Version presented in R-journal article. (See citation('lfe') for reference)

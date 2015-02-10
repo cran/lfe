@@ -1,5 +1,5 @@
 # return a data-frame with the group fixed effects, including zeros for references
-getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100, robust=FALSE, cluster=obj[['clustervar']]) {
+getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100, robust=FALSE, cluster=obj[['clustervar']], lhs=NULL) {
 
   if(length(obj$fe) == 0) return(NULL)
   if(method == 'kaczmarz') {
@@ -8,7 +8,7 @@ getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100
     if(is.null(ef)) ef <- 'ln'
     if(!is.character(ef) && !is.function(ef))
       stop('ef must be a function when using the Kaczmarz method')
-    return(getfe.kaczmarz(obj,se,ef=ef,bN=bN, robust=robust, cluster=cluster))
+    return(getfe.kaczmarz(obj,se,ef=ef,bN=bN, robust=robust, cluster=cluster, lhs=lhs))
   }
   if(method != 'cholesky') stop('method must be either kaczmarz or cholesky')
   attr(se,'sefactor') <- obj$sefactor

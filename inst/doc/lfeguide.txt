@@ -11,17 +11,18 @@ the lfe-package.  Here's a typical input-file:
 ----cut test.lfe ----
 file smalldata.csv
 vars x x2 year id firm y ife ffe yfe
-model y ~ x + x2 + year | id + firm
+model y ~ x + x2 + year | id + firm 
 dummy year
 #nofe
 #se
 #exactdf
 merge
 robust
+test x x2
 ----cut----
 
 Most of this is self-explanatory, there's a file-name, it's supposed to be
-a pure space-separated data-file (without any header with variable names).
+a pure space-separated csv data file (without any header with variable names).
 However, if it ends in '.dta' it is assumed to be a Stata-file.
 
 The 'vars' line must list all the variables in the file, even if you don't
@@ -31,11 +32,13 @@ The 'model' line specifies the left-hand side and the right-hand side
 as an R-style model specification.  Note that the fixed effects are
 included here after the vertical bar (|).  Any number of fixed
 effects may be used, but currently identification in the case of more
-than two fixed effects are not very well understood. In the example,
+than two fixed effects is not very well understood. In the example,
 the 'year' variable could in principle be included as a fixed effect,
 but for variables with few values it's usually wiser to include them
 as dummies among the ordinary covariates, then you also get standard
-errors.
+errors.  You may specify multiple left hand sides, e.g. like
+
+model y|w|w2 ~ x + x2 + year | id + firm 
 
 
 The 'dummy' line specifies which variables should be coded as dummies, a
@@ -43,7 +46,6 @@ reference is automatically removed.  In the example, you'll get variables
 like year1998, year1999, year2000 or whatever time-period you've got.
 If the data-file is a Stata-file, any variable with value-labels will be
 treated this way.
-
 
 The 'nofe' line (commented out above) is used if one does not need to
 compute the fixed effects, only compensate for them in the other
@@ -61,9 +63,9 @@ exactly, the standard errors will be unbiased (and possibly lower).
 However, this may incur quite large computational cost if the total
 number of levels in the factors is in the tens or hundreds of thousands,
 it is therefore switched off by default.  For the typical applications
-at the author's site, the bias is neglible (DFs dropping from 4248822 to
+at the author's site, the bias is neglible (e.g. DFs dropping from 4248822 to
 4247533), but it may be relevant if you are blessed with less data
-than what we have.
+than us.
 
 The 'se' line (commented out above) is included if you want standard errors
 on the fixed effects.  These are bootstrapped, and as such very time-consuming
@@ -74,6 +76,9 @@ data-set and output as a file 'fe-merged.csv' for further analysis.
 
 The line 'robust' instructs the program to compute robust standard errors
 
+The line 'test x x2' instructs the program to compute a joint significance
+test of the coefficients for x and x2.
+
 Output from the program is both on standard-output (the covariate estimates)
 as well as to a file 'coef.csv'.
 
@@ -83,7 +88,7 @@ contain a header, like 'id  effect  comp  obs'.  I.e. the id, the
 estimated coefficient, its component number in the connection graph, and
 the number of observations for this effect.  
 
-If the data-file is a Stata-file, the output files will also be State-files.
+If the data-file is a Stata-file, the output files will also be Stata-files.
 
 Note that fixed effects from different components are not directly comparable
 because there's a separate reference value in each component.
@@ -113,11 +118,13 @@ The computed standard errors are adjusted accordingly.
 
 Multiple instrumented variables are also supported, like in
 
-model y ~ x1 + year | id + firm | ( Q | W ~ x3 + x4)
+  model y ~ x1 + year | id + firm | ( Q | W ~ x3 + x4)
 
 where both Q and W are instrumented by both x3 and x4.
 
-
+If you have multiple endogenous variables, you may include a line
+  condfstat
+to compute conditional F statistics for these.
 
 Clustered standard errors
 -------------------------
@@ -138,9 +145,10 @@ model y ~ x1 + year | id + firm | (x2 ~ x3) | area + occupation
 Note that the multi way cluster robust standard errors are only
 reasonably precise when there are many groups in each factor of the
 cluster (many areas and many occupations in the example above).  The
-method of Cameron/Gelbach/Miller is mathematically flawed. In
-particular, with few groups (say, less than 100), it may produce
-negative variances.
+method of Cameron/Gelbach/Miller is mathematically flawed, though
+asymptotically correct. In particular, with few groups (say, less than
+100), it may produce negative variances.
+
 
 ----------
 Usage:  
@@ -158,11 +166,13 @@ R CMD BATCH test.R
 
 Standard output is redirected to the file 'test.Rout'.
 
-At the Frisch-centre (with mostly Windows/stata-users) we have set up
+At the Frisch centre (with mostly Windows/stata-users) we have set up
 a server with home-directories for the users.  They may drop their
 data-file in a 'data'-folder and their specification file in a
 'submit'-folder, and then the computation is automatically forwarded
-to our compute-cluster batch-system.
+to our compute-cluster batch-system, with output files in a separate folder
+in their home-directory.  Specifications of cpus and memory-usage are then
+included as specific comments in the specification file.
 
 Notes:
 The centering on the means is done separately for each covariate.  When you've

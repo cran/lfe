@@ -2,7 +2,7 @@
 \alias{is.estimable}
 \title{Verify estimability of function}
 \description{
-  Verify that a function you have written is indeed estimable.
+  Verify that a function you have written for \code{\link{getfe}} is indeed estimable.
 }
 \usage{
 is.estimable(ef, fe, R=NULL, nowarn=FALSE, keepdiff=FALSE, threshold=1e-5)
@@ -24,6 +24,8 @@ is.estimable(ef, fe, R=NULL, nowarn=FALSE, keepdiff=FALSE, threshold=1e-5)
 Returns a logical.  
 }
 \details{
+When writing custom estimable functions for \code{\link{getfe}}, the
+function \code{is.estimable} can be used to test it for estimability.
 \code{is.estimable()} solves the sparse residual system with the
 Kaczmarz method, using two different initial values. Then \code{ef()} is
 applied to the two solutions. If the value of \code{ef()} differs by
@@ -59,4 +61,7 @@ ef <- function(v,addnames) {
 }
 is.estimable(ef, list(id=id,firm=firm), keepdiff=TRUE)
 options(oldopts)
+}
+\seealso{
+\code{\link{getfe}}
 }

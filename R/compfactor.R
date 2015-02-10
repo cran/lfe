@@ -1,4 +1,5 @@
 compfactor <- function(fl, WW=FALSE) {
+  if(length(fl) == 0) return(factor(NULL))
   N <- length(fl[[1]])
   purefls <- sapply(fl,function(f) is.null(attr(f,'x')))
   fl <- fl[purefls]

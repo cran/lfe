@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2014-10-08 r66730) -- "Unsuffered Consequences"
-Copyright (C) 2014 The R Foundation for Statistical Computing
+R Under development (unstable) (2015-01-28 r67639) -- "Unsuffered Consequences"
+Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -53,7 +53,8 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.97 on 2178 degrees of freedom
 Multiple R-squared: 0.923   Adjusted R-squared: 0.823 
-F-statistic:9.22 on 2821 and 2178 DF, p-value: <2e-16 
+F-statistic(excl fe):9.22 on 2821 and 2178 DF, p-value: <2e-16 
+F-statistic(proj): 1.05e+03 on 3 and 2178 DF, p-value: <2e-16 
 *** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE
 
 
@@ -73,8 +74,8 @@ Components: 5 largest: 4994
 +   print(summary(lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff -1),digits=8))
 + }
 Warning in is.estimable(ef, obj$fe) :
-  non-estimable function, largest error 0.5 in coordinate 2192 ("firm.756")
-Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster) :
+  non-estimable function, largest error 0.4 in coordinate 1989 ("firm.550")
+Warning in getfe.kaczmarz(obj, se, ef = ef, bN = bN, robust = robust, cluster = cluster,  :
   Supplied function seems non-estimable
 
 Call:
@@ -125,4 +126,4 @@ F-statistic: 8.15e+07 on 6 and 4994 DF,  p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  4.517   0.115   4.311 
+  4.138   0.097   4.125 

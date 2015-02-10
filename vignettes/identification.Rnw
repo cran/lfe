@@ -425,7 +425,7 @@ partitioning than the above, and consequently introduces more reference levels t
 is necessary for identification. I.e. it does not find all estimable
 functions, but in some cases (e.g. in \cite{TPAG13}) the largest
 component will be sufficiently large for proper analysis.  It is of
-course always a question whether such an endogeneous selection of
+course always a question whether such an endogenous selection of
 observations will yield a dataset which results in unbiased
 coefficients.  This partitioning can be done by the
 \code{compfactor} function with argument \code{WW=TRUE}:

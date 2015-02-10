@@ -13,7 +13,8 @@ The function \code{fevcov} computes a bias corrected covariance matrix
 as described in \cite{Gaure (2014)}.
 }
 
-\usage{fevcov(est, alpha=getfe(est), tol=0.01)}
+\usage{fevcov(est, alpha=getfe(est), tol=0.01,
+       robust=!is.null(est$clustervar), maxsamples=Inf, lhs=NULL)}
 
 \arguments{
   \item{est}{an object of class '"felm"', the result of a call to
@@ -22,6 +23,11 @@ as described in \cite{Gaure (2014)}.
   \item{alpha}{a data frame, the result of a call to \code{\link{getfe}}.}
 
   \item{tol}{numeric. The absolute tolerance for the bias-corrected correlation.} 
+
+  \item{robust}{logical. Should robust (heteroskedastic or cluster)
+    residuals be used, rather than i.i.d.}
+  \item{maxsamples}{integer. Maximum number of samples for expectation estimates.}
+  \item{lhs}{character. Name of left hand side if multiple left hand sides.}
 }
 
 \value{
@@ -36,7 +42,7 @@ as described in \cite{Gaure (2014)}.
   relative for the variances, i.e. the diagonal of the output.
   For the covariances, the tolerance is relative to the square root of
   the product of the variances, i.e. an absolute tolerance for the correlation.
-  If a numeric of length  1 \code{tol} specifies the same tolerance for
+  If a numeric of length 1, \code{tol} specifies the same tolerance for
   all variances/covariances.
   If it is of length 2, \code{tol[1]} specifies the variance tolerance, and
   \code{tol[2]} the covariance tolerance.  \code{tol} can also be a
@@ -47,6 +53,11 @@ as described in \cite{Gaure (2014)}.
   are not estimable, the result of a call to \code{fevcov} is not
   useable. Moreover, there should be just a single connected component
   among the fixed effects.
+
+  \code{alpha} must contain a full set of coefficients, and contain
+  columns \code{'fe'} and \code{'effect'} like the default estimable
+  functions from \code{\link{efactory}}.
+
 }
 
 \seealso{
@@ -55,20 +66,19 @@ as described in \cite{Gaure (2014)}.
 }
 
 \note{
-Note that if \code{est} is the result of a call to \code{\link{felm}}
-with \code{keepX=FALSE} (the default), the biases will be computed
-as if the covariates X are independent of the factors. This will be
-faster (typically by a factor of approx. 4), and possibly wronger.
-Note also that the computations performed by this function are
-non-trivial, they may take quite some time.  It would be wise to start
-out with quite liberal tolerances, e.g. \cite{tol=0.1}, to
-get an idea of the time requirements.
-Currently, only i.i.d. residuals are supported for this function.
+  Note that if \code{est} is the result of a call to \code{\link{felm}}
+  with \code{keepX=FALSE} (the default), the biases will be computed
+  as if the covariates X are independent of the factors. This will be
+  faster (typically by a factor of approx. 4), and possibly wronger.
+  Note also that the computations performed by this function are
+  non-trivial, they may take quite some time.  It would be wise to start
+  out with quite liberal tolerances, e.g. \cite{tol=0.1}, to
+  get an idea of the time requirements.
 }
 
 
 \examples{
-x <- rnorm(500)
+x <- rnorm(5000)
 x2 <- rnorm(length(x))
 
 ## create individual and firm
@@ -77,20 +87,24 @@ firm <- factor(sample(30,length(x),replace=TRUE,prob=c(2,rep(1,29))))
 foo <- factor(sample(20,length(x),replace=TRUE))
 ## effects
 id.eff <- rnorm(nlevels(id))
-firm.eff <- rnorm(nlevels(firm))
-foo.eff <- rnorm(nlevels(foo))
+firm.eff <- runif(nlevels(firm))
+foo.eff <- rchisq(nlevels(foo),df=1)
 ## left hand side
 id.m <- id.eff[id]
-firm.m <- 2*firm.eff[firm]
-foo.m <- 3*foo.eff[foo]
-y <- x + 0.25*x2 + id.m + firm.m + foo.m + rnorm(length(x))
-
+firm.m <- firm.eff[firm]
+foo.m <- foo.eff[foo]
+# normalize them
+id.m <- id.m/sd(id.m)
+firm.m <- firm.m/sd(firm.m)
+foo.m <- foo.m/sd(foo.m)
+y <- x + 0.25*x2 + id.m + firm.m + foo.m + rnorm(length(x),sd=2)
+z <- x + 0.5*x2 + 0.7*id.m + 0.5*firm.m + 0.3*foo.m + rnorm(length(x),sd=2)
 # make a data frame
-fr <- data.frame(y,x,x2,id,firm,foo)
+fr <- data.frame(y,z,x,x2,id,firm,foo)
 ## estimate and print result
-est <- felm(y ~ x+x2|id+firm+foo, data=fr, keepX=TRUE)
-# find bias corrections
-fevcov(est)
+est <- felm(y|z ~ x+x2|id+firm+foo, data=fr, keepX=TRUE)
+# find bias corrections, there's little bias in this example
+for(lh in est$lhs) print(fevcov(est, lhs=lh))
 }
 
 \references{

@@ -6,13 +6,17 @@
 \concept{Method of Alternating Projections}
 \concept{Kaczmarz Method}
 \concept{Fixed Effect Estimator}
-\concept{Wihtin Estimator}
+\concept{Within Estimator}
 \concept{Multiple Fixed Effects}
+\concept{Instrumental Variables}
+\concept{Conditional F-statistics}
 \concept{Limited Mobility Bias}
 \description{
 The package uses the Method of Alternating Projections to estimate
 linear models with multiple group fixed effects.  A generalization
-of the within esitmator. It is
+of the within estimator. It supports IV-estimation with multiple
+endogenous variables via 2SLS, with conditional F statistics for
+detection of weak instruments. It is
 thread-parallelized and intended for large problems.
 A method for correcting limited mobility bias is also included
 }
@@ -21,7 +25,7 @@ A method for correcting limited mobility bias is also included
 
 This package is intended for linear models with multiple group fixed effects,
 i.e. with 2 or more factors with a large number of levels.
-It performs no other functions than \code{\link[stats]{lm}},
+It performs similar functions as \code{\link[stats]{lm}},
 but it uses a special method for projecting out multiple group fixed
 effects from the normal equations, hence it is faster. It is a
 generalization of the within estimator.  This may be required if
@@ -35,8 +39,9 @@ If you only have a single huge factor, the package \pkg{plm} is probably
 better suited.
 
 As of version 1.6, projecting out interactions between continuous
-covariates and factors is also supported. I.e. individual slopes, not
-only individual intercepts.
+covariates and factors is supported. I.e. individual slopes, not
+only individual intercepts.  As of version 2.0, multiple left hand sides
+are supported.
 
 The estimation is done in two steps.  First the other coefficients are
 estimated with the function \code{\link{felm}} by centering on all the
@@ -55,7 +60,11 @@ factors; see the Abowd et al references), they are also returned by
 For those who study the correlation between the fixed effects, like in
 \cite{Abowd et al.}, there are functions \code{\link{bccorr}} and
 \code{\link{fevcov}} for computing limited mobility bias corrected
-correlations and variances as documented in \cite{Gaure(2014)}.
+correlations and variances as documented in \cite{Gaure (2014b)}.
+
+Instrumented variable estimations are supported with 2SLS. Conditional
+F statistics for testing reduced rank weak instruments as in \cite{Sanderson
+ and Windmeijer (2014)} are available in \code{\link{condfstat}}.
 
 The centering on the means is done with a tolerance which is
 set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat
@@ -130,13 +139,12 @@ Gaure, S. (2013) \cite{OLS with Multiple High Dimensional Category
   Variables.} Computational Statistics and Data Analysis, 66:8--18, 2013
   \url{http://dx.doi.org/10.1016/j.csda.2013.03.024}
 
-Gaure, S. (2014) \code{lfe: Linear Group Fixed Effects.} The R
+Gaure, S. (2014a) \code{lfe: Linear Group Fixed Effects.} The R
   Journal, 5(2):104-117, Dec 2013. \url{http://journal.r-project.org/archive/2013-2/gaure.pdf}
 
-Gaure, S. (2014), \cite{Correlation bias correction in two-way
+Gaure, S. (2014b), \cite{Correlation bias correction in two-way
   fixed-effects linear regression}, Stat 3(1):379-390, 2014.
   \url{http://dx.doi.org/10.1002/sta4.68}
-
 
 Guimaraes, P. and Portugal, P. (2010) \cite{A simple feasible
   procedure to fit models with high-dimensional fixed effects.}
@@ -147,6 +155,11 @@ Ouazad, A. (2008)
 \cite{A2REG: Stata module to estimate models with two fixed effects.}
 Statistical Software Components S456942, Boston College Department of Economics.
 \url{http://ideas.repec.org/c/boc/bocode/s456942.html}
+
+Sanderson, E. and F. Windmeijer (2014)
+\cite{A weak instrument F-test in linear iv models with multiple
+endogenous variables}, Disc. Paper 14/644 Univ of Bristol.
+\url{http://www.efm.bris.ac.uk/economics/working_papers/pdffiles/dp14644.pdf}
 
 }
 

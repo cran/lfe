@@ -11,24 +11,30 @@ firm.eff <- rnorm(nlevels(firm))
 
 ## left hand side
 u <- rnorm(length(x))
-x3 <- rnorm(length(x))
-x4 <- rnorm(length(x))
-Q <- 0.3*x3 + x + 0.2*x2 + id.eff[id] + 0.15*u + rnorm(length(x),sd=0.2)
-R <- 0.001*x3 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
+x3 <- 0.2*x + 0.3*x2 + rnorm(length(x))
+x4 <- 0.1*x - 0.2*x2 + rnorm(length(x))
+Q <- 0.3*x3 + 0.4*x4 + x + 0.2*x2 + id.eff[id] + 0.15*u + rnorm(length(x),sd=0.2)
+R <- 0.3*x3 + 0.33*x4 + 0.2*x + 0.5*x2 + 0.7*id.eff[id] - 0.11*u + rnorm(length(x),sd=0.2)
 y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 
 ## estimate and print result
 est <- felm(y ~ x+x2 | id+firm |(Q|R~x3+x4))
 summary(est,robust=TRUE)
-clu <- factor(sample(10,length(x), replace=TRUE))
-# try it from a function
+# try it from within a function 
+fr <- data.frame(y,x,id,firm,Q,R,x3,x4)
 fun <- function() {
   Y <- y
   S <- Q
-  felm(Y ~ x+x2 | id + firm |(S|R ~ x3+x4), cluster=clu)
-  fr <- data.frame(y,x,x2,id,firm,Q,R,x3,x4)
-  felm(y ~ x+x2 | id + firm |(Q|R ~ x3+x4), data=fr, cluster=clu)
+  clu <- factor(sample(10,length(x), replace=TRUE))
+  felm(Y ~ x+x2 | id + firm |(Q|R ~ x3+x4), cluster=clu)
+  fr <- data.frame(y,x,x2,id,firm,Q,R,x3,x4,clu)
+  # test whether it finds names in the wrong place.
+  `S(fit)` <- as.name('a')
+  R <- as.name('b')
+  felm(y ~ x+x2 | id + firm |(S|R ~ x3+x4)|clu, data=fr)
 }
 est <- fun()
+rm(x2)
 summary(est, robust=TRUE)
-for(s1 in est$step1) print(summary(s1))
+for(lh in est$stage1$lhs) print(summary(est$stage1, lhs=lh))
+print(condfstat(est,NULL))

@@ -49,11 +49,11 @@ y <- x +rnorm(nlevels(clu),sd=0.3)[clu] +  log(f1) + err
 dat <- data.frame(y, x, f1=factor(f1), cluster=clu)
 summary(felm(y ~x |f1, dat))
 # CGM clustering, i.e. one factor means standard one-way clustering
-summary(felm(y ~x + f1, dat, clustervar='cluster'))
+summary(felm(y ~x + f1, dat, clustervar='clu'))
 # this will make my experimental clustered errors for f1, typically better for few groups
-summary(felm(y ~x + f1|0|0|cluster, dat, cmeth='gaure'))
+#summary(felm(y ~x + f1|0|0|cluster, dat, cmeth='gaure'))
 # this will sample them for f1, also test having cluster in the third component
-summary(estg <- felm(y ~x | f1|cluster, dat))
+summary(estg <- felm(y ~x | f1|0|cluster, dat))
 # Comparable estimable function
 ef <- function(gamma, addnames) {
   ref1 <- gamma[[1]]
