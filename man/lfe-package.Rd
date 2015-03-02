@@ -9,7 +9,7 @@
 \concept{Within Estimator}
 \concept{Multiple Fixed Effects}
 \concept{Instrumental Variables}
-\concept{Conditional F-statistics}
+\concept{Conditional F-statistic}
 \concept{Limited Mobility Bias}
 \description{
 The package uses the Method of Alternating Projections to estimate
@@ -18,7 +18,7 @@ of the within estimator. It supports IV-estimation with multiple
 endogenous variables via 2SLS, with conditional F statistics for
 detection of weak instruments. It is
 thread-parallelized and intended for large problems.
-A method for correcting limited mobility bias is also included
+A method for correcting limited mobility bias is also included.
 }
 
 \details{

@@ -123,8 +123,10 @@ Multiple instrumented variables are also supported, like in
 where both Q and W are instrumented by both x3 and x4.
 
 If you have multiple endogenous variables, you may include a line
-  condfstat
-to compute conditional F statistics for these.
+  ivftest
+to compute conditional F statistics for these.  You may also include a line
+  ivboot
+to bootstrap 2.5%-97.% confidence intervals for the endoenous variables.
 
 Clustered standard errors
 -------------------------
@@ -149,6 +151,34 @@ method of Cameron/Gelbach/Miller is mathematically flawed, though
 asymptotically correct. In particular, with few groups (say, less than
 100), it may produce negative variances.
 
+
+Control variables
+-----------------
+As a fifth part of the formula a set of variables to be used as pure control
+variables may be specified. These will be projected out of the equations before
+any estimation takes place. Use of such control variables will result in that
+the fixed effects will be impossible to recover, thus it should be used in combination
+with 'nofe':
+
+model y ~ x1 | id + firm | (Q ~ x3) | area | year + weather
+
+will remove the variables 'year' and 'weather' from the equations.
+Note that dummies in this fifth part of the formula are expanded to matrices,
+if there are many levels it should rather be specified in the 2nd field.
+
+
+Wildcards
+---------
+If you have a series of variables with the same name, you can specify them with
+wildcard notations.  I.e. a '?' matches a single character, a '*' matches zero or more
+characters. Such variable names must be quoted with backquotes, like `var*`.
+
+model y ~ x1 | id + firm | (Q ~ x3) | area | `myvar*` : (year + month)
+
+Will project away interactions between variables starting with 'myvar', and 'year' and 'month'.
+Say you have myvar1, myvarx, myvar7, together with dummies year (with 2 levels) and month 
+(with 12).  The above specification is like writing myvar1:year1 + myvar1:year2 + 
+myvarx:year1 + ... + myvar7:month1 + myvar7:month2 + ... etc.
 
 ----------
 Usage:  

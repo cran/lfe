@@ -36,6 +36,8 @@
   library.dynam.unload('lfe',libpath)
 }
 
+if(!exists('anyNA')) anyNA <- function(x) any(is.na(x))
+
 numcores <- function() {
   "This function is snatched from package 'multicore'"
   systems <- list(darwin = "/usr/sbin/sysctl -n hw.ncpu 2>/dev/null",

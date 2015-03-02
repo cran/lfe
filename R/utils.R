@@ -1,13 +1,16 @@
 # Author: Simen Gaure
 # Copyright: 2011, Simen Gaure
 # Licence: Artistic 2.0
-# pseudo-inverse, snatched from MASS
 
 # this call changes or adds the dimnames of obj without duplicating it
 # it should only be used on objects with a single reference
 # Our use of it is safe, and we don't export it.
 setdimnames <- function(obj, nm) {
   .Call(C_setdimnames,obj,nm)
+}
+
+orthonormalize <- function(V) {
+  structure(V %*% solve(chol(crossprod(V))), ortho=TRUE)
 }
 
 pinvx <- function(X) {
@@ -43,6 +46,11 @@ cholx <- function(mat, eps=1e-6) {
   return(structure(ch,badvars=badvars))
 }
 
+
+cholsolve <- function(A,b) {
+  ch <- chol(A)
+  backsolve(ch,backsolve(ch,b,transpose=TRUE))
+}
 
 pinv <- function (X, tol = sqrt(.Machine$double.eps)) {
   if (length(dim(X)) > 2L || !(is.numeric(X) || is.complex(X)))
@@ -202,6 +210,69 @@ nrefs <- function(fl, cf, exactDOF=FALSE) {
   return(nlevels(cf) + numpure-2)
 }
 
+wildcard <- function(formula,  s=ls(environment(formula)), re=FALSE,
+                     nomatch.failure=TRUE) {
+  env <- environment(formula)
+  F <- as.Formula(formula)
+  lenlhs <- length(F)[1]
+  lenrhs <- length(F)[2]
+  if(lenlhs == 1 && lenrhs == 1) return(swildcard(formula,s,re, nomatch.failure=nomatch.failure));
+  # do the parts separately
+  lhs <- lapply(seq_len(lenlhs), function(lh) {
+    swildcard(formula(F, lhs=lh,rhs=0), s, re, nomatch.failure=nomatch.failure)[[2]]
+  })
+  rhs <- lapply(seq_len(lenrhs), function(rh) {
+    swildcard(formula(F, lhs=0,rhs=rh), s, re, nomatch.failure=nomatch.failure)[[2]]
+  })
+  if(length(lhs) > 0) {
+    LHS <- lhs[[1]]
+    for(s in lhs[-1]) {
+      LHS <- bquote(.(LHS) | .(s))
+    }
+  } else LHS <- NULL
+
+  RHS <- rhs[[1]]
+  for(s in rhs[-1]) {
+    RHS <- bquote(.(RHS) | .(s))
+  }
+  if(is.null(LHS)) return(as.Formula(substitute( ~ R, list(R=RHS)), env=env))
+   else
+  as.Formula(substitute(L ~ R, list(L=LHS, R=RHS)), env=env)
+}
+
+swildcard <- function(formula, s=ls(environment(formula)), re=FALSE,
+                      nomatch.failure=TRUE) {
+  av <- all.vars(formula)
+  if(!re) {
+    rchars <- c('*','?')
+    wild <- unique(unlist(sapply(rchars,grep, av,fixed=TRUE,value=TRUE)))
+    if(length(wild) > 0)
+        rewild <- glob2rx(wild,trim.tail=FALSE)
+    else
+        rewild <- NULL
+    # quote some regexp-specials
+    rewild <- lapply(seq_along(rewild), function(i) structure(rewild[i],orig=wild[i]))
+  } else {
+    rchars <- c('.','*','|','\\','?','[',']','(',')','{','}')
+    wild <- unique(unlist(sapply(rchars, grep, av, fixed=TRUE, value=TRUE)))
+    rewild <- lapply(wild, function(w) structure(w,orig=w))
+  }
+  wsub <- lapply(rewild, function(w) {
+    mtch <- grep(paste('^',w,'$',sep=''), s, value=TRUE, perl=TRUE)
+    if(length(mtch) == 0) {
+      if(nomatch.failure) stop("Couldn't match wildcard variable `",
+                               attr(w,'orig'),'`', call.=FALSE)
+      mtch <- attr(w,'orig')
+    }
+    as.list(parse(text=paste('`',mtch,'`',collapse='+',sep='')))[[1]]
+  })
+  names(wsub) <- wild
+  formula(as.Formula(do.call(substitute, list(formula,wsub)),
+                     env=environment(formula)),
+          update=T, collapse=TRUE, drop=FALSE)
+}
+
+
 #prettyprint a list of integers
 ilpretty <- function(il) {
   paste(tapply(il,cumsum(c(1,diff(il)) != 1),
@@ -223,4 +294,17 @@ delete.icpt <- function(x) {
   attr(x,'assign') <- asgn
   attr(x,'contrasts') <- ctr
   x
+}
+
+# do an ls on env, and the parent and all the way up to top
+rls <- function(env, top=.GlobalEnv) {
+  ret <- character()
+  e <- env
+  repeat {
+    if(identical(e,emptyenv())) break;
+    ret <- c(ret,ls(e))
+    if(identical(e,top)) break;
+    e <- parent.env(e)
+  }
+  unique(ret)
 }

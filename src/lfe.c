@@ -27,6 +27,7 @@ static R_ExternalMethodDef externalMethods[] = {
 };
 
 void attribute_visible R_init_lfe(DllInfo *info) {
+  str_DF = mkString("data.frame");
   /* register our routines */
   (void)R_registerRoutines(info,NULL,callMethods,NULL,externalMethods);
 }

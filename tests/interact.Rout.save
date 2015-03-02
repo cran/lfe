@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-02-04 r67720) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -58,9 +58,10 @@ x3   0.4956     0.0149    33.3   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1 on 4270 degrees of freedom
-Multiple R-squared: 0.898   Adjusted R-squared: 0.881 
-F-statistic(excl fe):51.7 on 729 and 4270 DF, p-value: <2e-16 
-F-statistic(proj): 1.9e+03 on 3 and 4270 DF, p-value: <2e-16 
+Multiple R-squared(full model): 0.898   Adjusted R-squared: 0.881 
+Multiple R-squared(proj model): 0.572   Adjusted R-squared: 0.499 
+F-statistic(full model):51.7 on 729 and 4270 DF, p-value: <2e-16 
+F-statistic(proj model): 1.9e+03 on 3 and 4270 DF, p-value: <2e-16 
 
 
 > getfe(est)
@@ -813,9 +814,10 @@ x   1.0579     0.0357    29.6   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 2.43 on 4549 degrees of freedom
-Multiple R-squared: 0.361   Adjusted R-squared: 0.297 
-F-statistic(excl fe):5.71 on 450 and 4549 DF, p-value: <2e-16 
-F-statistic(proj):  876 on 1 and 4549 DF, p-value: <2e-16 
+Multiple R-squared(full model): 0.361   Adjusted R-squared: 0.298 
+Multiple R-squared(proj model): 0.161   Adjusted R-squared: 0.0785 
+F-statistic(full model):5.71 on 450 and 4549 DF, p-value: <2e-16 
+F-statistic(proj model):  876 on 1 and 4549 DF, p-value: <2e-16 
 *** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE
 
 
@@ -846,9 +848,10 @@ x     0.83       0.11    7.56  8.3e-11 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.04 on 75 degrees of freedom
-Multiple R-squared: 0.844   Adjusted R-squared: 0.793 
-F-statistic(excl fe):  17 on 24 and 75 DF, p-value: <2e-16 
-F-statistic(proj): 57.1 on 1 and 75 DF, p-value: 8.34e-11 
+Multiple R-squared(full model): 0.844   Adjusted R-squared: 0.795 
+Multiple R-squared(proj model): 0.432   Adjusted R-squared: 0.25 
+F-statistic(full model):  17 on 24 and 75 DF, p-value: <2e-16 
+F-statistic(proj model): 57.1 on 1 and 75 DF, p-value: 8.34e-11 
 
 
 > getfe(est)
@@ -924,4 +927,4 @@ F-statistic:   17 on 24 and 75 DF,  p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  3.625   0.246   3.683 
+  3.342   0.119   2.968 

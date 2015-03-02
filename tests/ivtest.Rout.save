@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-02-04 r67720) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -56,9 +56,11 @@ x2         -0.586      0.938   -0.62     0.53
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.94 on 384 degrees of freedom
-Multiple R-squared: 0.807   Adjusted R-squared: 0.799 
-F-statistic(excl fe, iid): 125 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj):  217 on 4 and 384 DF, p-value: <2e-16 
+Multiple R-squared(full model): 0.807   Adjusted R-squared: 0.799 
+Multiple R-squared(proj model): 0.601   Adjusted R-squared: 0.585 
+F-statistic(full model, *iid*): 125 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj model):  217 on 4 and 384 DF, p-value: <2e-16 
+F-statistic(endog. vars):56.2 on 2 and 384 DF, p-value: <2e-16 
 
 
 > # try it from within a function 
@@ -95,9 +97,11 @@ x2         -0.586        1.094   -0.54     0.59
 `R(fit)`    4.219        3.041    1.39     0.17
 
 Residual standard error: 1.94 on 384 degrees of freedom
-Multiple R-squared: 0.807   Adjusted R-squared: 0.799 
-F-statistic(excl fe, iid): 125 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj):  696 on 4 and 9 DF, p-value: 3.37e-11 
+Multiple R-squared(full model): 0.807   Adjusted R-squared: 0.799 
+Multiple R-squared(proj model): 0.601   Adjusted R-squared: 0.585 
+F-statistic(full model, *iid*): 125 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj model):  696 on 4 and 9 DF, p-value: 3.37e-11 
+F-statistic(endog. vars):45.6 on 2 and 9 DF, p-value: 1.94e-05 
 
 
 > for(lh in est$stage1$lhs) print(summary(est$stage1, lhs=lh))
@@ -120,9 +124,10 @@ x4   0.3996       0.0122    32.7   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.261 on 384 degrees of freedom
-Multiple R-squared: 0.976   Adjusted R-squared: 0.975 
-F-statistic(excl fe, iid):1.03e+03 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj): 5.5e+03 on 4 and 9 DF, p-value: 3.1e-15 
+Multiple R-squared(full model): 0.976   Adjusted R-squared: 0.975 
+Multiple R-squared(proj model): 0.957   Adjusted R-squared: 0.956 
+F-statistic(full model, *iid*):1.03e+03 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj model): 5.5e+03 on 4 and 9 DF, p-value: 3.1e-15 
 F-statistic(excl instr.): 543 on 2 and 9 DF, p-value: 4.15e-10 
 
 
@@ -145,20 +150,29 @@ x4   0.3142       0.0142    22.2   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.231 on 384 degrees of freedom
-Multiple R-squared: 0.958   Adjusted R-squared: 0.956 
-F-statistic(excl fe, iid): 583 on 15 and 384 DF, p-value: <2e-16 
-F-statistic(proj): 1.88e+03 on 4 and 9 DF, p-value: 3.92e-13 
+Multiple R-squared(full model): 0.958   Adjusted R-squared: 0.956 
+Multiple R-squared(proj model): 0.917   Adjusted R-squared: 0.914 
+F-statistic(full model, *iid*): 583 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj model): 1.88e+03 on 4 and 9 DF, p-value: 3.92e-13 
 F-statistic(excl instr.):2.07e+03 on 2 and 9 DF, p-value: 1.03e-12 
 
 
-> print(condfstat(est,NULL))
+> print(condfstat(est,NULL,quantiles=c(0.1,0.5,0.9)))
                S      R
 iid F     3.5305 3.5298
 robust F  4.0320 4.0746
 cluster F 3.3712 3.4076
 attr(,"df1")
 [1] 1
+attr(,"quantiles")
+       10%    50%      90%
+S -10.4127 -1.733  0.40256
+R   1.5908  4.165 12.65984
+attr(,"quantiles")attr(,"q")
+[1] 0.1 0.5 0.9
+attr(,"quantiles")attr(,"samples")
+[1] 100
 > 
 > proc.time()
    user  system elapsed 
-  3.259   0.284   3.191 
+  3.094   0.105   2.636 

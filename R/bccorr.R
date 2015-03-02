@@ -1,7 +1,3 @@
-orthonormalize <- function(V) {
-  structure(V %*% solve(chol(crossprod(V))), ortho=TRUE)
-}
-
 narowsum <- function(x, group) {
   opt <- options(warn=-1)
   res <- try(rowsum(x,group), silent=TRUE)

@@ -117,6 +117,7 @@ typedef struct {
 } FACTOR;
 
 
+
 /* Routines used in more than one source file */
 FACTOR** makefactors(SEXP flist, int allowmissing);
 int checkInterrupt();
@@ -137,4 +138,4 @@ SEXP R_piproduct(SEXP inX, SEXP inY);
 SEXP R_setdimnames(SEXP obj, SEXP nm);
 SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA);
 SEXP R_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB);
-
+SEXP str_DF;

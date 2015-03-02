@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-01-28 r67639) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -53,9 +53,10 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.04 on 443 degrees of freedom
   (40 observations deleted due to missingness)
-Multiple R-squared: 0.724   Adjusted R-squared: 0.713 
-F-statistic(excl fe):72.7 on 16 and 443 DF, p-value: <2e-16 
-F-statistic(proj):  202 on 2 and 443 DF, p-value: <2e-16 
+Multiple R-squared(full model): 0.724   Adjusted R-squared: 0.714 
+Multiple R-squared(proj model): 0.476   Adjusted R-squared: 0.458 
+F-statistic(full model):72.7 on 16 and 443 DF, p-value: <2e-16 
+F-statistic(proj model):  202 on 2 and 443 DF, p-value: <2e-16 
 
 
 > getfe(est)
@@ -115,4 +116,4 @@ F-statistic: 68.6 on 17 and 443 DF,  p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  3.810   0.084   3.781 
+  2.393   0.102   2.384 

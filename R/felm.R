@@ -5,7 +5,8 @@
 
 
 
-makematrix <- function(mf, contrasts=NULL, pf=parent.frame(), clustervar=NULL) {
+makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
+                       clustervar=NULL, wildcard='n') {
   m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
@@ -27,17 +28,27 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(), clustervar=NULL) {
   numrhs <- length(Form)[2]
   
   # we can't just dot-update the iv-part, update will only keep the instruments
-  if(numrhs < 2) Form <- update(Form, . ~ . | 0 | 0 |0, drop=FALSE)
-  else if(numrhs < 3) Form <- update(Form, . ~ . | . | 0 |0, drop=FALSE)
+  if(numrhs < 2) Form <- update(Form, . ~ . | 0 | 0 | 0 | 0, drop=FALSE)
+  else if(numrhs < 3) Form <- update(Form, . ~ . | . | 0 | 0 | 0 , drop=FALSE)
   else if(numrhs < 4) {
     # build from parts
-    Form <- as.Formula(do.call(substitute, list(L ~ R1 | R2 | R3 | 0,
+    Form <- as.Formula(do.call(substitute, list(L ~ R1 | R2 | R3 | 0 | 0,
                                                 list(L=formula(Form,lhs=NULL,rhs=0)[[2]],
                                                      R1=formula(Form,lhs=0,rhs=1)[[2]],
                                                      R2=formula(Form,lhs=0,rhs=2)[[2]],
                                                      R3=formula(Form,lhs=0,rhs=3)[[2]]))))
+  } else if(numrhs < 5) {
+    Form <- as.Formula(do.call(substitute, list(L ~ R1 | R2 | R3 | R4 | 0,
+                                                list(L=formula(Form,lhs=NULL,rhs=0)[[2]],
+                                                     R1=formula(Form,lhs=0,rhs=1)[[2]],
+                                                     R2=formula(Form,lhs=0,rhs=2)[[2]],
+                                                     R3=formula(Form,lhs=0,rhs=3)[[2]],
+                                                     R4=formula(Form,lhs=0,rhs=4)[[2]]))))
+
   }
 
+
+  if(numrhs > 5) stop("Formula can't have more than 5 parts")
 # Make a suitable formula for a model frame. No tricky IV-spec
 #  fullF <- formula(Form,lhs=NULL,rhs=0, drop=FALSE,collapse=TRUE,update=TRUE)
   fullF <- formula(Form,lhs=NULL,rhs=0, drop=FALSE)
@@ -52,10 +63,29 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(), clustervar=NULL) {
       fullF <- update(fullF, formula(substitute(. ~ . + F, list(F=f))),drop=FALSE)
     }
   }
+
+  usewild <- !identical(wildcard,'n') 
+  dataenv <- new.env(parent=pf)
+  if(usewild) {
+    # we must evalaute the data argument, but we want to
+    # avoid it being reevaluated when we eval(mf),
+    # so put it in an environment.  We do it like this
+    # to have a short name in mf[['data']] in case of errors.
+    data <- eval(mf[['data']],pf)
+    assign('..(@DATA@)..',data,dataenv)
+    mf[['data']] <- as.name('..(@DATA@)..')
+    wildnames <- colnames(data)
+    rm(data)
+    if(wildcard == 'R' || wildcard == 'G')
+        wildnames <- unique(c(wildnames, rls(formenv)))
+    rewild <- wildcard %in% c('r','R')
+    fullF <- wildcard(fullF, wildnames, re=rewild)
+  }
   environment(fullF) <- formenv
 
   mf[['formula']] <- fullF
-  mf <- eval(mf, pf)
+  mf <- eval(mf, dataenv)
+  rm(dataenv)
   naact <- na.action(mf)
 
 #  if(is.null(mf$data)) data <- environment(mf[['formula']])
@@ -64,6 +94,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(), clustervar=NULL) {
   # It's a sum of terms like f + x:g
 
   fpart <- formula(Form, lhs=0, rhs=2)
+  if(usewild) fpart <- wildcard(fpart,wildnames,re=rewild)
   ftm <- terms(fpart)
 
   # we make it into a call like
@@ -112,64 +143,121 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(), clustervar=NULL) {
   }
 
   ivform <- formula(Form,lhs=0, rhs=3, drop=FALSE)
-  # We have taken Form apart. Keep only exogenous variables
-  Form <- formula(Form, lhs=NULL, rhs=1, drop=FALSE)
 
-  # Add in IV instruments
+  # Pick up IV instruments
   if(ivform[[1]] == as.name('~')) ivform <- ivform[[2]]
   if(ivform[[1]] == as.name('(')) ivform <- ivform[[2]]
   if(!identical(ivform,0)) {
     ivform <- as.Formula(ivform)
-    # update Form, add the instruments to the rhs
-#    Form <- update(Form, formula(do.call(substitute, list(. ~ . + IV,
-#                                                  list(IV=formula(ivform,lhs=0,rhs=NULL)[[2]])))),
-#                   drop=FALSE)
-
-    inames <- as.character(attr(terms(formula(ivform, lhs=0, rhs=NULL)), 'variables'))[-1]
+    if(length(ivform)[2] > 1) stop("Right hand side of IV-spec can't have multiple parts")
+    inames <- as.character(attr(terms(formula(ivform, lhs=0, rhs=1)), 'variables'))[-1]
     environment(ivform) <- formenv
   } else {
     ivform <- NULL
     inames <- NULL
   }
 
+  # then the fifth part, the controls
+  form <- formula(Form, lhs=0, rhs=5, drop=TRUE)
+  if(!identical(form[[2]],0)) {
+    # always parse with intercept, remove it from matrix, so we never project out the intercept
+    form <- formula(update(form, ~ . +1))
+    if(usewild) form <- wildcard(form, wildnames, re=rewild)
+    ctrlterms <- terms(form, data=mf)
+    ctrl <- delete.icpt(model.matrix(ctrlterms, data=mf, contrasts.arg=contrasts))
+    if(typeof(ctrl) != 'double') storage.mode(ctrl) <- 'double'
+    if(ncol(ctrl) == 0) {
+      ctrlnames <- ctrl <- NULL
+    } else {
+      ctrlnames <- colnames(ctrl)
+    }
+  } else {
+    ctrl <- NULL
+    ctrlnames <- NULL
+  }
 
+  # We have taken Form apart. Keep only exogenous variables
+  Form <- formula(Form, lhs=NULL, rhs=1, drop=FALSE)
   environment(Form) <- formenv
 
 # model.response doesn't work with multiple responses
 #  y <- model.response(mf,"numeric") 
 
-  y <- as.matrix(model.part(Form, mf, lhs=NULL, rhs=0), rownames.force=FALSE)
-  storage.mode(y) <- 'numeric' 
+  form <- formula(Form, lhs=NULL, rhs=0, drop=FALSE)
+  if(usewild) form <- wildcard(form, wildnames, re=rewild)
+  y <- as.matrix(model.part(form, mf, lhs=NULL, rhs=0), rownames.force=FALSE)
+  if(typeof(y) != 'double') storage.mode(y) <- 'double' 
   form <- formula(Form, lhs = 0, rhs = 1, collapse = c(FALSE, TRUE))
+  if(usewild) form <- wildcard(form, wildnames, re=rewild)
   xterms <- terms(form, data=mf)
   x <- model.matrix(xterms, data=mf, contrasts.arg=contrasts)
-  if(length(fl) != 0) x <- delete.icpt(x)    
-  storage.mode(x) <- 'numeric' 
+  if(length(fl) > 0) {
+    x <- delete.icpt(x)    
+    icpt <- FALSE
+  } else {
+    icpt <- attr(xterms,'intercept') != 0
+  }
+  if(typeof(x) != 'double') storage.mode(x) <- 'double' 
   setdimnames(x, list(NULL, colnames(x)))
 
   if(!is.null(ivform)) {
-    ivy <-   as.matrix(model.part(ivform, mf, lhs=NULL, rhs=0), rownames.force=FALSE)
-    storage.mode(ivy) <- 'numeric' 
+    form <- formula(ivform, lhs=NULL, rhs=0, drop=FALSE)
+    if(usewild) form <- wildcard(form, wildnames, re=rewild)
+    ivy <-   as.matrix(model.part(form, mf, lhs=NULL, rhs=0), rownames.force=FALSE)
+    if(typeof(ivy) != 'double') storage.mode(ivy) <- 'double' 
     form <- formula(ivform, lhs = 0, rhs = 1, collapse = c(FALSE, TRUE))
+    if(usewild) form <- wildcard(form,wildnames,re=rewild)
     ivxterms <- terms(form, data=mf)
     # ivx should never contain an intercept
     ivx <- delete.icpt(model.matrix(ivxterms, data=mf, contrasts.arg=contrasts))
-    storage.mode(ivx) <- 'numeric' 
+    if(typeof(ivx) != 'double') storage.mode(ivx) <- 'double' 
     setdimnames(ivx, list(NULL, colnames(ivx)))
   } else {
     ivy <- NULL
     ivx <- NULL
   }
+
   rm(mf) # save some memory
 
-  if(length(fl) != 0) {
-    result <- edemeanlist(y=y, x=x, ivy=ivy, ivx=ivx, fl=fl)
-    result$orig <- list(y=y, x=x, ivy=ivy, ivx=ivx)
-  } else {
-    result <- list(y=y, x=x, ivy=ivy, ivx=ivx)
-  }
-  rm(x,y,ivx,ivy)
+  # orig is necessary to compute the r.residuals, i.e. residuals without dummies
+  # it's used in getfe() and btrap, but is of no use if we have ctrl variables
+  TSS <- apply(y,2,var)*(nrow(y)-1)
+  names(TSS) <- colnames(y)
 
+  if(length(fl) != 0) {
+    result <- edemeanlist(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl, fl=fl)
+    if(is.null(ctrl)) result$orig <- list(y=y, x=x, ivy=ivy, ivx=ivx)
+  } else {
+    result <- list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl)
+  }
+  rm(x,y,ivx,ivy,ctrl)  
+
+  if(!is.null(result$ctrl)) {
+    # pure control variables to project out
+    # do ols, use the residuals as new variables
+    y <- cbind(result$y,result$x,result$ivy,result$ivx)
+    x <- result$ctrl
+    result$ctrl <- NULL
+#    fit <- .lm.fit(x,y)
+# my own is much faster for large datasets
+    fit <- newols(list(y=y,x=x), nostats=TRUE)
+    resid <- as.matrix(fit$residuals)
+    setdimnames(resid, list(NULL, colnames(y)))
+    numctrl <- fit$rank
+    rm(fit,x,y)
+
+    result$y <- resid[,colnames(result$y), drop=FALSE]
+    if(!is.null(result$x))   result$x <- resid[,colnames(result$x), drop=FALSE]
+    if(!is.null(result$ivy)) result$ivy <- resid[,colnames(result$ivy), drop=FALSE]
+    if(!is.null(result$ivx)) result$ivx <- resid[,colnames(result$ivx), drop=FALSE]
+    rm(resid)
+  } else {
+    numctrl <- 0L
+  }
+  result$TSS <- TSS
+  result$hasicpt <- icpt
+  result$numctrl <- numctrl
+  result$ctrlnames <- ctrlnames
   result$fl <- fl
   result$terms <- xterms
   result$cluster <- cluster
@@ -190,14 +278,15 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   else
       orig <- mm
 
-
+  numctrl <- if(is.null(mm$numctrl)) 0 else mm$numctrl
+  hasicpt <- if(is.null(mm$hasicpt)) FALSE else mm$hasicpt
   if(is.numeric(exactDOF)) {
     df <- exactDOF
     totvar <- nrow(mm$y) - df
   } else {
     # numrefs is also used later
     numrefs <- nrefs(mm$fl, compfactor(mm$fl), exactDOF) 
-    totvar <- totalpvar(mm$fl)-numrefs
+    totvar <- totalpvar(mm$fl)-numrefs + numctrl
     df <- nrow(mm$y)-totvar
   }
 
@@ -210,6 +299,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
               fitted.values=orig$y - mm$y,
               df=df,
               nostats=FALSE,
+              numctrl=numctrl,
+              hasicpt=hasicpt,
               residuals=mm$y,clustervar=mm$cluster, call=match.call())
     z$df.residual <- z$df
     class(z) <- 'felm'
@@ -240,13 +331,20 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   rownames(beta) <- colnames(orig$x)
 
   z$lhs <- colnames(beta) <- colnames(orig$y)
+  z$hasicpt <- hasicpt
+  z$TSS <- mm$TSS
+
+  z$P.TSS <- apply(mm$y,2,var)*(nrow(mm$y)-1)
+  names(z$P.TSS) <- colnames(mm$y)
+
+  z$numctrl <- numctrl
   if(!nostats) inv <- nazero(z$inv)
   z$coefficients <- z$beta <- beta
 
   # what else is there to put into a felm object?
   z$Pp <- ncol(orig$x)
   z$N <- nrow(orig$x)
-  z$p <- z$Pp - length(badvars)
+  z$p <- z$Pp - length(badvars) + numctrl
 
   nabeta <- nazero(beta)
 
@@ -254,9 +352,10 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   zresid <- mm$y - zfit
   
   z$response <- orig$y
+
   z$fitted.values <- mm$y - zresid
   z$residuals <- zresid
-  z$contrasts <- orig$contrasts
+  z$contrasts <- mm$contrasts
   if(length(mm$fl) != 0) {
     z$r.residuals <- orig$y - orig$x %*% nabeta
   } else {
@@ -269,6 +368,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   # hmm, what about the r.residuals?  We modify them as well. They are used in kaczmarz().
 
   if(!is.null(stage1)) {
+    # we might need the centred response in condfstat()
+    z$c.response <- mm$y
     fitnam <- makefitnames(stage1$lhs)
     ivresid <- stage1$residuals %*% nabeta[fitnam,,drop=FALSE]
     z$iv.residuals <- z$residuals
@@ -298,7 +399,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   z$fe <- mm$fl
 # should we subtract 1 for an intercept?
 # a similar adjustment is done in summary.felm when computing rdf
-  z$p <- z$p + numdum - 1  
+  z$p <- z$p + numdum #- 1  
   z$xp <- z$p
   z$na.action <- mm$na.action
   class(z) <- 'felm'
@@ -324,6 +425,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   singlelhs <- length(z$lhs) == 1
   # preallocate STATS 
   if(!singlelhs) z$STATS <- list()
+  z$STATS <- list()
 
   for(lhs in z$lhs) {
     res <- z$residuals[,lhs]
@@ -333,12 +435,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 
     vcv <- sum(res**2)/z$df * z$inv
     setdimnames(vcv, vcvnames)
-    if(singlelhs) {
-      z$vcv <- vcv
-    } else {
       z$STATS[[lhs]]$vcv <- vcv
-    }
-
+    if(singlelhs) z$vcv <- vcv
 
   # We should make the robust covariance matrix too.
   # it's inv * sum (X_i' u_i u_i' X_i) * inv
@@ -369,11 +467,9 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
     rvcv <- inv %*% meat %*% inv
     setdimnames(rvcv, vcvnames)
 
-    if(singlelhs) {
-      z$robustvcv <- rvcv
-    } else {
-      z$STATS[[lhs]]$robustvcv <- rvcv
-    }
+    z$STATS[[lhs]]$robustvcv <- rvcv
+    if(singlelhs) z$robustvcv <- rvcv
+
     rm(meat, rvcv)
 
   # then the clustered covariance matrix
@@ -396,12 +492,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
         }
         cvcv <- inv %*% meat %*% inv
         setdimnames(cvcv, vcvnames)
-        if(singlelhs) {
-          z$clustervcv <- cvcv
-
-        } else {
-          z$STATS[[lhs]]$clustervcv <- cvcv
-        }
+        z$STATS[[lhs]]$clustervcv <- cvcv
+        if(singlelhs) z$clustervcv <- cvcv
         rm(meat,cvcv)
 
         ## } else if(method == 'gaure') {
@@ -428,33 +520,34 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
       }
       
       
+      z$STATS[[lhs]]$cse <- sqrt(diag(z$STATS[[lhs]]$clustervcv))
+      z$STATS[[lhs]]$ctval <- z$coefficients[,lhs]/z$STATS[[lhs]]$cse
+      z$STATS[[lhs]]$cpval <- 2*pt(abs(z$STATS[[lhs]]$ctval),z$df,lower.tail=FALSE)
+      
       if(singlelhs) {
-        z$cse <- sqrt(diag(z$clustervcv))
-        z$ctval <- coef(z)/z$cse
-        z$cpval <- 2*pt(abs(z$ctval),z$df,lower.tail=FALSE)
-      } else {
-        z$STATS[[lhs]]$cse <- sqrt(diag(z$STATS[[lhs]]$clustervcv))
-        z$STATS[[lhs]]$ctval <- z$coefficients[,lhs]/z$STATS[[lhs]]$cse
-        z$STATS[[lhs]]$cpval <- 2*pt(abs(z$STATS[[lhs]]$ctval),z$df,lower.tail=FALSE)
-      }
+        z$cse <- z$STATS[[lhs]]$cse
+        z$ctval <- z$STATS[[lhs]]$ctval
+        z$cpval <- z$STATS[[lhs]]$cpval
+      } 
     }
+    z$STATS[[lhs]]$se <- sqrt(diag(z$STATS[[lhs]]$vcv))
+    z$STATS[[lhs]]$tval <- z$coefficients[,lhs]/z$STATS[[lhs]]$se
+    z$STATS[[lhs]]$pval <- 2*pt(abs(z$STATS[[lhs]]$tval),z$df,lower.tail=FALSE)
+    
+    z$STATS[[lhs]]$rse <- sqrt(diag(z$STATS[[lhs]]$robustvcv))
+    z$STATS[[lhs]]$rtval <- z$coefficients[,lhs]/z$STATS[[lhs]]$rse
+    z$STATS[[lhs]]$rpval <- 2*pt(abs(z$STATS[[lhs]]$rtval),z$df,lower.tail=FALSE)
+    
     if(singlelhs) {
-      z$se <- sqrt(diag(z$vcv))
-      z$tval <- z$coefficients/z$se
-      z$pval <- 2*pt(abs(z$tval),z$df,lower.tail=FALSE)
+      z$se <- z$STATS[[lhs]]$se
+      z$tval <- z$STATS[[lhs]]$tval
+      z$pval <- z$STATS[[lhs]]$pval
 
-      z$rse <- sqrt(diag(z$robustvcv))
-      z$rtval <- coef(z)/z$rse
-      z$rpval <- 2*pt(abs(z$rtval),z$df,lower.tail=FALSE)
-    } else {
-      z$STATS[[lhs]]$se <- sqrt(diag(z$STATS[[lhs]]$vcv))
-      z$STATS[[lhs]]$tval <- z$coefficients[,lhs]/z$STATS[[lhs]]$se
-      z$STATS[[lhs]]$pval <- 2*pt(abs(z$STATS[[lhs]]$tval),z$df,lower.tail=FALSE)
-
-      z$STATS[[lhs]]$rse <- sqrt(diag(z$STATS[[lhs]]$robustvcv))
-      z$STATS[[lhs]]$rtval <- z$coefficients[,lhs]/z$STATS[[lhs]]$rse
-      z$STATS[[lhs]]$rpval <- 2*pt(abs(z$STATS[[lhs]]$rtval),z$df,lower.tail=FALSE)
+      z$rse <- z$STATS[[lhs]]$rse
+      z$rtval <- z$STATS[[lhs]]$rtval
+      z$rpval <- z$STATS[[lhs]]$rpval
     }
+
     # reset this for next lhs
     .Call(C_scalecols, xz, 1/rscale)
   }
@@ -463,13 +556,13 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 
 felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NULL,...) {
 
-  knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats', 'projexo')
+  knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats', 'wildcard')
   keepX <- FALSE
   cmethod <- 'cgm'
   iv <- NULL
   clustervar <- NULL
   nostats <- FALSE
-  projexo <- FALSE
+  wildcard <- 'n'
   deprec <- c('iv', 'clustervar')
   mf <- match.call(expand.dots = FALSE)
 
@@ -507,7 +600,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
     return(eval.parent(mf))
   }
 
-  mm <- makematrix(mf, contrasts, pf=parent.frame(), clustervar)
+  mm <- makematrix(mf, contrasts, pf=parent.frame(), clustervar, wildcard=wildcard)
   ivform <- mm$ivform
 
   if(is.null(ivform)) {
@@ -537,33 +630,18 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
   # the lhs, the exogenous and instruments on the rhs.
   # mm$x is an ok rhs. The y must be replaced by the ivy
   
-  if(projexo) {
-    # project out the exogenous variables before we do anything else
-    # hmm, this will prevent us from doing getfe(), but allows condfstat
-    # and summary
-    mmproj <- list()
-    mmproj$fl <- mm$fl
-    mmproj$y <- cbind(mm$y,mm$ivy,mm$ivx)
-    mmproj$x <- mm$x
-
-    resid <- newols(mmproj, nostats=FALSE)$residuals
-    rm(mmproj)
-    mm$x <- matrix(numeric(0), nrow(mm$x),0)
-    mm$y <- resid[,colnames(mm$y),drop=FALSE]
-    mm$ivy <- resid[,colnames(mm$ivy), drop=FALSE]
-    mm$ivx <- resid[,colnames(mm$ivx), drop=FALSE]
-    mm$orig <- NULL
-  }
   ivars <- colnames(mm$ivx)
   exlist <- colnames(mm$x)
 
-  mm1 <- mm[c('fl','terms','cluster','na.action','contrasts') %in% names(mm)]
+  mm1 <- mm[names(mm) %in% c('fl','terms','cluster', 'numctrl',
+                             'hasicpt','na.action','contrasts')]
   mm1$y <- mm$ivy
   mm1$x <- cbind(mm$x, mm$ivx)
   mm1$orig$y <- mm$orig$ivy
   mm1$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
 
   fitnames <- makefitnames(colnames(mm$ivy))
+
   z1 <- newols(mm1, nostats=nost1, exactDOF=exactDOF)
   rm(mm1)
 
@@ -573,7 +651,6 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
     z1$rob.iv1fstat <- lapply(z1$lhs, function(lh) waldtest(z1,ivars,type='robust', lhs=lh))
     names(z1$rob.iv1fstat) <- z1$lhs
   }
-
 
   z1$instruments <- ivars
   z1$centred.exo <- mm$x
@@ -585,7 +662,8 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
   # the exogenous variables plus the the predicted endogenous from z1 on the rhs
   # we must set the names of the exogenous variables
 
-  mm2 <- mm[c('fl','terms','cluster','na.action','contrasts') %in% names(mm)]
+  mm2 <- mm[names(mm) %in% c('fl','terms','cluster','numctrl','hasicpt',
+                             'na.action','contrasts', 'TSS')]
   mm2$x <- cbind(mm$x, z1$fitted.values)
   setdimnames(mm2$x, list(NULL, c(exlist,fitnames)))
   mm2$y <- mm$y
@@ -593,9 +671,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
     mm2$orig <- list(x=cbind(mm$orig$x, z1$fitted.values), y=mm$orig$y)
     setdimnames(mm2$orig$x, list(NULL, c(exlist,fitnames)))
   }
-
   rm(mm)  # save some memory
-
   z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF)
   if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
   rm(mm2)

@@ -26,10 +26,20 @@ summary(felm(y ~ 1 | f1|0|cluster, dat))
 summary(felm(y ~ 0 | f1|0|cluster, dat))
 summary(felm(y ~ 0 | 0|0|cluster, dat))
 
+summary(felm(y ~ x + x2|f1+factor(f2),dat))
+summary(felm(y ~ x + x2+f1|factor(f2),dat))
+summary(felm(y ~ x + x2+f1+factor(f2),dat))
+summary(lm(y ~ x + x2 + f1 + factor(f2),dat))
+summary(felm(y ~ x + x2 + f1 |0|0|0|factor(f2)))
+summary(felm(y ~ x + f1+factor(f2) |0|0|0|x2))
+
+# IV
 est <- felm(y ~ x | 0 | (x1 | x2 ~ z1 + z2))
-summary(est)
 for(lh in est$stage1$lhs) print(summary(est$stage1, lhs=lh))
+summary(est)
 condfstat(est,type=NULL)
+summary(est2 <- felm(y ~1 | 0 | (x1 | x2 ~ z1 + z2) | 0 | x))
+condfstat(est2, type=NULL)
 
 est0 <- felm( y ~ 1|0|(Q~z1))
 condfstat(est0)

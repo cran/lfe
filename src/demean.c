@@ -511,7 +511,7 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   SEXP badconv;
   int listlen;
   int domeans=0;
-  
+  int protectcount=0;
   domeans = LOGICAL(Rmeans)[0];
   vicpt = INTEGER(Ricpt);
   icptlen = LENGTH(Ricpt);
@@ -520,7 +520,7 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   cores = INTEGER(scores)[0];
 
 
-  PROTECT(flist = AS_LIST(flist));
+  PROTECT(flist = AS_LIST(flist));  protectcount++;
   //  numfac = LENGTH(flist);
   factors = makefactors(flist, 1);
   numfac = 0;
@@ -533,16 +533,15 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     icptlen = 1;
     icpt = -1;
   }
-  PROTECT(vlist = AS_LIST(vlist));
-  listlen = LENGTH(vlist);
-  PROTECT(reslist = NEW_LIST(listlen));
+  PROTECT(vlist = AS_LIST(vlist)); protectcount++;
+  listlen = LENGTH(vlist); 
+  PROTECT(reslist = NEW_LIST(listlen)); protectcount++;
   if(icptlen != 1 && icptlen != listlen)
     error("Length of icpt (%d) should be 1 or the number of arguments (%d)", icptlen, listlen);
   /* First, count the number of vectors in total */
   numvec = 0;
   for(int i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
-    if(!IS_NUMERIC(elt)) error("Entries must be numeric");
     /* Each entry in the list is either a vector or a matrix */
     if(!isMatrix(elt)) {
       if(LENGTH(elt) != N) 
@@ -566,12 +565,16 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 
   for(i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
+    if(!isReal(elt)) {
+      elt = PROTECT(coerceVector(elt, REALSXP)); protectcount++;
+    }
+
     if(!isMatrix(elt)) {
       /* It's a vector */
       SEXP resvec;
       vectors[cnt] = REAL(elt);
       PROTECT(resvec = allocVector(REALSXP,LENGTH(elt)));
-      DUPLICATE_ATTRIB(resvec, elt);
+      SET_NAMES(resvec, GET_NAMES(elt));
       target[cnt] = REAL(resvec);
       SET_VECTOR_ELT(reslist,i,resvec);
       UNPROTECT(1);
@@ -590,8 +593,8 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       UNPROTECT(1);
       // copy colnames 
       if(cols == rcols) {
-	DUPLICATE_ATTRIB(mtx, elt);
-	//	setAttrib(mtx, install("dimnames"), getAttrib(elt, install("dimnames")));
+	SET_DIMNAMES(mtx, GET_DIMNAMES(elt));
+	//	DUPLICATE_ATTRIB(mtx, elt);
       }
       /* Set up pointers */
       rcols = 0;
@@ -605,7 +608,7 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   }
 
   /* Then do stuff */
-  PROTECT(badconv = allocVector(INTSXP,1));
+  PROTECT(badconv = allocVector(INTSXP,1)); protectcount++;
   INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,factors,numfac,
 				   eps,cores,INTEGER(quiet)[0],
 				   INTEGER(gkacc)[0]);
@@ -614,9 +617,9 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     warning("%d vectors failed to centre to tolerance %.1le",INTEGER(badconv)[0],eps);
 
   if(isdf) {
-    DUPLICATE_ATTRIB(reslist, vlist);
+    SET_NAMES(reslist, GET_NAMES(vlist));
     setAttrib(reslist, R_RowNamesSymbol, getAttrib(vlist, R_RowNamesSymbol));
-    setAttrib(reslist, R_ClassSymbol, getAttrib(vlist,R_ClassSymbol));
+    SET_CLASS(reslist, str_DF);
   } else {
     SET_NAMES(reslist, GET_NAMES(vlist));
   }
@@ -631,8 +634,8 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       }
     }
   }
-  /* unprotect the reslist */
-  UNPROTECT(4);
+  /* unprotect things */
+  UNPROTECT(protectcount);
   return(reslist);
 }
 

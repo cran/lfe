@@ -51,9 +51,10 @@ x3   0.5551     0.1122    4.95  3.7e-06 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.02 on 87 degrees of freedom
-Multiple R-squared: 0.548   Adjusted R-squared: 0.48 
-F-statistic(excl fe, iid):8.77 on 12 and 87 DF, p-value: 1.02e-10 
-F-statistic(proj): 28.5 on 3 and 87 DF, p-value: 6.21e-13 
+Multiple R-squared(full model): 0.548   Adjusted R-squared: 0.485 
+Multiple R-squared(proj model): 0.488   Adjusted R-squared: 0.417 
+F-statistic(full model, *iid*):8.77 on 12 and 87 DF, p-value: 1.02e-10 
+F-statistic(proj model): 28.5 on 3 and 87 DF, p-value: 6.21e-13 
 
 
 Summary for outcome w 
@@ -74,9 +75,10 @@ x3   0.5857     0.0823    7.12  3.0e-10 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.888 on 87 degrees of freedom
-Multiple R-squared: 0.572   Adjusted R-squared: 0.508 
-F-statistic(excl fe, iid): 9.7 on 12 and 87 DF, p-value: 1.09e-11 
-F-statistic(proj): 32.6 on 3 and 87 DF, p-value: 3.18e-14 
+Multiple R-squared(full model): 0.572   Adjusted R-squared: 0.513 
+Multiple R-squared(proj model): 0.502   Adjusted R-squared: 0.433 
+F-statistic(full model, *iid*): 9.7 on 12 and 87 DF, p-value: 1.09e-11 
+F-statistic(proj model): 32.6 on 3 and 87 DF, p-value: 3.18e-14 
 
 
 Summary for outcome y 
@@ -97,9 +99,10 @@ x3    1.052      0.087   12.08  < 2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.997 on 87 degrees of freedom
-Multiple R-squared: 0.795   Adjusted R-squared: 0.765 
-F-statistic(excl fe, iid):28.2 on 12 and 87 DF, p-value: <2e-16 
-F-statistic(proj):  124 on 3 and 87 DF, p-value: <2e-16 
+Multiple R-squared(full model): 0.795   Adjusted R-squared: 0.767 
+Multiple R-squared(proj model): 0.75   Adjusted R-squared: 0.716 
+F-statistic(full model, *iid*):28.2 on 12 and 87 DF, p-value: <2e-16 
+F-statistic(proj model):  124 on 3 and 87 DF, p-value: <2e-16 
 
 
 Summary for outcome z 
@@ -120,9 +123,10 @@ x3   0.5692     0.0933    6.10  2.9e-08 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.11 on 87 degrees of freedom
-Multiple R-squared: 0.458   Adjusted R-squared: 0.377 
-F-statistic(excl fe, iid):6.14 on 12 and 87 DF, p-value: 1.1e-07 
-F-statistic(proj): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
+Multiple R-squared(full model): 0.458   Adjusted R-squared: 0.384 
+Multiple R-squared(proj model): 0.362   Adjusted R-squared: 0.274 
+F-statistic(full model, *iid*):6.14 on 12 and 87 DF, p-value: 1.1e-07 
+F-statistic(proj model): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
 
 
 > summary(est, lhs='z', robust=TRUE)
@@ -144,9 +148,10 @@ x3   0.5692     0.0933    6.10  2.9e-08 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.11 on 87 degrees of freedom
-Multiple R-squared: 0.458   Adjusted R-squared: 0.377 
-F-statistic(excl fe, iid):6.14 on 12 and 87 DF, p-value: 1.1e-07 
-F-statistic(proj): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
+Multiple R-squared(full model): 0.458   Adjusted R-squared: 0.384 
+Multiple R-squared(proj model): 0.362   Adjusted R-squared: 0.274 
+F-statistic(full model, *iid*):6.14 on 12 and 87 DF, p-value: 1.1e-07 
+F-statistic(proj model): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
 
 
 > summary(zest <- felm(z ~x+x2+x3|id), robust=TRUE)
@@ -167,9 +172,10 @@ x3   0.5692     0.0933    6.10  2.9e-08 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.11 on 87 degrees of freedom
-Multiple R-squared: 0.458   Adjusted R-squared: 0.377 
-F-statistic(excl fe, iid):6.14 on 12 and 87 DF, p-value: 1.1e-07 
-F-statistic(proj): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
+Multiple R-squared(full model): 0.458   Adjusted R-squared: 0.384 
+Multiple R-squared(proj model): 0.362   Adjusted R-squared: 0.274 
+F-statistic(full model, *iid*):6.14 on 12 and 87 DF, p-value: 1.1e-07 
+F-statistic(proj model): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
 
 
 > getfe(zest,se=TRUE)
@@ -218,9 +224,10 @@ rhsx3   0.5692     0.0933    6.10  2.9e-08 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.11 on 87 degrees of freedom
-Multiple R-squared: 0.458   Adjusted R-squared: 0.377 
-F-statistic(excl fe, iid):6.14 on 12 and 87 DF, p-value: 1.1e-07 
-F-statistic(proj): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
+Multiple R-squared(full model): 0.458   Adjusted R-squared: 0.384 
+Multiple R-squared(proj model): 0.362   Adjusted R-squared: 0.274 
+F-statistic(full model, *iid*):6.14 on 12 and 87 DF, p-value: 1.1e-07 
+F-statistic(proj model): 19.8 on 3 and 87 DF, p-value: 7.16e-10 
 
 
 > getfe(est,se=TRUE)
@@ -249,4 +256,4 @@ id.10    0.418    0.352    0.365    0.404
 > 
 > proc.time()
    user  system elapsed 
-  8.958   0.354   9.118 
+  3.817   0.104   3.559 

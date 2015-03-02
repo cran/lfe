@@ -2,6 +2,8 @@
 getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100, robust=FALSE, cluster=obj[['clustervar']], lhs=NULL) {
 
   if(length(obj$fe) == 0) return(NULL)
+  if(!is.null(obj$numctrl) && obj$numctrl > 0)
+      stop("Can't retrieve fixed effects when estimating with control variables")
   if(method == 'kaczmarz') {
     if(!is.null(references))
        warning('use estimable function (ef) instead of references in the Kaczmarz method')

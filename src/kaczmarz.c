@@ -293,6 +293,7 @@ SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
   double **vectors, **target;
   int cnt;
   int numthr = 1;
+  int protectcount=0;
 #ifndef NOTHREADS
   int thr;
 #ifdef WIN
@@ -313,7 +314,7 @@ SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
   if(!isNull(initial)) {
     init = REAL(initial);
   }
-  PROTECT(flist = AS_LIST(flist));
+  PROTECT(flist = AS_LIST(flist));protectcount++;
   //  numfac = LENGTH(flist);
 
   factors = makefactors(flist, 0);
@@ -328,15 +329,14 @@ SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
 
   /* Then the vectors */
 
-  PROTECT(vlist = AS_LIST(vlist));
+  PROTECT(vlist = AS_LIST(vlist)); protectcount++;
   listlen = LENGTH(vlist);
-  PROTECT(reslist = NEW_LIST(listlen));
+  PROTECT(reslist = NEW_LIST(listlen)); protectcount++;
 
   /* First, count the number of vectors in total */
   numvec = 0;
   for(int i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
-    if(!IS_NUMERIC(elt)) error("Entries must be numeric");
     /* Each entry in the list is either a vector or a matrix */
     if(!isMatrix(elt)) {
       if(LENGTH(elt) != N) 
@@ -357,6 +357,9 @@ SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
   cnt = 0;
   for(int i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
+    if(!isReal(elt)) {
+      elt = PROTECT(coerceVector(elt, REALSXP)); protectcount++;
+    }
     if(!isMatrix(elt)) {
       /* It's a vector */
       SEXP resvec;
@@ -500,6 +503,6 @@ SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
 #endif
   PutRNGstate();
   if(arg.stop == 1) error("Kaczmarz interrupted");
-  UNPROTECT(3);
+  UNPROTECT(protectcount);
   return(reslist);
 }

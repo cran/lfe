@@ -15,6 +15,7 @@ $robust = 'FALSE';
 $usecg = 'FALSE';
 $accel = 1;
 $ivtest = 0;
+$ivboot = 0;
 while(<>) {
   chomp($_);
   # strip comments
@@ -58,6 +59,9 @@ while(<>) {
       $testvars = '"'. join('","',@line) . '"';
   } elsif($cmd eq 'ivftest') {
       $ivtest = 1;
+  } elsif($cmd eq 'ivboot') {
+      $ivtest = 1;
+      $ivboot = 1;
   } elsif($cmd eq 'savecomp') {
       $savecomp = 1;
   } elsif($cmd eq 'analyze') {
@@ -233,7 +237,7 @@ if($exactDF == 1) {
 if(defined($iv)) {
     print "est <- felm($model,data=tab,iv=$iv$cvar$edf)\n";
 } else {
-  print "est <- felm($model,data=tab$cvar$edf)\n";
+  print "est <- felm($model,data=tab$cvar$edf,wildcard='g')\n";
 }
 print "
 robust <- $robust || !is.null(est\$clustervar)
@@ -246,10 +250,10 @@ if(!is.null(est\$stage1)) {
 }
 if(length(est\$lhs) > 1) {
   for(lh in est\$lhs) {
-    print(summary(est, robust=$robust, lhs=lh))
+    print(summary(est, robust=robust, lhs=lh))
   }
 } else {
-  print(summary(est, robust=$robust))
+  print(summary(est, robust=robust))
 }
 ";
 
@@ -269,8 +273,15 @@ print "
 if($ivtest) {
     print "
 if(!is.null(est\$stage1)) {
-message(date(), ' Computing conditional F-tests for IV')
-print(condfstat(est));
+if($ivboot) {
+  message(date(), ' Computing conditional F-tests and confidence intervals')
+  cf <- condfstat(est,quant=c(0.025,0.975))
+  print(cf[,,drop=FALSE])
+  print(attr(cf,'quantiles'))
+} else {
+  message(date(), ' Computing conditional F-tests for IV')
+  print(condfstat(est)[,,drop=FALSE]);
+}
 } else {
 message('**** conditional F-test specified, but no IV performed')
 }

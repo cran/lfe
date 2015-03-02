@@ -1,3 +1,78 @@
+ivbootstrap <- function(z, x, y, quantiles=0.95, N=100L, cluster=NULL) {
+  # estimate bias as E((z' x)^{-1} z' eps)
+  N <- max(N)
+  if(!is.null(cluster)) {
+    if(length(cluster) > 1)
+        warning('Only a single cluster is supported for IV bootstrap, using ',
+                names(cluster)[[1]])
+    clu <- cluster[[1]]
+    iclu <- as.integer(clu)
+  }
+#  zortho <- orthonormalize(z)
+
+  pint <- getOption('lfe.pint')
+  start <- last <- Sys.time()
+  # hmm, can we reduce the number of instruments?
+
+  n <- 0
+  bias <- replicate(N,{
+    n <<- n + 1
+    now <- Sys.time()
+    if(is.numeric(pint) && pint > 0 && now-last > pint) {
+      message(date(), ' Iteration ', n , ' of ', N , ' in IV bootstrap')
+      last <<- now
+    }
+    if(is.null(cluster)) {
+      # resampling observations for indep residuals
+      s <- sample(nrow(z),replace=TRUE)
+    } else {
+      # resample entire levels
+      cl <- sort(sample(nlevels(clu), replace=TRUE))
+      # find a faster way to do this:
+      # s <- sort(unlist(sapply(cl, function(ll) which(clu==ll))))
+      s <- NULL
+      while(length(cl) > 0) {
+        s <- c(s,which(iclu %in% cl))
+        cl <- cl[c(1L,diff(cl)) == 0]
+      }
+    }
+    
+    # draw new instruments
+    zortho <- orthonormalize(z[s,,drop=FALSE])
+    # draw new X, and project it
+    zX <- crossprod(zortho, x[s,,drop=FALSE])
+    tryCatch(solve(crossprod(zX),
+                   crossprod(zX, crossprod(zortho, y[s,,drop=FALSE]))),
+             error=function(e) {warning(e);NULL})
+  })
+  if(start != last) cat('\n')
+
+  if(is.list(bias)) {
+    # some of them returned NULL, so replicate returned a list
+    # discard those NULLs
+    bias <- simplify2array(bias[!sapply(bias,is.null)])
+    N <- dim(bias)[3]
+  }
+  # estimate quantiles of the bias
+
+  if(is.null(quantiles)) {
+    res <- bias
+    res <- aperm(res, c(1,(3:length(dim(res))),2))
+  } else {
+    qname <- paste(100*round(quantiles,3), '%',sep='')
+    dm <- 1:(length(dim(bias))-1)
+    res <- apply(bias,dm,function(s) quantile(s,probs=quantiles,na.rm=TRUE,type=4))
+    if(length(quantiles) == 1) {
+      dmn <- dimnames(res)
+      dim(res) <- c(1,dim(res))
+      dimnames(res) <- c(list(paste(round(quantiles,3),'%',sep='')),dmn)
+    }
+    res <- aperm(res,c(2,1,3:length(dim(res))))
+  }
+
+  structure(res, q=quantiles, samples=N)
+}
+
   # From "A weak instrument F-test in linear iv models with multiple
   # " endogenous variables", Sanderson & Windmeijer, Disc. Paper 14/644 U of Bristol, 2014
   # pp 22-23.  There's an error in how tilde delta is computed at p. 23.
@@ -6,11 +81,12 @@
   # I.e. estimate delta in x_j = \hat X_{-j} * delta + eps
   # Regress x_j - X_{-j}*delta = Z * kappa + xi
   # wald test on kappa, with df = max(1,kz-#endog+1)
-condfstat <- function(object, type='default') {
+condfstat <- function(object, type='default', quantiles=0.0, bN=100L) {
   est <- object
   st1 <- est$stage1
   if(is.null(st1))
       stop('Conditional F statistic only makes sense for iv-estimation')
+
 
   if(is.null(type)) {
     types <- c('iid','robust')
@@ -40,12 +116,34 @@ condfstat <- function(object, type='default') {
   keep <- !(colnames(st1$ivx) %in% '(Intercept)')
   if(all(keep)) ivx <- st1$ivx else ivx <- st1$ivx[,keep, drop=FALSE]
   inames <- colnames(ivx)
-  y <- cbind(st1$ivy, ivx, st1$fitted.values)
+  y <- cbind(st1$ivy, ivx, st1$fitted.values, est$c.response)
   fitnames <- makefitnames(colnames(st1$fitted.values))
-  setdimnames(y, list(NULL, c(colnames(st1$ivy), inames, fitnames)))
+  setdimnames(y, list(NULL, c(colnames(st1$ivy), inames, fitnames, colnames(est$c.response))))
   mm <- list(y=y, x=st1$centred.exo)
   tvars <- newols(mm, nostats=TRUE)$residuals
   rm(y,mm)
+  # should we estimate the relative bias?
+  if(any(quantiles > 0) || is.null(quantiles)) {
+    # use the predicted variables as instruments?
+    z <- tvars[,colnames(ivx),drop=FALSE]
+#    z <- xhat
+    x <- tvars[,colnames(st1$ivy),drop=FALSE]
+    y <- tvars[,colnames(est$c.response), drop=FALSE]
+    bias <- ivbootstrap(z,x,y,
+                   quantiles=quantiles,N=bN,cluster=est$clustervar)
+    rm(z,x,y)
+
+    # Now, bias contains the bias distribution
+    # we subtract it from the estimate in object$coefficients
+    quant <- bias
+#    cf <- object$coefficients[fitnames,,drop=FALSE]
+#    quant <- sapply(seq_len(ncol(cf)), function(i) cf[,i] + bias[,,i,drop=FALSE])
+#    attributes(quant) <- attributes(bias)
+            
+    quant <- drop(quant)
+  } else {
+    quant <- NULL
+  }
 
   resid <- sapply(st1$lhs, function(ev) {
     # do an ols on each
@@ -57,7 +155,10 @@ condfstat <- function(object, type='default') {
     Xrest <- tvars[,evrest,drop=FALSE]
     Xlhs - Xrest %*% solve(crossprod(Xhatrest), t(Xhatrest) %*% Xlhs)
   })
+
   setdimnames(resid, list(NULL, st1$lhs))
+
+
   # then regress on the instruments
   mm <- list(y = resid, x=tvars[,inames], cluster=est$clustervar)
   z <- newols(mm, nostats=FALSE)
@@ -67,7 +168,7 @@ condfstat <- function(object, type='default') {
     sapply(z$lhs, function(lh) waldtest(z,inames,lhs=lh, df1=df1, type=typ)['F'])
   }))
   dimnames(result) <- list(z$lhs,paste(types,'F'))
-  structure(t(result),df1=df1)
+  structure(t(result),df1=df1, quantiles=quant)
 }
  
 oldcondfstat <- function(object, type='default') {

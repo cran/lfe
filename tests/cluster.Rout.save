@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-02-04 r67720) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -81,9 +81,10 @@ x   0.9347     0.0459    20.4   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.43 on 991 degrees of freedom
-Multiple R-squared: 0.394   Adjusted R-squared: 0.388 
-F-statistic(excl fe):80.4 on 8 and 991 DF, p-value: <2e-16 
-F-statistic(proj):  415 on 1 and 991 DF, p-value: <2e-16 
+Multiple R-squared(full model): 0.394   Adjusted R-squared: 0.389 
+Multiple R-squared(proj model): 0.295   Adjusted R-squared: 0.289 
+F-statistic(full model):80.4 on 8 and 991 DF, p-value: <2e-16 
+F-statistic(proj model):  415 on 1 and 991 DF, p-value: <2e-16 
 
 
 > # CGM clustering, i.e. one factor means standard one-way clustering
@@ -113,9 +114,10 @@ f18           2.0672       0.2220    9.31  < 2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.43 on 991 degrees of freedom
-Multiple R-squared: 0.394   Adjusted R-squared: 0.388 
-F-statistic(excl fe, iid):80.4 on 8 and 991 DF, p-value: <2e-16 
-F-statistic(proj):  177 on 9 and 14 DF, p-value: 7.64e-13 
+Multiple R-squared(full model): 0.394   Adjusted R-squared: 0.389 
+Multiple R-squared(proj model): 0.394   Adjusted R-squared: 0.389 
+F-statistic(full model, *iid*):80.4 on 8 and 991 DF, p-value: <2e-16 
+F-statistic(proj model):  174 on 8 and 14 DF, p-value: 1.13e-12 
 
 
 > # this will make my experimental clustered errors for f1, typically better for few groups
@@ -137,9 +139,10 @@ x   0.9347       0.0606    15.4   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 1.43 on 991 degrees of freedom
-Multiple R-squared: 0.394   Adjusted R-squared: 0.388 
-F-statistic(excl fe, iid):80.4 on 8 and 991 DF, p-value: <2e-16 
-F-statistic(proj):  238 on 1 and 14 DF, p-value: 3.48e-10 
+Multiple R-squared(full model): 0.394   Adjusted R-squared: 0.389 
+Multiple R-squared(proj model): 0.295   Adjusted R-squared: 0.289 
+F-statistic(full model, *iid*):80.4 on 8 and 991 DF, p-value: <2e-16 
+F-statistic(proj model):  238 on 1 and 14 DF, p-value: 3.48e-10 
 
 
 > # Comparable estimable function
@@ -169,4 +172,4 @@ f1.8 2.067194   0.19654
 > 
 > proc.time()
    user  system elapsed 
-  3.226   0.252   3.360 
+  2.801   0.101   2.664 

@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-01-28 r67639) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -52,9 +52,10 @@ x3   0.4771     0.0201    23.8   <2e-16 ***
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 0.97 on 2178 degrees of freedom
-Multiple R-squared: 0.923   Adjusted R-squared: 0.823 
-F-statistic(excl fe):9.22 on 2821 and 2178 DF, p-value: <2e-16 
-F-statistic(proj): 1.05e+03 on 3 and 2178 DF, p-value: <2e-16 
+Multiple R-squared(full model): 0.923   Adjusted R-squared: 0.823 
+Multiple R-squared(proj model): 0.592   Adjusted R-squared: 0.0641 
+F-statistic(full model):9.22 on 2821 and 2178 DF, p-value: <2e-16 
+F-statistic(proj model): 1.05e+03 on 3 and 2178 DF, p-value: <2e-16 
 *** Standard errors may be too high due to more than 2 groups and exactDOF=FALSE
 
 
@@ -126,4 +127,4 @@ F-statistic: 8.15e+07 on 6 and 4994 DF,  p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  4.138   0.097   4.125 
+  2.957   0.113   2.867 
