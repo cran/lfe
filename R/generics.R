@@ -304,9 +304,13 @@ summary.felm <- function(object,...,robust=!is.null(object$clustervar),lhs=NULL)
   sigma <- sqrt(resvar)  
 
   res$exactDOF <- z$exactDOF
-  res$iv1fstat <- z$iv1fstat[[lhs]]
-  res$rob.iv1fstat <- z$rob.iv1fstat[[lhs]]
-
+  if(is.list(z$iv1fstat)) {
+    res$iv1fstat <- z$iv1fstat[[lhs]]
+    res$rob.iv1fstat <- z$rob.iv1fstat[[lhs]]
+  } else {
+    res$iv1fstat <- z$iv1fstat
+    res$rob.iv1fstat <- z$rob.iv1fstat
+  }
   res$df <- c(rdf,rdf)
   res$sigma <- res$rse <- sigma
   res$rdf <- rdf

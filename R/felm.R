@@ -270,9 +270,9 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
 }
 
 
-newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=FALSE) {
-  # We should project out the the factors from the y and x matrix, and do an ordinary lm.fit
-#  if(length(mm$fl) != 0)
+newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=FALSE,
+                   kappa=NULL) {
+
   if(!is.null(mm$orig))
       orig <- mm$orig
   else
@@ -309,8 +309,21 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 
   # lm.fit is an alternative.  Let's have a look at it later (didn't work before, but things have changed)
   # roll our own
-  cp <- crossprod(mm$x)
-  b <- crossprod(mm$x,mm$y)
+
+  # to implement a k-class estimator, we should not project with P_Z, i.e.
+  # onto the instruments. I.e. not X' (I-M_Z) X, but X' (I - kappa M_Z) X.
+  # Indeed, the estimator is (X' (I-kappa M_Z)X)^{-1} X' (I-kappa M_Z) y)
+  # Now, note that I - kappa M_Z = P_Z + (1-kappa)M_Z. So it is the
+  # fitted values plus a fraction of the residuals
+  
+  # (see http://www.tandfonline.com/doi/pdf/10.1080/07350015.2014.978175 p 11)
+  if(!is.null(kappa)) {
+    cp <- crossprod(mm$x) - kappa*crossprod(mm$noinst)
+    b <- crossprod(mm$x,mm$y) - kappa * crossprod(mm$noinst, mm$y)
+  } else {
+    cp <- crossprod(mm$x)
+    b <- crossprod(mm$x,mm$y)
+  }
   ch <- cholx(cp)
   badvars <- attr(ch,'badvars')
 
@@ -327,25 +340,35 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
       z$inv[-badvars,-badvars] <- chol2inv(ch)
     }
   }
+  if(!nostats && !is.null(kappa)) {
+    # In k-class with k!=0 and k!=1, the covariance matrix isn't simply the
+    # inverse of cp.  This is so because
+    # hatbeta - beta = (X' K X)^{1} X' K' epsilon
+    # Even when epsilon is iid, we obtain
+    # var(hatbeta-beta) = sigma^2 (X' K X)^{-1} X' K' K X (X' K X)^{-1}
+    # and since K isn't a projection, we do not have K'K = K, so
+    # we can't cancel out one of the (X' K X)^{-1}
+    kinv <- z$inv %*% crossprod(mm$x - kappa*mm$noinst) %*% z$inv
+  }
   rm(ch, b, cp)
-  rownames(beta) <- colnames(orig$x)
+#  rownames(beta) <- colnames(orig$x)
+  rownames(beta) <- colnames(mm$x)
 
-  z$lhs <- colnames(beta) <- colnames(orig$y)
+#  z$lhs <- colnames(beta) <- colnames(orig$y)
+  z$lhs <- colnames(beta) <- colnames(mm$y)
   z$hasicpt <- hasicpt
   z$TSS <- mm$TSS
-
+  z$kappa <- kappa
   z$P.TSS <- apply(mm$y,2,var)*(nrow(mm$y)-1)
   names(z$P.TSS) <- colnames(mm$y)
 
   z$numctrl <- numctrl
-  if(!nostats) inv <- nazero(z$inv)
   z$coefficients <- z$beta <- beta
 
   # what else is there to put into a felm object?
   z$Pp <- ncol(orig$x)
   z$N <- nrow(orig$x)
   z$p <- z$Pp - length(badvars) + numctrl
-
   nabeta <- nazero(beta)
 
   zfit <- mm$x %*% nabeta
@@ -353,7 +376,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   
   z$response <- orig$y
 
-  z$fitted.values <- mm$y - zresid
+  z$fitted.values <- zfit #mm$y - zresid
   z$residuals <- zresid
   z$contrasts <- mm$contrasts
   if(length(mm$fl) != 0) {
@@ -363,12 +386,12 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   }
 
   # the residuals should be the residuals from the original endogenous variables, not the predicted ones
-  # the difference are the ivresid, which we must multiply by beta and subtract.
+  # the difference are the residuals from stage 1, which we must multiply by beta and subtract.
   # the residuals from the 2nd stage are in iv.residuals
   # hmm, what about the r.residuals?  We modify them as well. They are used in kaczmarz().
 
   if(!is.null(stage1)) {
-    # we might need the centred response in condfstat()
+    # we need the centred response in condfstat()
     z$c.response <- mm$y
     fitnam <- makefitnames(stage1$lhs)
     ivresid <- stage1$residuals %*% nabeta[fitnam,,drop=FALSE]
@@ -377,6 +400,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
     z$r.iv.residuals <- z$r.residuals
     z$r.residuals <- z$r.residuals - ivresid
     z$endovars <- stage1$lhs
+    z$fitted.values <- z$response - z$residuals
   }
 
   z$terms <- mm$terms
@@ -426,16 +450,24 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   # preallocate STATS 
   if(!singlelhs) z$STATS <- list()
   z$STATS <- list()
-
+  if(is.null(kappa)) {
+    vinv <- z$inv
+  } else {
+    vinv <- kinv
+  }
+  inv <- nazero(vinv)
+  
+  xz <- mm$x
+  if(!is.null(kappa)) xz <- xz - kappa*mm$noinst
   for(lhs in z$lhs) {
     res <- z$residuals[,lhs]
 
 # when multiple lhs, vcvfactor is a vector
 # we need a list of vcvs in this case
 
-    vcv <- sum(res**2)/z$df * z$inv
+    vcv <- sum(res**2)/z$df * vinv
     setdimnames(vcv, vcvnames)
-      z$STATS[[lhs]]$vcv <- vcv
+    z$STATS[[lhs]]$vcv <- vcv
     if(singlelhs) z$vcv <- vcv
 
   # We should make the robust covariance matrix too.
@@ -454,7 +486,6 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   # and even get a copy in the result.
   # Thus we modify it in place with a .Call. The scaled variant is also used in the cluster computation.
 
-    xz <- mm$x
     rscale <- ifelse(res==0,1e-40,res)  # make sure nothing is zero
     # This one scales the columns without copying
     # For xz, remember to scale it back, because we scale directly into
@@ -554,18 +585,22 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   z
 }
 
-felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NULL,...) {
+felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
+                 contrasts=NULL,...) {
 
-  knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats', 'wildcard')
+  knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats',
+                 'wildcard', 'kclass', 'fuller')
   keepX <- FALSE
   cmethod <- 'cgm'
   iv <- NULL
   clustervar <- NULL
   nostats <- FALSE
   wildcard <- 'n'
+  kclass <- NULL
+  fuller <- 0
   deprec <- c('iv', 'clustervar')
   mf <- match.call(expand.dots = FALSE)
-
+  
   # Currently there shouldn't be any ... arguments
   # check that the list is empty
 
@@ -600,6 +635,8 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
     return(eval.parent(mf))
   }
 
+
+
   mm <- makematrix(mf, contrasts, pf=parent.frame(), clustervar, wildcard=wildcard)
   ivform <- mm$ivform
 
@@ -612,14 +649,61 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
   }
 
 
-  ########### Instrumental variables ############
-  # pick up the full formula
-  fullform <- mm$formula
-
   if(length(nostats) == 2)
       nost1 <- nostats[2]
   else
       nost1 <- nostats[1]
+
+  ########### Instrumental variables ############
+
+
+  fitnames <- makefitnames(colnames(mm$ivy))
+  # should we do k-class estimation?
+  if(is.null(kclass) || is.numeric(kclass)) {
+      kappa <- kclass
+  } else {
+    KN <- ncol(mm$ivx)
+    LN <- ncol(mm$x)
+    N <- nrow(mm$x)
+    # todo: liml
+    
+    kappa <- switch(kclass,
+                    `2sls`=,
+                    tsls=1.0,
+                    nagar=1+(KN-2)/N,
+                    b2sls=,
+                    btsls=1/(1-(KN-2)/N),
+                    mb2sls=,
+                    mbtsls=(1-LN/N)/(1-KN/N-LN/N),
+                    liml=limlk(mm),
+                    fuller=limlk(mm)-fuller/(N-KN),
+                    stop('Unknown k-class: ',kclass,call.=FALSE))
+  }
+  # if k-class, we should add all the exogenous variables
+  # to the lhs in the 1st stage, and obtain all the residuals
+  # of the instruments.  A fraction (1-kappa) of the residuals
+  # are added to the fitted values when doing the 2nd stage.
+  # nah, we should project on P_{Z,W}. Now, P_{Z,W} W = W
+  if(!is.null(kappa)) {
+    mm2 <- mm1 <- mm[names(mm) %in% c('fl','terms','cluster', 'numctrl',
+                                      'hasicpt','na.action','contrasts')]
+    nmx <- colnames(mm$x)
+    mm1$y <- cbind(mm$x, mm$ivy)
+    mm1$x <- cbind(mm$x, mm$ivx)
+    mm2$y <- mm$y
+    mm2$x <- mm1$y
+    mm2$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
+    mm2$orig$y <- cbind(mm$orig$x, mm$orig$ivy)
+    rm(mm)
+    z1 <- newols(mm1, nostats=nost1)
+
+    mm2$noinst <- z1$residuals
+    rm(mm1)
+#    setdimnames(mm2$x, list(NULL, c(fitnames,nmx)))
+    z2 <- newols(mm2, exactDOF=exactDOF, kappa=kappa, nostats=nostats[1])
+    z2$call <- match.call()
+    return(z2)
+  }
 
 
   # Now, we must build a model matrix with the endogenous variables
@@ -639,8 +723,6 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
   mm1$x <- cbind(mm$x, mm$ivx)
   mm1$orig$y <- mm$orig$ivy
   mm1$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
-
-  fitnames <- makefitnames(colnames(mm$ivy))
 
   z1 <- newols(mm1, nostats=nost1, exactDOF=exactDOF)
   rm(mm1)
@@ -664,6 +746,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
 
   mm2 <- mm[names(mm) %in% c('fl','terms','cluster','numctrl','hasicpt',
                              'na.action','contrasts', 'TSS')]
+
   mm2$x <- cbind(mm$x, z1$fitted.values)
   setdimnames(mm2$x, list(NULL, c(exlist,fitnames)))
   mm2$y <- mm$y
@@ -671,7 +754,10 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NUL
     mm2$orig <- list(x=cbind(mm$orig$x, z1$fitted.values), y=mm$orig$y)
     setdimnames(mm2$orig$x, list(NULL, c(exlist,fitnames)))
   }
+
   rm(mm)  # save some memory
+
+
   z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF)
   if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
   rm(mm2)

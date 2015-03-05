@@ -1,5 +1,6 @@
 \name{felm}
 \alias{felm}
+\encoding{UTF-8}
 \title{Fit a linear model with multiple group fixed effects}
 \description{
 'felm' is used to fit linear models with multiple group fixed effects,
@@ -50,20 +51,34 @@ off by using \code{\link{lm}}.
 
   \item{...}{other arguments.
     \itemize{
-      \item \code{keepX} logical. to include a copy of the expanded data matrix in the return value, as needed by
-      \code{\link{bccorr}} and \code{\link{fevcov}} for proper bias
-      correction.
-      \item \code{nostats} logical. Don't include covariance matrices in the
-      output, just the estimated coefficients and various descriptive
-      information. For IV, \code{nostats} can be a logical vector of
-      length 2, with the last value being used for the 1st stages.
-      \item \code{iv, clustervar} deprecated.  These arguments will be removed at a
-      later time, but is still supported in this field. Users are \emph{STRONGLY}
-      encouraged to use multipart formulas instead.  In particular, not
-      all functionality is supported with the deprecated syntax;
-      iv-estimations actually run a lot faster if multipart formulas are
-      used, due to new algorithms which I didn't bother to shoehorn in
-      place for the deprecated syntax.
+
+      \item \code{keepX} logical. to include a copy of the expanded data
+      matrix in the return value, as needed by \code{\link{bccorr}} and
+      \code{\link{fevcov}} for proper bias correction.
+
+      \item \code{nostats} logical. Don't include covariance matrices in
+      the output, just the estimated coefficients and various
+      descriptive information. For IV, \code{nostats} can be a logical
+      vector of length 2, with the last value being used for the 1st
+      stages.
+
+      \item \code{kclass} character. For use with instrumental
+      variables. Use a k-class estimator rather than 2SLS/IV. Currently,
+      the values \code{'nagar', 'b2sls', 'mb2sls', 'liml'} are accepted,
+      where the names are from \cite{Kolesár et al (2014)}, as well as
+      a numeric value for the 'k' in k-class. With \code{kclass='liml'},
+      \code{felm} also accepts the argument \code{fuller=<numeric>}, for
+      using a Füller adjustment of the liml-estimator.
+
+      \item \code{iv, clustervar} deprecated.  These arguments will be
+      removed at a later time, but is still supported in this
+      field. Users are \emph{STRONGLY} encouraged to use multipart
+      formulas instead.  In particular, not all functionality is
+      supported with the deprecated syntax; iv-estimations actually run
+      a lot faster if multipart formulas are used, due to new algorithms
+      which I didn't bother to shoehorn in place for the deprecated
+      syntax.
+
     }
   }
 }
@@ -245,4 +260,9 @@ Cameron, A.C., J.B. Gelbach and  D.L. Miller (2011) \cite{Robust
   inference with multiway clustering}, Journal of Business & Economic
 Statistics 29 (2011), no. 2, 238--249.
 \url{http://dx.doi.org/10.1198/jbes.2010.07136}
+
+Kolesár, M.,  R. Chetty, J. Friedman, E. Glaeser, and G.W. Imbens (2014)
+\cite{Identification and Inference with Many Invalid Instruments},
+Journal of Business & Economic Statistics.
+\url{http://dx.doi.org/10.1080/07350015.2014.978175}
 }

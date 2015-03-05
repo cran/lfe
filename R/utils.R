@@ -283,7 +283,7 @@ ilpretty <- function(il) {
          }), collapse=' ')
 }
 
-makefitnames <- function(s) paste('`',s,'(fit)`',sep='')
+makefitnames <- function(s) gsub('`(Intercept)(fit)`','(Intercept)',paste('`',s,'(fit)`',sep=''), fixed=TRUE)
 delete.icpt <- function(x) {
   asgn <- attr(x,'assign')
   icpt <- asgn == 0
@@ -307,4 +307,18 @@ rls <- function(env, top=.GlobalEnv) {
     e <- parent.env(e)
   }
   unique(ret)
+}
+
+limlk <- function(mm) {
+  #  find the kappa for computing k-class liml
+  # it's the smallest eigenvalue of the matrix
+  # [y endog]' M_i [y endog] ([y endog]' M [y endog])^{-1}
+  # where M is projection out of instruments
+  # and M_i is projection out of both instruments and exogenous
+  # variables
+  ye <- cbind(mm$y, mm$ivy)
+  H1 <- crossprod(ye, newols(list(y=ye,x=mm$x),nostats=TRUE)$residuals)
+  H <- crossprod(ye, newols(list(y=ye,x=cbind(mm$ivx,mm$x)), nostats=TRUE)$residuals)
+  mat <- solve(H,H1)
+  min(eigen(mat, only.values=TRUE)$values)
 }

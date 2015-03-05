@@ -619,7 +619,7 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   if(isdf) {
     SET_NAMES(reslist, GET_NAMES(vlist));
     setAttrib(reslist, R_RowNamesSymbol, getAttrib(vlist, R_RowNamesSymbol));
-    SET_CLASS(reslist, str_DF);
+    SET_CLASS(reslist, mkString("data.frame"));
   } else {
     SET_NAMES(reslist, GET_NAMES(vlist));
   }

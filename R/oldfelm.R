@@ -179,6 +179,7 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE, keepX=FALSE, nostats=F
         z <- list(N=psys$N, r.residuals=psys$y,fe=psys$fl,p=totvar,Pp=0,cfactor=compfactor(psys$fl),
                   na.action=psys$na.action, contrasts=psys$contrasts,
                   fitted.values=psys$y - psys$yxz$y,
+                  coefficients=matrix(double(0),psys$N,0),
                   df=df,
                   nostats=FALSE,
                   model.assign=psys$assign,
@@ -290,6 +291,11 @@ doprojols <- function(psys, ivresid=NULL, exactDOF=FALSE, keepX=FALSE, nostats=F
   # the residuals from the 2nd stage are in iv.residuals
   # hmm, what about the r.residuals?  We modify them as well. They are used in kaczmarz().
   if(!is.null(ivresid)) {
+    if(!is.matrix(ivresid)) {
+      nm <- names(ivresid)
+      ivresid <- matrix(unlist(ivresid),z$N)
+      colnames(ivresid) <- nm
+    }
     z$ivresid <- ivresid %*% nabeta[colnames(ivresid),,drop=FALSE]
     z$iv.residuals <- z$residuals
     z$residuals <- z$residuals - z$ivresid    
@@ -612,7 +618,7 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
   nostats <- FALSE
 
   deprec <- c('iv', 'clustervar')
-  
+
 #  sc <- names(sys.call())[-1]
 #  named <- knownargs[pmatch(sc,knownargs)]
 #  for(arg in c('iv', 'clustervar')) {
@@ -621,7 +627,7 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
 #      }
 #  }
 
-  mf <- match.call(expand.dots = FALSE)
+  mf <- match.call(expand.dots = TRUE)
 
   # Currently there shouldn't be any ... arguments
   # check that the list is empty
@@ -642,30 +648,25 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
   }
   env <- environment()
   lapply(intersect(knownargs,ka), function(arg) assign(arg,args[[arg]], pos=env))
-
   if(!(cmethod %in% c('cgm','gaure'))) stop('Unknown cmethod: ',cmethod)
 
   # also implement a check for unknown arguments
   unk <- setdiff(names(args), knownargs)
   if(length(unk) > 0) stop('unknown arguments ',paste(unk, collapse=' '))
 
-
   if(missing(data)) mf$data <- data <- environment(formula)
   pf <- parent.frame()
   pform <- parseformula(formula,data)
   
-
   if(!is.null(iv) && !is.null(pform[['iv']])) stop("Specify EITHER iv argument(deprecated) OR multipart terms, not both")
   if(!is.null(pform[['cluster']]) && !is.null(clustervar)) stop("Specify EITHER clustervar(deprecated) OR multipart terms, not both")
   if(!is.null(pform[['cluster']])) clustervar <- structure(pform[['cluster']], method=cmethod)
-
   if(is.null(iv) && is.null(pform[['iv']])) {
     # no iv, just do the thing
     fl <- pform[['fl']]
     formula <- pform[['formula']]
     mf[['formula']] <- formula
     psys <- project(mf,fl,data,contrasts,clustervar,pf)
-
     z <- doprojols(psys,exactDOF=exactDOF, nostats=nostats[1])
     if(keepX) z$X <- if(psys$icpt > 0) psys$x[,-psys$icpt] else psys$x
     rm(psys)
@@ -675,14 +676,12 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
     return(z)
   }
 
-
   # IV.  Clean up formulas, set up for 1st stages
   if(!is.null(iv)) {
     # warning("argument iv is deprecated, use multipart formula instead")
     if(!is.list(iv)) iv <- list(iv)
     form <- pform[['formula']]
     # Old syntax, the IV-variables are also in the main equation, remove them
-      
     for(ivv in iv) {
       ivnam <- ivv[[2]]
       # create the new formula by removing the IV lhs.
@@ -732,6 +731,7 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
                                               G=pform[['gpart']][[2]])))
     }
     environment(step1form) <- environment(formula)
+
 
     ivform <- parseformula(step1form,data)
     fl <- ivform[['fl']]
@@ -856,18 +856,12 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
 
   # Now, insert the rhs of the IV in the formula
   # find the ordinary and the factor part
-  iv1 <- iv[[1]]
-  rhsivo <- formula(as.Formula(iv1[['formula']]),lhs=0)[[2]]
 
   # It may contain a factor part
-  if(nopart(iv1[['gpart']]))
-      rhsivg <- 0
-  else
-      rhsivg <- formula(iv1[['gpart']],lhs=0,rhs=2)[[2]]
 
   # this is the template for the step1 formula, just insert a left hand side
-  step1form <- formula(as.Formula(substitute(~B + ivO | G + ivG,
-                                    list(B=pform[['formula']][[3]],ivO=rhsivo,G=pform[['gpart']][[2]],ivG=rhsivg))))
+  step1form <- formula(as.Formula(substitute(~B +ivO | G + ivG,
+                                    list(B=pform[['formula']][[3]],G=pform[['gpart']][[2]]))))
 
   # this is the template for the second stage, it is updated with the IV variables
   step2form <- formula(as.Formula(substitute(y~B | G,
@@ -886,7 +880,6 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
   # I haven't figured out a good solution for this, except for creating the full model.matrix for
   # all of the steps.  This will blow our memory on large datasets.
 
-
   ivarg <- list()
   vars <- NULL
   step1 <- list()
@@ -894,18 +887,27 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
   for(ivv in iv) {
     # Now, make the full instrumental formula, i.e. with the rhs expanded with the
     # instruments, and the lhs equal to the instrumented variable
+
      ivlhs <- ivv[['formula']][[2]]
-     fformula <- substitute(Z ~ R,list(Z=ivlhs,R=step1form[[2]]))
+     rhsivo <- formula(as.Formula(ivv[['formula']]),lhs=0)[[2]]
+    if(nopart(ivv[['gpart']]))
+        rhsivg <- 0
+    else
+        rhsivg <- formula(ivv[['gpart']],lhs=0,rhs=2)[[2]]
+
+    fformula <- substitute(Z ~ R, list(Z=ivlhs, R=step1form[[2]]))
+
+    fformula <- do.call(substitute, list(fformula,list(ivO=rhsivo,ivG=rhsivg)))
+
      ivform <- parseformula(fformula,data)
      fl <- ivform[['fl']]
      mf[['formula']] <- ivform[['formula']]
+
      # note that if there are no G() terms among the instrument variables,
      # all the other covariates should only be centered once, not in every first stage and the
      # second stage separately. We should rewrite and optimize for this.
      psys <- project(mf,fl,data,contrasts,clustervar,pf)
-
      z <- doprojols(psys, exactDOF=exactDOF)
-
      mf[['formula']] <- fformula
      z$call <- mf
      rm(psys)
@@ -921,7 +923,6 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
      mfnull[['formula']] <- pformnull[['formula']]
      znull <- doprojols(project(mfnull, pformnull[['fl']], data, contrasts, clustervar, pf),
                         exactDOF=exactDOF)
-
      z$iv1fstat <- ftest(z,znull)
      z$rob.iv1fstat <- ftest(z,znull,vcov=z$robustvcv)
      if(!is.null(clustervar))
