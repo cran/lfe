@@ -19,13 +19,16 @@ SEXP R_scalecols(SEXP mat, SEXP vec) {
   where X and Y are matrices of column vectors, and beta a vector
   of length the number of columns of X and Y. Each column of Y should
   be scaled by the corresponding entry of beta
+  The same operation can be done in R with
+  X + t(beta * t(Y)), so this is a utility to save some costly transposes.
+  used in cgsolve()
  */
 SEXP R_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta) {
   mybigint_t col = ncols(inX), row=nrows(inX);
   if(col != ncols(inY) || row != nrows(inY))
     error("X and Y should have the same shape");
   if(LENGTH(inbeta) != col)
-    error("beta should have the same length as columns of Y");
+    error("beta should have the same length as the number of columns of Y");
   double *X = REAL(inX);
   double *Y = REAL(inY);
   double *beta = REAL(inbeta);
@@ -47,6 +50,7 @@ SEXP R_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta) {
 
 /*
   compute inner product pairwise of the columns of matrices X and Y
+  This is diag(crossprod(X,Y)).
  */
 SEXP R_piproduct(SEXP inX, SEXP inY) {
   mybigint_t col = ncols(inX), row=nrows(inX);
@@ -76,8 +80,8 @@ SEXP R_setdimnames(SEXP obj, SEXP nm) {
 }
 
 /* Compute and return alpha * bread %*% meat %*% bread */
-/*
-static SEXP R_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat) {
+
+SEXP R_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat) {
   double alpha = REAL(AS_NUMERIC(inalpha))[0];
   if(!isMatrix(inbread)) error("bread must be a matrix");
   if(!isMatrix(inmeat)) error("bread must be a matrix");
@@ -85,24 +89,29 @@ static SEXP R_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat) {
     error("bread must be square matrix");
 
   if(ncols(inmeat) != nrows(inmeat)) 
-    error("bread must be square matrix");
+    error("meat must be square matrix");
 
   if(ncols(inmeat) != ncols(inbread))
     error("bread and meat must have the same size");
 
-  int N = ncols(inalpha);
+  int N = ncols(inmeat);
   double *meat = REAL(inmeat);
   double *bread = REAL(inbread);
   SEXP ret;
+  double *tmp;
+  tmp = (double*) R_alloc(N*N,sizeof(double));
   PROTECT(ret = allocMatrix(REALSXP, N, N));
   double *out = REAL(ret);
+  double zero = 0.0;
+  double one = 1.0;
 
-  // Don't need yet
+  F77_CALL(dsymm)("R","U",&N,&N,&one,bread,&N,meat,&N,&zero,tmp,&N);
+  F77_CALL(dsymm)("L","U",&N,&N,&alpha,bread,&N,tmp,&N,&zero,out,&N);
 
   UNPROTECT(1);
   return ret;
 }
-*/
+
 
 // copy-free dsyrk C = beta*C + alpha * A' A
 SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
@@ -170,18 +179,15 @@ SEXP R_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB) {
 
 // debugging memory copy
 SEXP R_address(SEXP x) {
-  SEXP ret;
   char chr[30];
-  sprintf(chr, "%p", (void*)x);
-  PROTECT(ret = NEW_CHARACTER(1));
-  SET_STRING_ELT(ret, 0, mkChar(chr));
-  UNPROTECT(1);
-  return(ret);
+  sprintf(chr, "adr=%p, named=%d", (void*)x, NAMED(x));
+  return(mkString(chr));
 }
 
 
 /* Trickery to check for interrupts when using threads */
 static void chkIntFn(void *dummy) {
+  dummy=dummy; //avoid pedantic warning about unused parameter
   R_CheckUserInterrupt();
 }
 

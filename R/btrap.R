@@ -94,7 +94,8 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
       rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
     }
     dim(rsamp) <- c(length(smpdraw),vpb)
-    v <- kaczmarz(obj$fe,demeanlist(rsamp,obj$fe,eps=eps,threads=threads,means=TRUE)+Rvec, eps, threads=threads)*sefact
+    v <- kaczmarz(obj$fe,demeanlist(rsamp,obj$fe,eps=eps,threads=threads,means=TRUE)+Rvec,
+                  eps, threads=threads)*sefact
 #    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rvec
 #    v <- kaczmarz(obj$fe,newR,eps,threads=threads)*sefact
 #    rm(newR)

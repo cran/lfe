@@ -225,7 +225,8 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   names(TSS) <- colnames(y)
 
   if(length(fl) != 0) {
-    result <- edemeanlist(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl, fl=fl)
+#    result <- edemeanlist(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl, fl=fl)
+    result <- demeanlist(list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl), fl=fl)
     if(is.null(ctrl)) result$orig <- list(y=y, x=x, ivy=ivy, ivx=ivx)
   } else {
     result <- list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl)
@@ -348,7 +349,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
     # var(hatbeta-beta) = sigma^2 (X' K X)^{-1} X' K' K X (X' K X)^{-1}
     # and since K isn't a projection, we do not have K'K = K, so
     # we can't cancel out one of the (X' K X)^{-1}
-    kinv <- z$inv %*% crossprod(mm$x - kappa*mm$noinst) %*% z$inv
+#    kinv <- z$inv %*% crossprod(mm$x - kappa*mm$noinst) %*% z$inv
+    kinv <- .Call(C_sandwich,1.0,z$inv,crossprod(mm$x - kappa*mm$noinst))
   }
   rm(ch, b, cp)
 #  rownames(beta) <- colnames(orig$x)
@@ -495,7 +497,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
     # via a blas dsyrk. Save some memory 
     meat <- matrix(0, Ncoef, Ncoef)
     .Call(C_dsyrk,0.0,meat,dfadj,xz)
-    rvcv <- inv %*% meat %*% inv
+#    rvcv <- inv %*% meat %*% inv
+    rvcv <- .Call(C_sandwich,1.0,inv,meat)
     setdimnames(rvcv, vcvnames)
 
     z$STATS[[lhs]]$robustvcv <- rvcv
@@ -521,7 +524,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
           adj <- sgn*dfadj*nlevels(ia)/(nlevels(ia)-1)
           .Call(C_dsyrk,1.0,meat,adj,rowsum(xz,ia))
         }
-        cvcv <- inv %*% meat %*% inv
+#        cvcv <- inv %*% meat %*% inv
+        cvcv <- .Call(C_sandwich,1.0,inv,meat)
         setdimnames(cvcv, vcvnames)
         z$STATS[[lhs]]$clustervcv <- cvcv
         if(singlelhs) z$clustervcv <- cvcv

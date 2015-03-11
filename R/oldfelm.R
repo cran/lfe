@@ -595,7 +595,8 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
 #  ret$yxz <- demeanlist(yx,fl,icpt)
 #  rm(fl,yx); gc()
 
-  ret$yxz <- edemeanlist(y=ret$y,x=ret$x,fl=fl,icpt=c(0,icpt))
+#  ret$yxz <- edemeanlist(y=ret$y,x=ret$x,fl=fl,icpt=c(0,icpt))
+  ret$yxz <- demeanlist(list(y=ret$y,x=ret$x),fl=fl,icpt=c(0,icpt))
   ret$badconv <- attr(ret$yxz$x,'badconv') + attr(ret$yxz$y,'badconv')
   # use our homebrewn setdimnames instead of colnames. colnames copies.
   if(length(fl) > 0) {

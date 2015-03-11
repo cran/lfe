@@ -5,7 +5,6 @@
 */
 #include "lfe.h"
 
-SEXP R_address(SEXP x);
 static R_CallMethodDef callMethods[] = {
   {"conncomp", (DL_FUNC) &R_conncomp, 1},
   {"wwcomp", (DL_FUNC) &R_wwcomp, 1},
@@ -14,6 +13,7 @@ static R_CallMethodDef callMethods[] = {
   {"setdimnames", (DL_FUNC) &R_setdimnames, 2},
   {"scalecols", (DL_FUNC) &R_scalecols, 2},
   {"pdaxpy", (DL_FUNC) &R_pdaxpy, 3},
+  {"sandwich", (DL_FUNC) &R_sandwich, 3},
   {"piproduct", (DL_FUNC) &R_piproduct, 2},
   {"dsyrk", (DL_FUNC) &R_dsyrk, 4},
   {"dsyr2k", (DL_FUNC) &R_dsyr2k, 5},
@@ -21,13 +21,14 @@ static R_CallMethodDef callMethods[] = {
 
   {NULL, NULL, 0}
 };
-static R_ExternalMethodDef externalMethods[] = {
-  {"edemeanlist", (DL_FUNC) &RE_demeanlist, -1},
-  {NULL, NULL, 0}
-};
 
 void attribute_visible R_init_lfe(DllInfo *info) {
   /* register our routines */
-  (void)R_registerRoutines(info,NULL,callMethods,NULL,externalMethods);
+  R_PreserveObject(df_string=mkString("data.frame"));
+  (void)R_registerRoutines(info,NULL,callMethods,NULL,NULL);
 }
 
+void attribute_visible R_unload_lfe(DllInfo *info) {
+  info=info; //avoid pedantic warning about unused parameter
+  R_ReleaseObject(df_string);
+}

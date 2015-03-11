@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-02-26 r67901) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -63,6 +63,9 @@ F-statistic(proj model):  217 on 4 and 384 DF, p-value: <2e-16
 F-statistic(endog. vars):56.2 on 2 and 384 DF, p-value: <2e-16 
 
 
+> update(est, . ~ x)
+       x `Q(fit)` `R(fit)` 
+   2.240   -0.581    2.842 
 > # try it from within a function 
 > fr <- data.frame(y,x,id,firm,Q,R,x3,x4)
 > fun <- function() {
@@ -175,4 +178,4 @@ attr(,"quantiles")attr(,"samples")
 > 
 > proc.time()
    user  system elapsed 
-  3.094   0.105   2.636 
+  3.001   0.087   2.514 

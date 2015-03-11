@@ -81,7 +81,7 @@ typedef int mybigint_t;
 #ifdef HUGE_INT 
 typedef R_xlen_t mysize_t;
 #else
-typedef unsigned int mysize_t;
+typedef int mysize_t;
 #endif
 
 /* Locking macros */
@@ -131,10 +131,12 @@ SEXP R_wwcomp(SEXP flist);
 SEXP R_conncomp(SEXP flist);
 SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 		  SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans);
-SEXP RE_demeanlist(SEXP args);
 SEXP R_scalecols(SEXP mat, SEXP vec);
 SEXP R_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta);
 SEXP R_piproduct(SEXP inX, SEXP inY);
 SEXP R_setdimnames(SEXP obj, SEXP nm);
 SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA);
 SEXP R_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB);
+SEXP R_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat);
+SEXP R_address(SEXP x);
+SEXP df_string;

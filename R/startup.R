@@ -1,15 +1,25 @@
+setoption <- function(opt,default) {
+  optnam <- paste('lfe',opt,sep='.')
+  if(!is.null(getOption(optnam))) return()
+  envnam <- paste('LFE',toupper(opt),sep='_')
+  e <- Sys.getenv(envnam)
+  if(e != '') {
+    val <- try(eval(parse(text=e)))
+    if(inherits(val,'try-error')) val <- default
+  } else val <- default
+  ol <- list(val)
+  names(ol) <- optnam
+  do.call(options,ol)
+}
+
 .onLoad <- function(libname,pkgname) {
   
-  if(is.null(getOption('lfe.usecg')))
-    options(lfe.usecg=FALSE)
-  if(is.null(getOption('lfe.eps')))
-    options(lfe.eps=1e-8)
-  if(is.null(getOption('lfe.pint')))
-    options(lfe.pint=300)
-  if(is.null(getOption('lfe.accel')))
-    options(lfe.accel=1)
-  if(is.null(getOption('lfe.bootmem')))
-    options(lfe.bootmem=500)
+  setoption('usecg',FALSE)
+  setoption('eps',1e-8)
+  setoption('pint',300)
+  setoption('accel',1)
+  setoption('bootmem',500)
+
   if(is.null(getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
@@ -21,18 +31,11 @@
     }
     options(lfe.threads=cr)
   }
-
-# acml messes with the affinity, we should store what it is at startup
-# on second thought, amd should fix it. A sysadmin may restrict our
-# affinity for whatever useful purpose he may have, and we shouldn't
-# mess it back (it's enough with acml)
-# if(is.null(getOption('lfe.cpuaffinity')))
-# options(lfe.cpuaffinity=parallel::mcaffinity())
-
 }
 
 .onUnload <- function(libpath) {
-  options(lfe.usecg=NULL, lfe.eps=NULL,lfe.pint=NULL,lfe.accel=NULL,lfe.bootmem=NULL,lfe.threads=NULL,lfe.cpuaffinity=NULL)
+  options(lfe.usecg=NULL, lfe.eps=NULL,lfe.pint=NULL,lfe.accel=NULL,
+          lfe.bootmem=NULL,lfe.threads=NULL)
   library.dynam.unload('lfe',libpath)
 }
 

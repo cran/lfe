@@ -1,3 +1,7 @@
+Mar  5, 2015.  2.1.1629 -- On CRAN.
+
+Mar  2, 2015.  2.1 -- Added k-class estimators to felm().
+
 Feb 17, 2015.  2.0-1596 -- Bootstrap IV-CIs in condfstat()
 
 Feb 10, 2015.  2.0-1570 -- On CRAN.

@@ -1,3 +1,4 @@
 #!/bin/bash
-rm -f src/Makevars acaux
+rm -f src/Makevars acaux config.log
+
 

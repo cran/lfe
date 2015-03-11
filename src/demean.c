@@ -26,10 +26,7 @@ typedef struct {
   LOCK_T lock;
   int gkacc;
 #ifndef NOTHREADS
-#ifdef WIN
-  /*  HANDLE *lock;*/
-#else
-  /*  pthread_mutex_t *lock;*/
+#ifndef WIN
   int running;
 #ifdef HAVE_SEM
   sem_t finished;
@@ -298,8 +295,8 @@ static void *demeanlist_thr(void *varg) {
 		    tmp1,tmp2,
 		    &arg->stop,vecnum+1,
 		    arg->lock,arg->gkacc);
-    LOCK(arg->lock);
     now = time(NULL);
+    LOCK(arg->lock);
     if(!okconv) {
       arg->badconv++;
     }
@@ -308,12 +305,12 @@ static void *demeanlist_thr(void *varg) {
       char buf[256];
       sprintf(buf,"...finished centering vector %d of %d in %d seconds\n",
 	     arg->done,arg->K,(int)(now-arg->start));
-      UNLOCK(arg->lock); /* release lock, pushmsg takes it */
-      pushmsg(buf,arg->lock);
-      LOCK(arg->lock);
       arg->last = now;
+      UNLOCK(arg->lock); 
+      pushmsg(buf,arg->lock);
+    } else {
+      UNLOCK(arg->lock);
     }
-    UNLOCK(arg->lock);
   }
   /* signal we've finished */
 #ifndef NOTHREADS
@@ -449,9 +446,12 @@ static int demeanlist(double **vp, int N, int K, double **res,
 #ifndef HAVE_SEM
       struct timespec atmo = {0,50000000};
       /* Kludge when no timedwait, i.e. MacOSX */
-      
+      int done;
       if(arg.stop == 0) nanosleep(&atmo,NULL);
-      if(arg.stop == 1 || arg.running == 0) {
+      LOCK(arg.lock);
+      done = (arg.running == 0);
+      UNLOCK(arg.lock);
+      if(arg.stop == 1 || done) {
 #else
 	struct timespec tmo = {time(NULL)+3,0};
 	if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
@@ -493,7 +493,7 @@ static int demeanlist(double **vp, int N, int K, double **res,
 */
 
 SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
-			 SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans) {
+		  SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans) {
   int numvec;
   int numfac;
   int cnt;
@@ -526,30 +526,46 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   numfac = 0;
   for(FACTOR **f = factors; *f != NULL; f++) numfac++;
 
-  N = LENGTH(VECTOR_ELT(flist,0));
-  /* Then the vectors */
+  // Find the length of the data
+  // We are never called with length(flist) == 0
+  if(LENGTH(flist) == 0) {
+    warning("demeanlist called with length(fl)==0, internal error?");
+    N = 0;
+  } else 
+    N = LENGTH(VECTOR_ELT(flist,0));
+
   int isdf = inherits(vlist,"data.frame");
   if(isdf) {
     icptlen = 1;
     icpt = -1;
   }
+
   PROTECT(vlist = AS_LIST(vlist)); protectcount++;
   listlen = LENGTH(vlist); 
-  PROTECT(reslist = NEW_LIST(listlen)); protectcount++;
   if(icptlen != 1 && icptlen != listlen)
     error("Length of icpt (%d) should be 1 or the number of arguments (%d)", icptlen, listlen);
+
+  PROTECT(reslist = NEW_LIST(listlen)); protectcount++;
+  SET_NAMES(reslist, GET_NAMES(vlist));
+  if(isdf) {
+    setAttrib(reslist, R_RowNamesSymbol, getAttrib(vlist, R_RowNamesSymbol));
+    classgets(reslist,df_string);
+    UNPROTECT(1);
+  }
+
   /* First, count the number of vectors in total */
   numvec = 0;
   for(int i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
     /* Each entry in the list is either a vector or a matrix */
+    if(isNull(elt)) continue;
     if(!isMatrix(elt)) {
       if(LENGTH(elt) != N) 
-	error("Factors and vectors must have the same length %d != %d",N,LENGTH(elt));
+	error("mtx[%d]: Factors and vectors must have the same length %d != %d",i, N,LENGTH(elt));
       numvec++;
     } else {
       if(nrows(elt) != N)
-	error("Factors and vectors must have the same length %d != %d",N,nrows(elt));
+	error("mtx[%d]: Factors and vectors must have the same length %d != %d",i, N,nrows(elt));
       numvec += ncols(elt);
       if(icptlen != 1) icpt = vicpt[i]-1;
       if(icpt >= 0 && icpt < ncols(elt)) numvec--;
@@ -565,8 +581,9 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 
   for(i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
+    if(isNull(elt)) continue;
     if(!isReal(elt)) {
-      elt = PROTECT(coerceVector(elt, REALSXP)); protectcount++;
+      PROTECT(elt = coerceVector(elt, REALSXP)); protectcount++;
     }
 
     if(!isMatrix(elt)) {
@@ -574,10 +591,10 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       SEXP resvec;
       vectors[cnt] = REAL(elt);
       PROTECT(resvec = allocVector(REALSXP,LENGTH(elt)));
-      SET_NAMES(resvec, GET_NAMES(elt));
-      target[cnt] = REAL(resvec);
       SET_VECTOR_ELT(reslist,i,resvec);
       UNPROTECT(1);
+      SET_NAMES(resvec, GET_NAMES(elt));
+      target[cnt] = REAL(resvec);
       cnt++;
     } else {
       /* It's a matrix */
@@ -594,7 +611,6 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       // copy colnames 
       if(cols == rcols) {
 	SET_DIMNAMES(mtx, GET_DIMNAMES(elt));
-	//	DUPLICATE_ATTRIB(mtx, elt);
       }
       /* Set up pointers */
       rcols = 0;
@@ -608,7 +624,9 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   }
 
   /* Then do stuff */
-  PROTECT(badconv = allocVector(INTSXP,1)); protectcount++;
+  PROTECT(badconv = allocVector(INTSXP,1));
+  setAttrib(reslist,install("badconv"),badconv);
+  UNPROTECT(1);
   INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,factors,numfac,
 				   eps,cores,INTEGER(quiet)[0],
 				   INTEGER(gkacc)[0]);
@@ -616,14 +634,6 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   if(INTEGER(badconv)[0] > 0)
     warning("%d vectors failed to centre to tolerance %.1le",INTEGER(badconv)[0],eps);
 
-  if(isdf) {
-    SET_NAMES(reslist, GET_NAMES(vlist));
-    setAttrib(reslist, R_RowNamesSymbol, getAttrib(vlist, R_RowNamesSymbol));
-    SET_CLASS(reslist, mkString("data.frame"));
-  } else {
-    SET_NAMES(reslist, GET_NAMES(vlist));
-  }
-  setAttrib(reslist,install("badconv"),badconv);
 
   if(domeans) {
     for(int i = 0; i < numvec; i++) {
@@ -639,49 +649,3 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   return(reslist);
 }
 
-// an .External version of demeanlist
-SEXP RE_demeanlist(SEXP args) {
-  args = CDR(args); /* 'name' */
-  /* Now, loop through the args and set up arguments for the 
-     .Call demeanlist */
-  SEXP flist=R_NilValue, Ricpt=R_NilValue, Reps=R_NilValue,
-    scores=R_NilValue, quiet=R_NilValue, gkacc=R_NilValue, Rmeans=R_NilValue;
-  // The number of vectors/matrices to be centered
-  if(length(args) < 7) error("Passed %d arguments to RE_demeanlist", length(args));
-  int numvec = length(args) - 7;
-  int curvec = 0;
-  SEXP vlist,lnames;
-  
-  PROTECT(vlist = allocVector(VECSXP,numvec));
-  PROTECT(lnames = allocVector(STRSXP, numvec));
-  for(int i = 0; args != R_NilValue; i++, args = CDR(args)) {
-    SEXP tag = PRINTNAME(TAG(args));
-    const char *name = isNull(TAG(args)) ? "" : CHAR(tag);
-    SEXP el = CAR(args);
-    if(strcmp(name,"fl") == 0) {
-      flist = el;
-    } else if(strcmp(name,"icpt") == 0) {
-      Ricpt = el;
-    } else if(strcmp(name,"eps") == 0) {
-      Reps = el;
-    } else if(strcmp(name,"threads") == 0) {
-      scores = el;
-    } else if(strcmp(name,"progress") == 0) {
-      quiet = el;
-    } else if(strcmp(name,"accel") == 0) {
-      gkacc = el;
-    } else if(strcmp(name,"means") == 0) {
-      Rmeans = el;
-    } else if(!isNull(el)) {
-      SET_VECTOR_ELT(vlist,curvec,el);
-      SET_STRING_ELT(lnames,curvec,tag);
-      curvec++;
-    }
-  }
-  
-  SET_NAMES(vlist, lnames);
-  SET_LENGTH(vlist, curvec);
-  SEXP ret = R_demeanlist(vlist, flist, Ricpt, Reps, scores, quiet, gkacc, Rmeans);
-  UNPROTECT(2);
-  return ret;
-}

@@ -1,6 +1,10 @@
 
 kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('lfe.threads')) {
-  if(getOption('lfe.usecg')) return(cgsol(fl,R,eps,init))
+  if(getOption('lfe.usecg')) {
+    if(is.list(R)) stop("cgsol can't handle list R")
+    mat <- makeDmatrix(fl)
+    return(drop(cgsolve(crossprod(mat), crossprod(mat,R), eps=eps, init=init)))
+  }
   if(is.null(threads)) threads <- 1
   islist <- is.list(R)
   if(!islist) R <- list(R)
@@ -11,26 +15,6 @@ kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('
   v
 }
 
-cgsol <- function(fl,R,eps=getOption('lfe.eps'), init=NULL,threads=NULL) {
-  if(is.list(R)) stop("cgsol can't handle list R")
-  # create matrix
-  mat <- t(do.call(rBind,lapply(fl,as,'sparseMatrix')))
-  if(is.null(dim(R))) dim(R) <- c(length(R),1)
-# target function
-  fn <- function(p,R) sum((mat %*% p - R)^2)
-# its gradient
-  gr <- function(p,R) {
-      a <- 2*((mat %*% p) - R)
-      dim(a) <- c(1,nrow(mat))
-      as.vector(a %*% mat)
-  }
-  if(is.null(init)) init <- rnorm(ncol(mat))
-  apply(R,2,function(vec) {
-    cg <- Rcgmin::Rcgmin(init,fn,gr,control=list(eps=eps),R=vec)
-    if(cg$convergence != 0) warning(cg$message)
-    cg$par
-  })
-}
 
 getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100,
                            robust=FALSE, cluster=NULL, lhs=NULL) {

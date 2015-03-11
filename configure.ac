@@ -19,7 +19,7 @@ AC_ARG_ENABLE([huge],
 
 dnl local debug 
 AC_ARG_ENABLE([pedantry],,
-	[DFLAGS='-Wall -Wpedantic -Werror'],
+	[DFLAGS='-Wall -Wextra -Wpedantic -Werror'],
 	[])
 
 AC_SUBST(DFLAGS)

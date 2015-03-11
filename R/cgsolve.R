@@ -51,8 +51,11 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, name='') {
   start <- Sys.time()
   precon <- attr(A,'precon')
 #  if(any(eps <= 0)) stop('tolerance eps should be larger than 0',eps)  
-  if(is.matrix(A) || inherits(A,'Matrix') ) fun <- function(v) A %*% v else fun <- A
-  if(!is.matrix(b)) dim(b) <- c(length(b),1)
+  if(is.matrix(A) || inherits(A,'Matrix') )
+      fun <- function(v) as.matrix(A %*% v) else fun <- A
+
+  b <- as.matrix(b)
+#  if(!is.matrix(b)) dim(b) <- c(length(b),1)
   N <- nrow(b)
   start <- last <- Sys.time()
 
@@ -88,12 +91,14 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, name='') {
   abseps <- eps < 0
   eps <- abs(eps)
   eps <- ifelse(abseps, eps, eps/(1+eps))
+  pint <- getOption('lfe.pint')
+  if(pint == 0) pint <- Inf
   while(TRUE) {
     k <- k+1
     delta <- mu * ifelse(abseps,1,sqrt(colSums(x^2)))
 
     now <- Sys.time()
-    if(now - last > 30) {
+    if(now - last > pint) {
       last <- now
       message(date(), ' CG iter ',k,' ',name,' target=',min(eps),
               ' delta=',max(sqrt(r2)/delta), ' vecs=',length(delta))
@@ -101,7 +106,6 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, name='') {
 
 
     done <- sqrt(r2) < eps * delta
-#    done <- (r2 < mu^2 * colSums(x^2)* (eps/(1+eps))^2)
 
     if(any(done)) {
 #      message('finished vec ',ilpretty(origcol[done]))
@@ -138,9 +142,7 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, name='') {
 #    alpha <- r2/colSums(Ap*p)
     allalpha <- rbind(allalpha, alpha)
     x <- .Call(C_pdaxpy, x, p, alpha)
-#    x <- x + t(alpha*t(p)) 
     r <- .Call(C_pdaxpy, r, Ap, -alpha)
-#    r <- r - t(alpha*t(Ap))
     oldr2 <- r2
     r2 <- colSums(r^2)
 
