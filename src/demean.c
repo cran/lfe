@@ -1,3 +1,6 @@
+/*
+  $Id: demean.c 1671 2015-03-23 13:04:42Z sgaure $
+*/
 #include "lfe.h"
 /* Need sprintf */
 #include <stdio.h>  
@@ -23,6 +26,8 @@ typedef struct {
   int threadnum;
   double **means;
   double **tmp1, **tmp2;
+  double *weights;
+  int *scale;
   LOCK_T lock;
   int gkacc;
 #ifndef NOTHREADS
@@ -42,36 +47,31 @@ typedef struct {
  */
 
 static R_INLINE void centre(double *v, int N, 
-			    FACTOR *factors[], int e, double *means) {
+			    FACTOR *factors[], int e, double *means,
+			    double *weights) {
 
+  const int hw = (weights != NULL);
   for(int i=0; i < e; i++) {
     FACTOR *f = factors[i];
     const int *gp = f->group;
+    const int hx = (f->x != NULL);
     int j=0;
 
     /* compute means */
     memset(means,0,sizeof(double)* f->nlevels);
-    if(NULL != f->x) {
-      for(j = 0; j < N; j++) {
-	if(gp[j] > 0) means[gp[j]-1] += v[j]*f->x[j];
-      }
-    } else {
-      for(j = 0; j < N; j++) {
-	if(gp[j] > 0) means[gp[j]-1] += v[j];
-      }
+    for(j = 0; j < N; j++) {
+      double w = hw ? (hx ? f->x[j]*weights[j] : weights[j]) : (hx ? f->x[j] : 1.0);
+      if(gp[j] > 0) means[gp[j]-1] += v[j]*w;
     }
+
     for(j = 0; j < f->nlevels; j++) {
       means[j] *= f->invgpsize[j];
     }
 
-    if(NULL != f->x) {
-      for(j = 0; j < N; j++) {
-	if(gp[j] > 0) v[j] -= means[gp[j]-1]*f->x[j];
-      }
-    } else {
-      for(j = 0; j < N; j++) {
-	if(gp[j] > 0) v[j] -= means[gp[j]-1];
-      }
+    /* subtract means */
+    for(j = 0; j < N; j++) {
+      double w = hw ? (hx ? f->x[j]*weights[j] : weights[j]) : (hx ? f->x[j] : 1.0);
+      if(gp[j] > 0) v[j] -= means[gp[j]-1]*w;
     }
   }
 }
@@ -81,7 +81,7 @@ static R_INLINE void centre(double *v, int N,
   Method of alternating projections.  Input v, output res.
 */
 
-static int demean(double *v, int N, double *res,
+static int demean(double *v, int N, double *res, double *weights,int *scale,
 		  FACTOR *infactors[],int e,double eps, double *means,
 		  double *prev, double *prev2,
 		  int *stop,int vecnum, LOCK_T lock, const int gkacc) {
@@ -101,11 +101,17 @@ static int demean(double *v, int N, double *res,
   /* make a copy to result vector, centre() is in-place */
   memcpy(res,v,N*sizeof(double));
   // zero out NaNs
-  for(int i = 0; i < N; i++) if(isnan(res[i])) res[i]=0.0;
-  centre(res, N, factors, e, means);
+  for(int i = 0; i < N; i++) {
+    if(isnan(res[i])) res[i]=0.0;
+  }
+  if(weights != NULL && scale[0]) for(int i = 0; i < N; i++) res[i] = res[i]*weights[i];
 
-  if(e <= 1 || factors[0]->oneiter) return(1);
+  centre(res, N, factors, e, means, weights);
 
+  if(e <= 1 || factors[0]->oneiter) {
+    if(weights != NULL && scale[1]) for(int i = 0; i < N; i++) res[i] = res[i]/weights[i];
+    return(1);
+  }
   // Initialize
   memcpy(prev2, res, N*sizeof(double));
 
@@ -124,7 +130,7 @@ static int demean(double *v, int N, double *res,
   do {
     iter++;
     if(gkacc) memcpy(prev, res, N*sizeof(double));
-    centre(res,N,factors,e,means);
+    centre(res,N,factors,e,means, weights);
 
     if(gkacc) {
       // Try the Gearhart-Koshy acceleration, AS 3.2
@@ -195,53 +201,57 @@ static int demean(double *v, int N, double *res,
     }
     if(c < 1.0) target = (1.0-c)*neps;
       // target should not be smaller than 3 bits of precision in each coordinate
-      if(target < N*1e-15) target = N*1e-15;
-      now = time(NULL);
-      if(now - last >= 3600 && delta > 0.0) {
-	int reqiter;
-	double eta;
-	char buf[256];
-	// Now, use a c which is based on the medium c since the last print
-	if(prevdp == 0.0)
-	  c = delta/prevdelta;
-	else
-	  c = pow(delta/prevdp, 1.0/(iter-lastiter));
-	reqiter = log(target/delta)/log(c);
-	eta = 1.0*(now-last)*reqiter/(iter-lastiter);
-	if(eta < 0) eta = NA_REAL; 
-	if(gkacc&&0) {
-	  sprintf(buf,"...centering vec %d iter %d, delta=%.1e(target %.1e)\n",
-		  vecnum,iter,delta,target);
-
-	} else {
-	  time_t arriv = now + (time_t) eta;
-	  char timbuf[50];
-	  struct tm tmarriv;
+    if(target < N*1e-15) target = N*1e-15;
+    now = time(NULL);
+    if(now - last >= 3600 && delta > 0.0) {
+      int reqiter;
+      double eta;
+      char buf[256];
+      // Now, use a c which is based on the medium c since the last print
+      if(prevdp == 0.0)
+	c = delta/prevdelta;
+      else
+	c = pow(delta/prevdp, 1.0/(iter-lastiter));
+      reqiter = log(target/delta)/log(c);
+      eta = 1.0*(now-last)*reqiter/(iter-lastiter);
+      if(eta < 0) eta = NA_REAL; 
+      if(gkacc&&0) {
+	sprintf(buf,"...centering vec %d iter %d, delta=%.1e(target %.1e)\n",
+		vecnum,iter,delta,target);
+	
+      } else {
+	time_t arriv = now + (time_t) eta;
+	char timbuf[50];
+	struct tm tmarriv;
 #ifdef WIN
-	  localtime_s(&tmarriv, &arriv);
+	localtime_s(&tmarriv, &arriv);
 #else
-	  localtime_r(&arriv,&tmarriv);
+	localtime_r(&arriv,&tmarriv);
 #endif
-	  strftime(timbuf, sizeof(timbuf), "%c", &tmarriv);
-	  //	  ctime_r(&arriv, timbuf);
-	  sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
-		  vecnum,iter,1.0-c,delta,target,timbuf);
-
-	}
-	pushmsg(buf,lock);
-	lastiter = iter;
-	prevdp = delta;
-	last = now;
+	strftime(timbuf, sizeof(timbuf), "%c", &tmarriv);
+	//	  ctime_r(&arriv, timbuf);
+	sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
+		vecnum,iter,1.0-c,delta,target,timbuf);
+	
       }
+      pushmsg(buf,lock);
+      lastiter = iter;
+      prevdp = delta;
+      last = now;
+    }
     
     prevdelta = delta;    
+
 #ifdef NOTHREADS
     R_CheckUserInterrupt();
 #else
-    if(*stop != 0) {okconv = 0; break;}
+    int stp;
+    LOCK(lock); stp = *stop; UNLOCK(lock);
+    if(stp != 0) {okconv = 0; break;}
 #endif
 
   } while(delta > target);
+  if(weights != NULL && scale[1]) for(int i = 0; i < N; i++) res[i] = res[i]/weights[i];
   return(okconv);
 }
 
@@ -253,8 +263,6 @@ static int demean(double *v, int N, double *res,
   in arg->nowdoing, a common counter.  Proteced
   by a mutex.
  */
-
-
 
 
 /* The thread routine 
@@ -290,7 +298,7 @@ static void *demeanlist_thr(void *varg) {
     snprintf(thrname,16, "Ct %d/%d",vecnum+1, arg->K);
     STNAME(thrname);
 #endif
-    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],
+    okconv = demean(arg->v[vecnum],arg->N,arg->res[vecnum],arg->weights,arg->scale,
 		    arg->factors,arg->e,arg->eps,means,
 		    tmp1,tmp2,
 		    &arg->stop,vecnum+1,
@@ -330,7 +338,7 @@ static void *demeanlist_thr(void *varg) {
 
 
 /* main C entry-point for demeaning.  Called from the R-entrypoint */
-static int demeanlist(double **vp, int N, int K, double **res,
+static int demeanlist(double **vp, int N, int K, double **res, double *weights,int *scale,
 		      FACTOR *factors[], int e, double eps,int cores,
 		      int quiet, const int gkacc) {
   PTARG arg;
@@ -390,6 +398,8 @@ static int demeanlist(double **vp, int N, int K, double **res,
     }
   }
 
+  arg.weights = weights;
+  arg.scale = scale;
   arg.badconv = 0;
   arg.N = N;
   arg.v = vp;
@@ -436,41 +446,43 @@ static int demeanlist(double **vp, int N, int K, double **res,
       for(thr = 0; thr < numthr; thr++) {
 	CloseHandle(threads[thr]);
       }
-      /* print remaining messages */
-      printmsg(arg.lock);
-      CloseHandle(lock);
       break;
     }
 #else
-    {
 #ifndef HAVE_SEM
-      struct timespec atmo = {0,50000000};
-      /* Kludge when no timedwait, i.e. MacOSX */
-      int done;
-      if(arg.stop == 0) nanosleep(&atmo,NULL);
-      LOCK(arg.lock);
-      done = (arg.running == 0);
-      UNLOCK(arg.lock);
-      if(arg.stop == 1 || done) {
+    struct timespec atmo = {0,50000000};
+    /* Kludge when no timedwait, i.e. MacOSX */
+    int done;
+    if(arg.stop == 0) nanosleep(&atmo,NULL);
+    LOCK(arg.lock);
+    done = (arg.running == 0);
+    UNLOCK(arg.lock);
+    if(arg.stop == 1 || done) {
 #else
-	struct timespec tmo = {time(NULL)+3,0};
-	if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
+    struct timespec tmo = {time(NULL)+3,0};
+    if(arg.stop == 1 || sem_timedwait(&arg.finished,&tmo) == 0) {
 #endif
-	  for(thr = 0; thr < numthr; thr++) {
-	    (void)pthread_join(threads[thr], NULL);
-	  }
-#ifdef HAVE_SEM
-	  sem_destroy(&arg.finished);
-#endif
-	  /* print remaining messages */
-	  printmsg(arg.lock);
-	  pthread_mutex_destroy(arg.lock);
-	  break;
-	}
+      for(thr = 0; thr < numthr; thr++) {
+	(void)pthread_join(threads[thr], NULL);
       }
-#endif
+      break;
     }
 #endif
+  }
+#endif
+
+    /* print remaining messages */
+  printmsg(arg.lock);
+  /* Release synchronization gear */
+#ifdef WIN
+  CloseHandle(arg.lock);
+#else
+#ifdef HAVE_SEM
+  sem_destroy(&arg.finished);
+#endif
+  pthread_mutex_destroy(arg.lock);
+#endif
+
 
   if(arg.stop == 1) error("centering interrupted");
   if(quiet > 0 && arg.start != arg.last && K > 1)
@@ -492,13 +504,15 @@ static int demeanlist(double **vp, int N, int K, double **res,
  and call our demeanlist and return
 */
 
-SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
-		  SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans) {
+SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
+		   SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans,
+		   SEXP Rweights, SEXP Rscale) {
   int numvec;
   int numfac;
   int cnt;
   double **vectors;
   double **target;
+  double *weights = NULL;
   double eps;
   SEXP reslist;
   FACTOR **factors;
@@ -512,27 +526,43 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   int listlen;
   int domeans=0;
   int protectcount=0;
+  int scale[2];
+  // Find the length of the data
+  // We are never called with length(flist) == 0
+  PROTECT(flist = AS_LIST(flist));  protectcount++;
+  if(LENGTH(flist) == 0) {
+    warning("demeanlist called with length(fl)==0, internal error?");
+    N = 0;
+  } else 
+    N = LENGTH(VECTOR_ELT(flist,0));
+
+  if(LENGTH(Rscale) == 1) {
+    scale[0] = LOGICAL(Rscale)[0];
+    scale[1] = scale[0];
+  } else if(LENGTH(Rscale) > 1) {
+    scale[0] = LOGICAL(Rscale)[0];
+    scale[1] = LOGICAL(Rscale)[1];
+  } else {
+    error("scale must have length > 2");
+  }
+
   domeans = LOGICAL(Rmeans)[0];
   vicpt = INTEGER(Ricpt);
   icptlen = LENGTH(Ricpt);
   icpt = vicpt[0] - 1; /* convert from 1-based to zero-based */
   eps = REAL(Reps)[0];
   cores = INTEGER(scores)[0];
+  if(!isNull(Rweights)) {
+    if(LENGTH(Rweights) != N) error("Length of weights (%d) must equal length of data (%d)",
+				    LENGTH(Rweights),N);
+    weights = REAL(PROTECT(coerceVector(Rweights, REALSXP)));
+    protectcount++;
+  }
 
-
-  PROTECT(flist = AS_LIST(flist));  protectcount++;
   //  numfac = LENGTH(flist);
-  factors = makefactors(flist, 1);
+  factors = makefactors(flist, 1, weights);
   numfac = 0;
   for(FACTOR **f = factors; *f != NULL; f++) numfac++;
-
-  // Find the length of the data
-  // We are never called with length(flist) == 0
-  if(LENGTH(flist) == 0) {
-    warning("demeanlist called with length(fl)==0, internal error?");
-    N = 0;
-  } else 
-    N = LENGTH(VECTOR_ELT(flist,0));
 
   int isdf = inherits(vlist,"data.frame");
   if(isdf) {
@@ -550,7 +580,7 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   if(isdf) {
     setAttrib(reslist, R_RowNamesSymbol, getAttrib(vlist, R_RowNamesSymbol));
     classgets(reslist,df_string);
-    UNPROTECT(1);
+    //    classgets(reslist,PROTECT(mkString("data.frame"))); UNPROTECT(1);
   }
 
   /* First, count the number of vectors in total */
@@ -627,7 +657,8 @@ SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   PROTECT(badconv = allocVector(INTSXP,1));
   setAttrib(reslist,install("badconv"),badconv);
   UNPROTECT(1);
-  INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,factors,numfac,
+  INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,weights,scale,
+				   factors,numfac,
 				   eps,cores,INTEGER(quiet)[0],
 				   INTEGER(gkacc)[0]);
 

@@ -1,3 +1,4 @@
+# $Id: startup.R 1697 2015-04-08 11:55:42Z sgaure $
 setoption <- function(opt,default) {
   optnam <- paste('lfe',opt,sep='.')
   if(!is.null(getOption(optnam))) return()
@@ -40,6 +41,24 @@ setoption <- function(opt,default) {
 }
 
 if(!exists('anyNA')) anyNA <- function(x) any(is.na(x))
+
+# Phase out cBind/rBind. Make sure we still work with older versions.
+# Used in utils.R, chmethod.R and in some Rd-files (and vignettes)
+# Make functions with (...) rather than just point to the right functions.
+# The latter will raise a warning in checks about calls to .Internal functions.
+RV <- R.Version()
+rv <- paste(RV$major,RV$minor, sep='.')
+mv <- sessionInfo()$otherPkgs$Matrix$Version
+..usecBind <- compareVersion('3.2-0',rv) > 0 || compareVersion('1.2-0',mv) > 0
+mycbind <- function(...) {
+  cl <- match.call()
+  if(..usecBind)
+      cl[[1L]] <- quote(Matrix::cBind)
+  else
+      cl[[1L]] <- quote(cbind)
+  eval(cl,parent.frame())
+}
+rm(rv,RV,mv)
 
 numcores <- function() {
   "This function is snatched from package 'multicore'"

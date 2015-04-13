@@ -1,6 +1,9 @@
+/*
+  $Id: utils.c 1670 2015-03-23 11:49:50Z sgaure $
+*/
 #include "lfe.h"
 
-SEXP R_scalecols(SEXP mat, SEXP vec) {
+SEXP MY_scalecols(SEXP mat, SEXP vec) {
   if(!isMatrix(mat)) error("first argument should be a matrix");
   mybigint_t col = ncols(mat), row = nrows(mat);
   if(row != LENGTH(vec)) error("length of vector %d is different from number of rows %d",LENGTH(vec),row);
@@ -11,7 +14,7 @@ SEXP R_scalecols(SEXP mat, SEXP vec) {
     for(mybigint_t i = 0; i < row; i++)
       cc[i] *= cvec[i];
   }
-  return R_NilValue;
+  return mat;
 }
 
 /*
@@ -23,7 +26,7 @@ SEXP R_scalecols(SEXP mat, SEXP vec) {
   X + t(beta * t(Y)), so this is a utility to save some costly transposes.
   used in cgsolve()
  */
-SEXP R_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta) {
+SEXP MY_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta) {
   mybigint_t col = ncols(inX), row=nrows(inX);
   if(col != ncols(inY) || row != nrows(inY))
     error("X and Y should have the same shape");
@@ -52,7 +55,7 @@ SEXP R_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta) {
   compute inner product pairwise of the columns of matrices X and Y
   This is diag(crossprod(X,Y)).
  */
-SEXP R_piproduct(SEXP inX, SEXP inY) {
+SEXP MY_piproduct(SEXP inX, SEXP inY) {
   mybigint_t col = ncols(inX), row=nrows(inX);
   if(col != ncols(inY) || row != nrows(inY))
     error("X and Y should have the same shape");
@@ -74,14 +77,14 @@ SEXP R_piproduct(SEXP inX, SEXP inY) {
 }
 // copy-free dimnames<-
 
-SEXP R_setdimnames(SEXP obj, SEXP nm) {
+SEXP MY_setdimnames(SEXP obj, SEXP nm) {
   if(!isNull(obj)) setAttrib(obj, R_DimNamesSymbol, nm);
   return(R_NilValue);
 }
 
 /* Compute and return alpha * bread %*% meat %*% bread */
 
-SEXP R_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat) {
+SEXP MY_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat) {
   double alpha = REAL(AS_NUMERIC(inalpha))[0];
   if(!isMatrix(inbread)) error("bread must be a matrix");
   if(!isMatrix(inmeat)) error("bread must be a matrix");
@@ -114,7 +117,7 @@ SEXP R_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat) {
 
 
 // copy-free dsyrk C = beta*C + alpha * A' A
-SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
+SEXP MY_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
   double beta = REAL(AS_NUMERIC(inbeta))[0];
   double alpha = REAL(AS_NUMERIC(inalpha))[0];
   if(!isMatrix(inC)) error("C must be a matrix");
@@ -142,7 +145,7 @@ SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
 
 
 // perform C <- beta*C + alpha * (A'B + B'A)
-SEXP R_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB) {
+SEXP MY_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB) {
   double beta = REAL(AS_NUMERIC(inbeta))[0];
   double alpha = REAL(AS_NUMERIC(inalpha))[0];
   if(!isMatrix(inC)) error("C must be a matrix");
@@ -178,7 +181,7 @@ SEXP R_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB) {
 
 
 // debugging memory copy
-SEXP R_address(SEXP x) {
+SEXP MY_address(SEXP x) {
   char chr[30];
   sprintf(chr, "adr=%p, named=%d", (void*)x, NAMED(x));
   return(mkString(chr));
@@ -187,7 +190,7 @@ SEXP R_address(SEXP x) {
 
 /* Trickery to check for interrupts when using threads */
 static void chkIntFn(void *dummy) {
-  dummy=dummy; //avoid pedantic warning about unused parameter
+  if(dummy==NULL){}; //avoid pedantic warning about unused parameter
   R_CheckUserInterrupt();
 }
 

@@ -1,6 +1,21 @@
 \name{NEWS}
 \title{lfe news}
 
+\section{Changes in version 2.2 (2015-04-01)}{
+  \itemize{
+
+    \item A bug which caused \code{\link{felm}} to crash R when all
+    cases of the data had NAs has been fixed. An error is raised instead.
+
+    \item \code{\link{felm}} now supports weights.
+
+    \item The conjugate gradient solver and trace estimation routine
+    used by \code{\link{fevcov}} have been made public as
+    \code{\link{cgsolve}} and \code{\link{mctrace}}.
+
+    
+  }
+}
 
 \section{Changes in version 2.0-2.1 (2015-03-05)}{
 \itemize{

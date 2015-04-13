@@ -1,7 +1,7 @@
 %%\VignetteIndexEntry{Convergence rate with examples}
 %%\VignetteKeyword{Multiple Fixed Effects}
 %\VignetteEngine{knitr::knitr}
-
+% $Id: speed.Rnw 1655 2015-03-18 18:51:06Z sgaure $
 \documentclass{amsproc}
 \usepackage[utf8]{inputenc}
 \newcommand{\strong}[1]{{\normalfont\fontseries{b}\selectfont #1}}

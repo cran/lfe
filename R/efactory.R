@@ -1,3 +1,4 @@
+# $Id: efactory.R 1655 2015-03-18 18:51:06Z sgaure $
 efactory <- function(obj, opt='ref', ...) {
 
   # only factors without covariates are relevant to analyze

@@ -3,12 +3,12 @@
 \title{Compute bias corrrected covariance matrix between fixed effects}
 \concept{Limited Mobility Bias}
 \description{
-With a model like 'y = X beta + D theta + F psi + epsilon', where 'D'
-and 'F' are matrices with dummy encoded factors, one application of \pkg{lfe} is to
-study the variances 'var(D theta), var(F psi)' and covariances 'cov(D theta,
-F psi)'
+With a model like \eqn{y = X\beta + D\theta + F\psi + \epsilon}, where \eqn{D}
+and \eqn{F} are matrices with dummy encoded factors, one application of \pkg{lfe} is to
+study the variances \eqn{var(D\theta)}, \eqn{var(F\psi)} and
+covariances \eqn{cov(D\theta, F\psi)}.
 However, if we use
-estimates for theta and psi, the resulting variances are biased.
+estimates for \eqn{\theta} and \eqn{\psi}, the resulting variances are biased.
 The function \code{fevcov} computes a bias corrected covariance matrix
 as described in \cite{Gaure (2014)}.
 }
@@ -57,6 +57,11 @@ as described in \cite{Gaure (2014)}.
   \code{alpha} must contain a full set of coefficients, and contain
   columns \code{'fe'} and \code{'effect'} like the default estimable
   functions from \code{\link{efactory}}.
+
+  In the case that the \code{\link{felm}}-estimation has weights, with
+  \eqn{W} the diagonal matrix with the square root of the weights on the
+  diagonal, it is the weighted variances and covariance 
+  which are bias corrected.
 
 }
 
@@ -110,4 +115,5 @@ for(lh in est$lhs) print(fevcov(est, lhs=lh))
 \references{
   Gaure, S. (2014), \cite{Correlation bias correction in two-way
   fixed-effects linear regression}, Stat 3(1):379-390, 2014.
+  \url{http://dx.doi.org/10.1002/sta4.68}
 }

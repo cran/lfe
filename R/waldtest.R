@@ -1,3 +1,4 @@
+# $Id: waldtest.R 1655 2015-03-18 18:51:06Z sgaure $
 waldtest <- function(object, R, r, type=c('default','iid','robust','cluster'), lhs=NULL, df1, df2) {
   if(inherits(object,'felm') && object$nostats) stop('No Wald test for objects created with felm(nostats=TRUE)')
   # We make a chi^2 to test whether the equation R theta = r holds.

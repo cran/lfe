@@ -1,4 +1,25 @@
-Mar  5, 2015.  2.1.1629 -- On CRAN.
+Apr 6, 2015.   2.2-1691 -- Don't use cBind/rBind for R >= 3.2-0 and Matrix > 1.1.
+	Add optional argument keepCX to felm(), to keep the centred covariates and outcome.
+	Requested by Thiemo Fetzer.
+	
+Mar 26, 2015.  2.2-1685 -- Fixed bug in cgsolve concerning convergence criterion.
+	Weights updates to getfe, fevcov/bccorr, btrap.
+
+Mar 21, 2015.  2.2-1663 -- weights-argument added to felm.
+
+Mar 19, 2015.  2.2-1657 -- Made mctrace and cgsolve public. Fixed a bug which crashes R
+	if all rows have NAs.  Some other reports of failure here:
+	https://support.rstudio.com/hc/communities/public/questions/203128307-R-studio-crashes-when-executing-some-regressions
+	One crash-report I've traced to a bug in R for windows (fixed in 3.2-devel), none of my
+	code involved.
+
+Mar 12, 2015.  2.1-1642 -- Silly protection bug with data.frame input to demeanlist fixed.
+	It's fortunately not documented that data.frames can be used directly, neither
+	is it tested.
+
+Mar 11, 2015.  2.1-1640 -- On CRAN. (valgrind bug fixed)
+
+Mar  5, 2015.  2.1.1629 -- On CRAN. (previous version broke package statar)
 
 Mar  2, 2015.  2.1 -- Added k-class estimators to felm().
 

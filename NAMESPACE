@@ -2,14 +2,15 @@ useDynLib(lfe,.registration=TRUE, .fixes='C_')
 
 export(felm,getfe,demeanlist,compfactor,kaczmarz,btrap,
        is.estimable,efactory,bccorr,fevcov,varvars,waldtest,
-       condfstat, ..oldfelm)
+       condfstat, cgsolve, mctrace, makeDmatrix, ..oldfelm)
 
-import(Formula)
-import(Matrix)
-#importFrom(Matrix, nnzero, Cholesky, Matrix, cBind, rBind, tcrossprod,
-#           crossprod, rankMatrix, t, diag)
-importFrom(compiler, cmpfun)
-importFrom(xtable,xtable)
+import('Formula')
+#import('methods')
+import('Matrix')
+#importFrom('Matrix', nnzero, Cholesky, Matrix, rankMatrix, rBind, cBind,
+#           band, t, diag, crossprod, tcrossprod)
+importFrom('compiler', cmpfun)
+importFrom('xtable', xtable)
 S3method(print,felm)
 S3method(print,summary.felm)
 S3method(summary,felm)

@@ -1,3 +1,4 @@
+# $Id: generics.R 1666 2015-03-21 22:06:05Z sgaure $
 print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   z <- x
   if(z$p == 0) {
@@ -103,7 +104,7 @@ print.summary.felm <- function(x,digits=max(3L,getOption('digits')-3L),...) {
   cat('\nCall:\n  ',deparse(x$call),'\n\n')
 
   qres <- zapsmall(quantile(x$residuals), digits+1L)
-  cat('Residuals:\n')
+  if(!is.null(x$weights)) cat('Weighted '); cat('Residuals:\n')
   names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
   print(qres,digits=digits,...)
 
@@ -181,14 +182,19 @@ summary.felm <- function(object,...,robust=!is.null(object$clustervar),lhs=NULL)
     else
         STATS <- z
   }
+
+
   res <- list()
+  if(is.null(z$weights)) w <- 1.0 else w <- z$weights
+  w2 <- w^2
+  res$weights <- z$weights
   res$p <- z$p
   res$Pp <- z$Pp
   res$numctrl <- z$numctrl
   res$ctrlnames <- z$ctrlnames
   if(length(z$lhs) > 1) res$lhs <- lhs
   if(res$Pp == 0) {
-    res <- list(residuals=as.vector(z$residuals[,lhs]),p=z$p,Pp=0,call=z$call)
+    res <- list(residuals=as.vector(w*z$residuals[,lhs]),p=z$p,Pp=0,call=z$call)
     class(res) <- 'summary.felm'
     return(res)
   }
@@ -218,7 +224,7 @@ summary.felm <- function(object,...,robust=!is.null(object$clustervar),lhs=NULL)
 
   }
   res$coefficients <- coefficients
-  res$residuals <- as.vector(z$residuals[,lhs])
+  res$residuals <- as.vector(w*z$residuals[,lhs])
 
   qres <- quantile(res$residuals,na.rm=TRUE)
   names(qres) <- c("Min", "1Q", "Median", "3Q", "Max")
@@ -235,12 +241,14 @@ summary.felm <- function(object,...,robust=!is.null(object$clustervar),lhs=NULL)
   res$hasicpt <- hasicpt
 
   rdf <- z$N - p
-  rss <- sum(z$residuals[,lhs]^2)
+
+#  rss <- sum(z$residuals[,lhs]^2)
+  rss <- sum(res$residuals^2)
 
   if(!is.null(z$TSS))
       tss <- z$TSS[[lhs]]
   else
-      tss <- sum( (z$response[,lhs] - mean(z$response[,lhs]))^2)
+      tss <- sum( w2 * (z$response[,lhs] - mean(z$response[,lhs]))^2)
 
   mss <- tss - rss
 
@@ -258,7 +266,7 @@ summary.felm <- function(object,...,robust=!is.null(object$clustervar),lhs=NULL)
     # fitted variables whereas the denominator should be w.r.t. to
     # the original variables. (Wooldridge, p. 99)
     # every metric verified to match Stata ivregress with small sample adjustment Jan 12, 2015
-    mss <- tss - sum(z$iv.residuals[,lhs]^2)
+    mss <- tss - sum(w2*z$iv.residuals[,lhs]^2)
   }
   # hmm, fstat should be computed differently when s.e. are robust or clustered.
 

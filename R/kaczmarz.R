@@ -1,9 +1,10 @@
-
-kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,threads=getOption('lfe.threads')) {
+# $Id: kaczmarz.R 1693 2015-04-07 09:36:29Z sgaure $
+kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,
+                     threads=getOption('lfe.threads')) {
   if(getOption('lfe.usecg')) {
-    if(is.list(R)) stop("cgsol can't handle list R")
+    if(is.list(R)) stop("cgsolve can't handle list R")
     mat <- makeDmatrix(fl)
-    return(drop(cgsolve(crossprod(mat), crossprod(mat,R), eps=eps, init=init)))
+    return(cgsolve(crossprod(mat), crossprod(mat,R), eps=eps, init=init))
   }
   if(is.null(threads)) threads <- 1
   islist <- is.list(R)
@@ -84,6 +85,7 @@ xlevels <- function(n,f,sep='.') {
   plev <- paste(n,levels(f),sep=sep)
   if(is.null(x) || !is.matrix(x)) return(plev)
   nam <- attr(f,'xnam')
+  if(is.null(nam)) nam <- 'x'
   if(!is.matrix(x)) return(paste(nam,plev,sep=sep))
   matnam <- colnames(x)
   if(is.null(matnam)) matnam <- paste(nam,1:ncol(x),sep='') else matnam <- paste(nam,matnam,sep='')

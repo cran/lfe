@@ -118,10 +118,9 @@ is.estimable(ef,est$fe)
 
 ## ------------------------------------------------------------------------
 f1 <- factor(f1); f2 <- factor(f2); f3 <- factor(f3)
-D <- t(do.call('rBind',
-        lapply(list(f1,f2,f3),as,Class='sparseMatrix')))
+D <- makeDmatrix(list(f1,f2,f3))
 dim(D)
-as.integer(rankMatrix(D))
+ncol(D) - as.integer(rankMatrix(D))
 
 ## ------------------------------------------------------------------------
 lfe:::rankDefic(list(f1,f2,f3))

@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-04-06 r68154) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -36,8 +36,7 @@ Loading required package: Matrix
 > 
 > # deprecated stuff
 > summary(felm(y ~x + f1+f2, dat, clustervar='clu'))
-Warning in felm(y ~ x + f1 + f2, dat, clustervar = "clu") :
-  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+Warning: Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
 
 Call:
    felm(formula = y ~ x + f1 + f2, data = dat, clustervar = "clu") 
@@ -75,12 +74,10 @@ F-statistic(proj model): 56.4 on 15 and 29 DF, p-value: <2e-16
 
 
 > summary(felm(y ~ x + G(f1)+G(f2), dat, clustervar=clu))
-Warning in felm(y ~ x + G(f1) + G(f2), dat, clustervar = clu) :
-  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+Warning: Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
 Warning in ..oldfelm(formula = y ~ x + G(f1) + G(f2), data = dat, clustervar = clu) :
   Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
-Warning in oldparseformula(form, data) :
-  The G() syntax is deprecated, please use multipart formulas instead
+Warning: The G() syntax is deprecated, please use multipart formulas instead
 
 Call:
    ..oldfelm(formula = y ~ x + G(f1) + G(f2), data = dat, clustervar = clu) 
@@ -102,8 +99,7 @@ F-statistic(proj model): 77.5 on 1 and 29 DF, p-value: 1.09e-09
 
 
 > summary(felm(y ~ x | f1+f2, dat, clustervar=clu))
-Warning in felm(y ~ x | f1 + f2, dat, clustervar = clu) :
-  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+Warning: Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
 
 Call:
    felm(formula = y ~ x | f1 + f2, data = dat, clustervar = clu) 
@@ -491,4 +487,4 @@ attr(,"df1")
 > 
 > proc.time()
    user  system elapsed 
-  3.645   0.122   2.776 
+  3.261   0.104   2.953 

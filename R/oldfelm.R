@@ -1,3 +1,4 @@
+# $Id: oldfelm.R 1693 2015-04-07 09:36:29Z sgaure $
 # Author: Simen Gaure
 # Copyright: 2011, Simen Gaure
 # Licence: Artistic 2.0
@@ -21,7 +22,7 @@ oldparseformula <- function(formula,data) {
   festr <- paste(sapply(feidx,function(i) deparse(va[[i]])),collapse='+')
 
   if(festr != '') { 
-    warning("The G() syntax is deprecated, please use multipart formulas instead")
+    .Deprecated(msg="The G() syntax is deprecated, please use multipart formulas instead")
     # remove the G-terms from formula
     formula <- update(formula,paste('. ~ . -(',festr,') - 1'))
     

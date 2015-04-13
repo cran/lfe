@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-04-06 r68154) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -89,8 +89,7 @@ F-statistic(proj model):  415 on 1 and 991 DF, p-value: <2e-16
 
 > # CGM clustering, i.e. one factor means standard one-way clustering
 > summary(felm(y ~x + f1, dat, clustervar='clu'))
-Warning in felm(y ~ x + f1, dat, clustervar = "clu") :
-  Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
+Warning: Argument(s) clustervar are deprecated and will be removed, use multipart formula instead
 
 Call:
    felm(formula = y ~ x + f1, data = dat, clustervar = "clu") 
@@ -172,4 +171,4 @@ f1.8 2.067194   0.19654
 > 
 > proc.time()
    user  system elapsed 
-  2.801   0.101   2.664 
+  2.615   0.127   2.633 

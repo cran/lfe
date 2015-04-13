@@ -1,3 +1,4 @@
+# $Id: compfactor.R 1655 2015-03-18 18:51:06Z sgaure $
 compfactor <- function(fl, WW=FALSE) {
   if(length(fl) == 0) return(factor(NULL))
   N <- length(fl[[1]])

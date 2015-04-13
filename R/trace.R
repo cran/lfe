@@ -1,3 +1,4 @@
+# $Id: trace.R 1670 2015-03-23 11:49:50Z sgaure $
 # compute the trace of a matrix.
 # If we have a list of factors defining a projection, or a function for
 # multiplying the matrix with a matrix, we use an iterative method
@@ -10,16 +11,13 @@
 # "Random phase vector for calculating the trace of a large matrix",
 # T. Iitaka and T. Ebisuzaki, Physical Review E 69 (2004).
 
-mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
-                    trname='',threads=getOption('lfe.threads'), initr) {
+mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf,
+                    trname='', init) {
   if(is.matrix(mat) || inherits(mat,'Matrix')) {
     return(structure(sum(diag(mat)), sd=0, iterations=0))
   } else if(is.list(mat) && all(sapply(mat, is.factor))) {
     N <- length(mat[[1]])
-    if(ortho)
-        fun <- function(v,trtol) N - colSums(demeanlist(v, mat, threads=threads)*v)
-    else
-        fun <- function(v,trtol) colSums(demeanlist(v, mat, threads=threads)*v)
+    fun <- function(v,trtol) colSums(demeanlist(v, mat)*v)
   } else if(!is.function(mat)) {
     stop('mat must be function, factor list or matrix')
   } else {
@@ -34,6 +32,7 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
 
   if(!is.function(tol)) eps <- function(x) tol else eps <- tol
   
+  threads <- getOption('lfe.threads')
   if(maxsamples < threads) threads <- maxsamples
   maxB <- getOption("lfe.bootmem") * 1e+06
   maxvpt <- maxB %/% (2*8*N*threads)
@@ -55,28 +54,26 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
   last <- 0
   # get a clue about the tolerance.
 #  cureps <- eps(as.numeric(fun(0, trtol=0)))/2
-  if(missing(initr)) initr <- N
-  cureps <- eps(initr)/2
-
+  if(missing(init)) init <- N
+  cureps <- eps(init)/2
+  pint <- getOption('lfe.pint')
+  if(pint <= 0) pint <- Inf
   while(NN < maxsamples && (NN < 4 || (cureps > 0 && relsd > cureps) || (cureps < 0 && sd > -cureps))) {
     i <- i+1
     now <- Sys.time()
     if(NN > 0) {
       remaining <- as.integer((Ntarget-NN)/(NN/as.numeric(now-start)))
-      if(remaining > 60 && now - last > 60) {
+      if(remaining > pint && now - last > pint) {
         message('  *** trace ',trname,' sample ',NN,' of ',Ntarget,', expected finish at ',
                 now + remaining) 
         last <- now
       }
     }
-#    if(NN > 0) message('tr=',tr/NN,' sd=',sd,' cureps=',cureps,
-#                       ' N=',NN,' blk=',blk,' targ=', Ntarget)
     ests <- fun(matrix(sample(c(-1,1), N*blk, replace=TRUE), N), trtol=abs(cureps))
-#    ests <- fun(matrix(rnorm(N*blk), N))
     NN <- NN + blk
     tr <- tr + sum(ests)
     sqsum <- sqsum + sum(ests^2)
-    rm(ests)#; gc()
+    rm(ests)
     # compute sd for the mean tr/NN. It's sqrt(E(x^2) - E(X)^2)/sqrt(NN)
     sd <- sqrt(sqsum/NN - (tr/NN)^2)/sqrt(NN)
     if(NN > 1) sd <- sd*sqrt(NN/(NN-1))  # small sample correction?
@@ -88,6 +85,7 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf, ortho=FALSE,
     # desired tolerance.
     sdtarget <- if(cureps < 0) -cureps else cureps*abs(tr/NN)
     Ntarget <- as.integer((sd/sdtarget)^2*NN)
+    if(is.na(Ntarget)) stop('Too much variance in trace samples for ',trname)
     vpt <- 1 + (Ntarget-NN) %/% threads
     if(vpt > maxvpt) vpt <- maxvpt
     if(vpt < 1) vpt <- 1

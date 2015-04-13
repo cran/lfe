@@ -14,7 +14,7 @@ results in a manageable number of coefficients, you are probably better
 off by using \code{\link{lm}}.
 }
 
-\usage{ felm(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NULL, ...) }
+\usage{ felm(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NULL, weights=NULL,...) }
 
 \arguments{
   \item{formula}{an object of class '"formula"' (or one that can be
@@ -49,12 +49,22 @@ off by using \code{\link{lm}}.
 
   \item{contrasts}{an optional list. See the \code{contrasts.arg} of \code{model.matrix.default}.}
 
+  \item{weights}{an optional vector of weights to be used in the fitting
+              process.  Should be ‘NULL’ or a numeric vector.  If
+              non-NULL, weighted least squares is used with weights
+              \code{weights} (that is, minimizing \code{sum(w*e^2)}); otherwise
+              ordinary least squares is used.}
+
   \item{...}{other arguments.
     \itemize{
 
-      \item \code{keepX} logical. to include a copy of the expanded data
+      \item \code{keepX} logical. To include a copy of the expanded data
       matrix in the return value, as needed by \code{\link{bccorr}} and
-      \code{\link{fevcov}} for proper bias correction.
+      \code{\link{fevcov}} for proper limited mobility bias correction.
+
+      \item \code{keepCX} logical. Keep a copy of the centred expanded
+      data matrix in the return value. As list elements \code{cX} for
+      the explanatory variables, and \code{cY} for the outcome.
 
       \item \code{nostats} logical. Don't include covariance matrices in
       the output, just the estimated coefficients and various
@@ -71,7 +81,7 @@ off by using \code{\link{lm}}.
       using a Füller adjustment of the liml-estimator.
 
       \item \code{iv, clustervar} deprecated.  These arguments will be
-      removed at a later time, but is still supported in this
+      removed at a later time, but are still supported in this
       field. Users are \emph{STRONGLY} encouraged to use multipart
       formulas instead.  In particular, not all functionality is
       supported with the deprecated syntax; iv-estimations actually run
@@ -100,7 +110,7 @@ off by using \code{\link{lm}}.
   \item{response}{a numerical vector. The response vector.}
   \item{fitted.values}{a numerical vector. The fitted values.}
   \item{residuals}{a numerical vector. The residuals of the full
-  system, with dummies.  For IV-estmations, this is the residuals
+  system, with dummies.  For IV-estimations, this is the residuals
   when the original endogenous variables are used, not their predictions
   from the 1st stage.}
   \item{r.residuals}{a numerical vector. Reduced residuals, i.e. the residuals resulting from
@@ -108,11 +118,15 @@ off by using \code{\link{lm}}.
   \item{iv.residuals}{numerical vector. When using instrumental
   variables, residuals from 2. stage, i.e. when predicting with the
   predicted endogenous variables from the 1st stage.}
+  \item{weights}{numeric. The square root of the argument \code{weights}.}
   \item{cfactor}{factor of length N. The factor describing the connected
     components of the two first terms in the second part of the model formula.}
   \item{vcv}{a matrix. The variance-covariance matrix.}
   \item{fe}{list of factors. A list of the terms in the second part of
   the model formula.}
+
+  \item{weights}{numeric vector.  The \emph{square root} of the weights
+  specified in the \code{weights} argument to \code{felm}.}
 
   \item{stage1}{The '\code{felm}' objects for the IV 1st stage, if
     used. The 1st stage has multiple left hand sides if there are more
@@ -128,6 +142,10 @@ off by using \code{\link{lm}}.
   \code{\link{bccorr}} or \code{\link{fevcov}} is to be used for correcting limited mobility bias.
   }
 
+  \item{cX, cY}{matrix. The centred expanded data matrix. Only included if
+    \code{felm(keepCX=TRUE)}.
+  }
+    
 }
 
 \details{
@@ -263,6 +281,6 @@ Statistics 29 (2011), no. 2, 238--249.
 
 Kolesár, M.,  R. Chetty, J. Friedman, E. Glaeser, and G.W. Imbens (2014)
 \cite{Identification and Inference with Many Invalid Instruments},
-Journal of Business & Economic Statistics.
+Journal of Business & Economic Statistics (to appear).
 \url{http://dx.doi.org/10.1080/07350015.2014.978175}
 }

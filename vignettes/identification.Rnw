@@ -1,4 +1,5 @@
 %\VignetteEngine{knitr::knitr}
+% $Id: identification.Rnw 1693 2015-04-07 09:36:29Z sgaure $
 \documentclass{amsproc}
 
 \usepackage[utf8]{inputenc}
@@ -348,10 +349,9 @@ may find the matrix \(D\) of equation~\eqref{alphaeq}, and its (column) rank def
 is larger than 2.
 <<>>=
 f1 <- factor(f1); f2 <- factor(f2); f3 <- factor(f3)
-D <- t(do.call('rBind',
-        lapply(list(f1,f2,f3),as,Class='sparseMatrix')))
+D <- makeDmatrix(list(f1,f2,f3))
 dim(D)
-as.integer(rankMatrix(D))
+ncol(D) - as.integer(rankMatrix(D))
 @ 
 Alternatively we can use an internal function
 in lfe for finding the rank deficiency directly.

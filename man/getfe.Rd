@@ -23,7 +23,7 @@ getfe(obj, references=NULL, se=FALSE,
 \item{se}{logical.  Set to TRUE if standard errors for the group
   effects are wanted.  This is \strong{very} time-consuming for large problems, so
   leave it as FALSE unless absolutely needed.}
-\item{method}{character string.  Either 'cholesky', or the default
+\item{method}{character string.  Either 'cholesky', 'cg', or the default
   'kaczmarz'.  The latter is often very fast and consumes little memory, 
   it requires an estimable function to be specified, see \code{\link{efactory}}.
   The 'cholesky' method is no longer maintained as the author sees no use for it.

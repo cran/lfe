@@ -1,4 +1,4 @@
-
+# $Id: btrap.R 1683 2015-03-26 09:24:47Z sgaure $
 btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
                   threads=getOption('lfe.threads'), robust=FALSE,
                   cluster=NULL, lhs=NULL) {
@@ -50,7 +50,9 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
   }  else {
     smpdraw <- as.vector(obj$residuals[,lhs])
   }
-
+  w <- obj$weights
+  # if there are weights, smpdraw should be weighted
+  if(!is.null(w)) smpdraw <- smpdraw * w
 
   # Now, we want to do everything in parallel, so we should allocate up a set
   # of vectors, but we don't want to blow the memory.  Stick to allocating two
@@ -68,6 +70,8 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
   vsq <- 0
   start <- last <- as.integer(Sys.time())
   gc()
+
+
   if(!is.null(cluster)) {
   # now, what about multiway clustering?
   # we can't scale with the residuals, but with the cluster demeaned residuals
@@ -93,8 +97,10 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
       # IID residuals
       rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
     }
+    if(!is.null(w)) rsamp <- rsamp/w
     dim(rsamp) <- c(length(smpdraw),vpb)
-    v <- kaczmarz(obj$fe,demeanlist(rsamp,obj$fe,eps=eps,threads=threads,means=TRUE)+Rvec,
+    v <- kaczmarz(obj$fe,demeanlist(rsamp,obj$fe,eps=eps,threads=threads,
+                                    means=TRUE,weights=w)+Rvec,
                   eps, threads=threads)*sefact
 #    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rvec
 #    v <- kaczmarz(obj$fe,newR,eps,threads=threads)*sefact

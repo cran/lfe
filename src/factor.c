@@ -1,3 +1,7 @@
+/*
+ $Id: factor.c 1662 2015-03-20 15:04:22Z sgaure $
+*/
+
 #include "lfe.h"
 static void invertfactor(FACTOR *f,int N) {
   int nlev = f->nlevels;
@@ -29,7 +33,7 @@ static void invertfactor(FACTOR *f,int N) {
   Free(curoff);
 }
 
-FACTOR** makefactors(SEXP flist, int allowmissing) {
+FACTOR** makefactors(SEXP flist, int allowmissing, double *weights) {
   FACTOR **factors;
   int numfac = LENGTH(flist);
   int N=0;
@@ -116,10 +120,12 @@ FACTOR** makefactors(SEXP flist, int allowmissing) {
 	/* skip entries without a group, do we need that? */
 	/* if(f->group[j] < 1) error("Factors can't have missing levels"); */
       if(f->group[j] > 0) {
-	if(NULL == f->x)
-	  f->gpsize[f->group[j]-1] += 1.0;
-	else
-	  f->gpsize[f->group[j]-1] += f->x[j]*f->x[j];
+	double w = (f->x == NULL) ? (weights==NULL ? 1.0 : weights[j]) :
+	  (weights==NULL ? f->x[j] : f->x[j]*weights[j]);
+	//	if(NULL == f->x)
+	  f->gpsize[f->group[j]-1] += w*w;
+	  //	else
+	  //	  f->gpsize[f->group[j]-1] += f->x[j]*f->x[j];
       } else {
 	if(!allowmissing) error("Factors can't have missing levels");
       }
@@ -151,8 +157,10 @@ static int Components(int **vertices, FACTOR **factors, int K) {
   /* The number of vertices */
 
   for(i = 0; i < K; i++) numvert += factors[i]->nlevels;
+
   /* Never used in threads, so use R's Calloc */
   stack = Calloc(numvert*4,int);
+
 #define PUSH(x) stack[stacklevel++] = x
 #define POP(x) x = stack[--stacklevel]
 #define PUSHALL {PUSH(startvert); PUSH(startfac); PUSH(curfac); PUSH(ii);}
@@ -160,6 +168,7 @@ static int Components(int **vertices, FACTOR **factors, int K) {
 
   curcomp = 1;
   candvert = 0;
+
   do {
     curvert = candvert;
     curfac = 0;
@@ -177,10 +186,8 @@ static int Components(int **vertices, FACTOR **factors, int K) {
 	 If final stack-frame, we're done with component.
       */
       
-
       if(vertices[curfac][curvert] == 0) {
 	/* Mark new vertex, find incidence list */
-
 	vertices[curfac][curvert] = curcomp;
 	PUSHALL;
 	startvert = curvert;
@@ -193,12 +200,10 @@ static int Components(int **vertices, FACTOR **factors, int K) {
       }
       if(ii >= factors[startfac]->ii[startvert+1]) {
 	/* No more, move to next factor */
-
 	curfac = (curfac + 1) % K;
 	if(curfac == startfac) {
 	  /* This is where we began, pop */
 	  /* No more neighbours, go back to previous */
-
 	  POPALL;
 	  /* Get outta here */
 	  if(0 == stacklevel) break;
@@ -209,10 +214,12 @@ static int Components(int **vertices, FACTOR **factors, int K) {
       }
       curvert = factors[curfac]->group[factors[startfac]->gpl[ii]]-1;
     }
+
     /* Find next component */
     while(candvert < factors[0]->nlevels && vertices[0][candvert] != 0) candvert++;
     curcomp++;
   } while(candvert < factors[0]->nlevels);
+
   Free(stack);
   return(curcomp-1);
 #undef PUSH
@@ -286,7 +293,7 @@ static void wwcomp(FACTOR *factors[], int numfac, int N, int *newlevels) {
 R entry-point for conncomp.  Takes a list of factors as input.
  */
 
-SEXP R_wwcomp(SEXP flist) {
+SEXP MY_wwcomp(SEXP flist) {
    int numfac, N;
    FACTOR **factors;
    SEXP result;
@@ -340,7 +347,7 @@ a factor of the same length with the connection
 components
 */
 
-SEXP R_conncomp(SEXP flist) {
+SEXP MY_conncomp(SEXP flist) {
   int numfac;
   int i;
   
@@ -355,16 +362,13 @@ SEXP R_conncomp(SEXP flist) {
   double *gpsiz;
   int *idx;
 
-  
   numfac = LENGTH(flist);
   if(numfac < 2) error("At least two factors must be specified");
-
   N = LENGTH(VECTOR_ELT(flist,0));
   for(i = 0; i < numfac; i++) {
     if(N != LENGTH(VECTOR_ELT(flist,i))) 
       error("Factors must have the same length");
   }
-
   factors = (FACTOR**) R_alloc(numfac,sizeof(FACTOR*));
   PROTECT(flist = AS_LIST(flist));
   for(i = 0; i < numfac; i++) {
@@ -374,6 +378,7 @@ SEXP R_conncomp(SEXP flist) {
     f = factors[i];
     f->group = INTEGER(VECTOR_ELT(flist,i));
     f->nlevels = LENGTH(getAttrib(VECTOR_ELT(flist,i),R_LevelsSymbol));
+    if(f->nlevels == 0) error("Factor %s has zero levels", CHAR(STRING_ELT(GET_NAMES(flist),i)));
     invertfactor(f,N);
   }
 
@@ -396,6 +401,7 @@ SEXP R_conncomp(SEXP flist) {
   for(i = 0; i < N; i++) {
     resgroup[i] = vertices[0][group[i]-1];
   }
+
   /* the levels should be ordered by decreasing size. How do we do this? 
      Hmm, we should have a look at revsort supplied by R.
      There must be an easier way, I'm clumsy today.   
@@ -419,7 +425,7 @@ SEXP R_conncomp(SEXP flist) {
     resgroup[i] = levtrl[resgroup[i]-1];
   }
   Free(levtrl);
-  
+
   UNPROTECT(2);
   return(result);
 }

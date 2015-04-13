@@ -1,3 +1,4 @@
+# $Id: condfstat.R 1655 2015-03-18 18:51:06Z sgaure $
 ivbootstrap <- function(z, x, y, quantiles=0.95, N=100L, cluster=NULL) {
   # estimate bias as E((z' x)^{-1} z' eps)
   N <- max(N)

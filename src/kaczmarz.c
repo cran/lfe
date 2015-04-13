@@ -1,3 +1,6 @@
+/*
+  $Id: kaczmarz.c 1666 2015-03-21 22:06:05Z sgaure $
+*/
 #include "lfe.h"
 /* Need sprintf */
 #include <stdio.h>  
@@ -32,7 +35,7 @@ typedef struct {
 
 static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x,
 		       double eps, mysize_t *work, int *stop, LOCK_T lock) {
-		       //		       double eps, double *newR, int *indices, int *stop, LOCK_T lock) {
+
   /* The factors define a matrix D, we will solve Dx = R
      There are N rows in D, each row a_i contains e non-zero entries, one
      for each factor, the level at that position.
@@ -50,7 +53,6 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
 
   */
 
-  double einv = 1.0/e;
   double norm2;
   double prevdiff,neweps;
   double c,sd;
@@ -67,8 +69,7 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
   */
 
   int hasinteract = 0;
-  for(int i = 0; i < e; i++)
-    if(NULL != factors[i]->x) hasinteract = 1;
+  for(int i = 0; i < e; i++) if(NULL != factors[i]->x) hasinteract = 1;
   mysize_t workpos = 0;
 
   /* Do the doubles first to keep alignment */
@@ -78,11 +79,7 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
   mysize_t *prev = (mysize_t *) &work[workpos += N];
   mysize_t *this = (mysize_t *) &work[workpos += e];
 
-  int numlev = 0;
-  for(int i = 0; i < e; i++) {
-    numlev += factors[i]->nlevels;
-    prev[i] = 0;
-  }
+  if(!hasinteract) for(int i = 0; i < e; i++)  prev[i] = 0;
   newN = 0;
   ie = 0;
   for(mysize_t i = 0; i < N; i++) {
@@ -101,7 +98,7 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
       newR[newN] = R[i];
       newN++;
       ie += e;
-      memcpy(prev,this,e*sizeof(int));
+      if(!hasinteract) memcpy(prev,this,e*sizeof(int));
     }
   }
 
@@ -151,67 +148,37 @@ static double kaczmarz(FACTOR *factors[],int e, mysize_t N, double *R, double *x
   prevdiff = 2*norm2;
   neweps = eps*norm2;
 
+
   do {
     mysize_t ie = 0; /* equals i*e; integer multiplication is slow, keep track instead */
     double diff = 0.0;
-    if(hasinteract) {
-      for(mysize_t i = 0; i < newN; i++,ie+=e) {
-	mysize_t ip = perm[i];
-	double upd = 0.0;
-	double ai2 = 0.0;
-	upd = newR[i];
-
-	/* Subtract inner product */
-	for(int j = 0; j < e; j++) {
-	  mysize_t idx = indices[ie + j];
-	  double *fx = factors[j]->x;
-	  if(NULL == fx) {
-	    upd -= x[idx];
-	    ai2 += 1.0;
-	  } else {
-	    upd -= x[idx]*fx[ip];
-	    ai2 += fx[ip]*fx[ip];
-	  }
-	}
-	upd /= ai2;
-	for(int j = 0; j < e; j++) {
-	  mysize_t idx = indices[ie + j];
-	  double *fx = factors[j]->x;
-	  if(NULL == fx) {
-	    x[idx] += upd;
-	    diff += upd*upd;
-	  } else {
-	    x[idx] += upd*fx[ip];
-	    diff += upd*upd*fx[ip]*fx[ip];
-	  }
-	}
-      }
-      diff *= einv;
-    } else {
-      for(mysize_t i = 0; i < newN; i++,ie+=e) {
-	double upd = 0.0;
-	upd = newR[i];
-	
-	/* Subtract inner product */
-	for(int j = 0; j < e; j++) {
-	  mysize_t idx = indices[ie + j];
-	  upd -= x[idx];
-	}
-	upd *= einv;
+    for(mysize_t i = 0; i < newN; i++,ie+=e) {
+      const mysize_t ip = perm[i];
+      double upd = 0.0;
+      double ai2 = 0.0;
+      upd = newR[i];
       
-	/* Update x */
-	for(int j = 0; j < e; j++) {
-	  mysize_t idx = indices[ie + j];      
-	  x[idx] += upd;
-	}
-	/* Keep track of update */
-	diff += upd*upd;
+      /* Subtract inner product */
+      for(int j = 0; j < e; j++) {
+	const mysize_t idx = indices[ie + j];
+	const double *fx = factors[j]->x;
+	const double w = (fx == NULL) ? 1.0 : fx[ip];
+	upd -= x[idx]*w;
+	ai2 += w*w;
+      }
+      /* Update */
+      upd /= ai2;
+      for(int j = 0; j < e; j++) {
+	const mysize_t idx = indices[ie + j];
+	const double *fx = factors[j]->x;
+	const double w = (fx == NULL) ? upd : upd*fx[ip];
+	x[idx] += w;
+	diff += w*w;
       }
     }
     iter++;
-    /* Relax a bit */
-    /*    R_CheckUserInterrupt();*/
-    sd = sqrt(diff*e);
+
+    sd = sqrt(diff);
     c = sd/prevdiff;
     prevdiff = sd;
     if(c >= 1.0 && iter > 20) {
@@ -255,8 +222,8 @@ static void *kaczmarz_thr(void *varg) {
 #endif
 
     (void) kaczmarz(arg->factors,arg->e,arg->N,
-		    arg->source[vecnum],arg->target[vecnum],arg->eps,
-		    arg->work[myid], &arg->stop, arg->lock);
+		    arg->source[vecnum],arg->target[vecnum],
+		    arg->eps, arg->work[myid], &arg->stop, arg->lock);
   }
 #ifndef NOTHREADS
 #ifndef WIN
@@ -271,11 +238,7 @@ static void *kaczmarz_thr(void *varg) {
   return 0;
 }
 
-
-
-
-
-SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
+SEXP MY_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
 
   double eps = REAL(Reps)[0];
   /*  double *R = REAL(RR);*/
@@ -317,12 +280,13 @@ SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
   PROTECT(flist = AS_LIST(flist));protectcount++;
   //  numfac = LENGTH(flist);
 
-  factors = makefactors(flist, 0);
+  factors = makefactors(flist, 0, NULL);
   numfac = 0;
   for(FACTOR **f = factors; *f != NULL; f++) numfac++;
   N = LENGTH(VECTOR_ELT(flist,0));
   for(int i = 0; i < numfac; i++)
     sumlev += factors[i]->nlevels;
+
 
   if(!isNull(initial) && LENGTH(initial) != sumlev)
     error("Initial vector must have length %d, but is %d\n",sumlev, LENGTH(initial));

@@ -1,3 +1,4 @@
+# $Id: felm.R 1695 2015-04-07 13:02:40Z sgaure $
 # makematrix is a bit complicated. The purpose is to make model matrices for the various
 # parts of the formulas.  The complications are due to the iv stuff.
 # If there's an IV-part, its right hand side should be with the
@@ -8,10 +9,18 @@
 makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
                        clustervar=NULL, wildcard='n') {
   m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
+  wpos <- which(!is.na(pmatch(names(mf),'weights')))
+  if(length(wpos) > 0) {
+    weights <- eval(mf[[wpos]],pf)
+    if(anyNA(weights) || any(weights < 0)) stop('missing or negative weights not allowed')
+    weights <- sqrt(weights)
+    weights[weights==0] <- 1e-60
+  } else {
+    weights <- NULL
+  }
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- quote(model.frame)
-
   # we should handle multiple lhs
   # but how?  model.frame() doesn't handle it, but we need
   # model.frame for subsetting and na.action, with the left hand side
@@ -26,7 +35,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   # If Form rhs is shorter than 4, extend it with zeros.
   # Then we avoid some special cases later
   numrhs <- length(Form)[2]
-  
+
   # we can't just dot-update the iv-part, update will only keep the instruments
   if(numrhs < 2) Form <- update(Form, . ~ . | 0 | 0 | 0 | 0, drop=FALSE)
   else if(numrhs < 3) Form <- update(Form, . ~ . | . | 0 | 0 | 0 , drop=FALSE)
@@ -85,9 +94,11 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
 
   mf[['formula']] <- fullF
   mf <- eval(mf, dataenv)
+  if(nrow(mf) == 0) stop('0 (non-NA) cases; no valid data')
   rm(dataenv)
   naact <- na.action(mf)
-
+  if(!is.null(naact) && !is.null(weights)) weights <- weights[-naact]
+  
 #  if(is.null(mf$data)) data <- environment(mf[['formula']])
   # the factor list (rhs=2) needs special attention
   # it should be made into a model matrix, but treated specially.
@@ -113,11 +124,11 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
     ret
   }, env)
 
+#  fl <- eval(attr(ftm,'variables'), mf, env)
   fl <- lapply(attr(ftm,'term.labels'), function(tm) {
     f <- eval(parse(text=tm), mf, env)
     if(is.null(attr(f, 'fnam'))) factor(f) else f
   })
-  
   names(fl) <- attr(ftm, 'term.labels')
   # Name the interactions with the matrix first, then the factor name
   names(fl) <- sapply(names(fl), function(n) {
@@ -221,12 +232,15 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
 
   # orig is necessary to compute the r.residuals, i.e. residuals without dummies
   # it's used in getfe() and btrap, but is of no use if we have ctrl variables
-  TSS <- apply(y,2,var)*(nrow(y)-1)
+  if(is.null(weights))
+      TSS <- apply(y,2,var)*(nrow(y)-1)
+  else
+      TSS <- apply(y, 2, function(yy) sum( weights^2*(yy-sum(weights^2*yy/sum(weights^2)))^2))
   names(TSS) <- colnames(y)
 
+
   if(length(fl) != 0) {
-#    result <- edemeanlist(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl, fl=fl)
-    result <- demeanlist(list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl), fl=fl)
+    result <- demeanlist(list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl), fl=fl,weights=weights)
     if(is.null(ctrl)) result$orig <- list(y=y, x=x, ivy=ivy, ivx=ivx)
   } else {
     result <- list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl)
@@ -241,7 +255,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
     result$ctrl <- NULL
 #    fit <- .lm.fit(x,y)
 # my own is much faster for large datasets
-    fit <- newols(list(y=y,x=x), nostats=TRUE)
+    fit <- newols(list(y=y,x=x,weights=weights), nostats=TRUE)
     resid <- as.matrix(fit$residuals)
     setdimnames(resid, list(NULL, colnames(y)))
     numctrl <- fit$rank
@@ -255,6 +269,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   } else {
     numctrl <- 0L
   }
+
   result$TSS <- TSS
   result$hasicpt <- icpt
   result$numctrl <- numctrl
@@ -266,7 +281,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   result$ivform <- ivform
   result$inames <- inames
   result$na.action <- naact
-
+  result$weights <- weights
   result
 }
 
@@ -278,6 +293,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
       orig <- mm$orig
   else
       orig <- mm
+
+  weights <- mm$weights
 
   numctrl <- if(is.null(mm$numctrl)) 0 else mm$numctrl
   hasicpt <- if(is.null(mm$hasicpt)) FALSE else mm$hasicpt
@@ -318,6 +335,14 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   # fitted values plus a fraction of the residuals
   
   # (see http://www.tandfonline.com/doi/pdf/10.1080/07350015.2014.978175 p 11)
+
+
+  if(!is.null(weights)) iweights <- 1/weights
+  if(!is.null(weights)) {
+    .Call(C_scalecols,mm$x,weights)
+    .Call(C_scalecols,mm$y,weights)
+  }
+
   if(!is.null(kappa)) {
     cp <- crossprod(mm$x) - kappa*crossprod(mm$noinst)
     b <- crossprod(mm$x,mm$y) - kappa * crossprod(mm$noinst, mm$y)
@@ -327,7 +352,6 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   }
   ch <- cholx(cp)
   badvars <- attr(ch,'badvars')
-
   z <- list()
   class(z) <- 'felm'
   if(is.null(badvars)) {
@@ -356,17 +380,26 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 #  rownames(beta) <- colnames(orig$x)
   rownames(beta) <- colnames(mm$x)
 
+  if(!is.null(weights)) {
+    .Call(C_scalecols,mm$x,iweights)
+    .Call(C_scalecols,mm$y,iweights)
+  }
+
 #  z$lhs <- colnames(beta) <- colnames(orig$y)
   z$lhs <- colnames(beta) <- colnames(mm$y)
   z$hasicpt <- hasicpt
   z$TSS <- mm$TSS
   z$kappa <- kappa
-  z$P.TSS <- apply(mm$y,2,var)*(nrow(mm$y)-1)
+  if(is.null(weights)) 
+      z$P.TSS <- apply(mm$y,2,var)*(nrow(mm$y)-1)
+  else
+      z$P.TSS <- apply(mm$y, 2, function(yy) sum( weights^2*(yy-sum(weights^2*yy/sum(weights^2)))^2))
+
   names(z$P.TSS) <- colnames(mm$y)
+  z$weights <- weights
 
   z$numctrl <- numctrl
   z$coefficients <- z$beta <- beta
-
   # what else is there to put into a felm object?
   z$Pp <- ncol(orig$x)
   z$N <- nrow(orig$x)
@@ -377,20 +410,32 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   zresid <- mm$y - zfit
   
   z$response <- orig$y
-
-  z$fitted.values <- zfit #mm$y - zresid
+  z$fitted.values <- zfit 
   z$residuals <- zresid
+
+#  if(!is.null(weights) && length(mm$fl) != 0) {
+#    .Call(C_scalecols, z$residuals, iweights)
+#    .Call(C_scalecols, z$fitted.values, iweights)
+#  }
+#  if(!is.null(weights) && length(mm$fl) == 0) {
+#    .Call(C_scalecols,z$residuals,weights)
+#    .Call(C_scalecols,z$fitted.values,weights)
+#  }
+
   z$contrasts <- mm$contrasts
   if(length(mm$fl) != 0) {
     z$r.residuals <- orig$y - orig$x %*% nabeta
+#    if(!is.null(weights)) .Call(C_scalecols,z$r.residuals,weights)
   } else {
     z$r.residuals <- z$residuals
   }
 
-  # the residuals should be the residuals from the original endogenous variables, not the predicted ones
-  # the difference are the residuals from stage 1, which we must multiply by beta and subtract.
-  # the residuals from the 2nd stage are in iv.residuals
-  # hmm, what about the r.residuals?  We modify them as well. They are used in kaczmarz().
+  # For IV, the residuals should be the residuals from the original
+  # endogenous variables, not the predicted ones the difference are
+  # the residuals from stage 1, which we must multiply by beta and
+  # subtract.  the residuals from the 2nd stage are in iv.residuals
+  # hmm, what about the r.residuals?  We modify them as well. They are
+  # used in kaczmarz().
 
   if(!is.null(stage1)) {
     # we need the centred response in condfstat()
@@ -464,6 +509,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   for(lhs in z$lhs) {
     res <- z$residuals[,lhs]
 
+    if(!is.null(weights)) res <- weights*res
 # when multiple lhs, vcvfactor is a vector
 # we need a list of vcvs in this case
 
@@ -497,7 +543,6 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
     # via a blas dsyrk. Save some memory 
     meat <- matrix(0, Ncoef, Ncoef)
     .Call(C_dsyrk,0.0,meat,dfadj,xz)
-#    rvcv <- inv %*% meat %*% inv
     rvcv <- .Call(C_sandwich,1.0,inv,meat)
     setdimnames(rvcv, vcvnames)
 
@@ -524,8 +569,9 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
           adj <- sgn*dfadj*nlevels(ia)/(nlevels(ia)-1)
           .Call(C_dsyrk,1.0,meat,adj,rowsum(xz,ia))
         }
-#        cvcv <- inv %*% meat %*% inv
+
         cvcv <- .Call(C_sandwich,1.0,inv,meat)
+
         setdimnames(cvcv, vcvnames)
         z$STATS[[lhs]]$clustervcv <- cvcv
         if(singlelhs) z$clustervcv <- cvcv
@@ -565,6 +611,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
         z$cpval <- z$STATS[[lhs]]$cpval
       } 
     }
+
     z$STATS[[lhs]]$se <- sqrt(diag(z$STATS[[lhs]]$vcv))
     z$STATS[[lhs]]$tval <- z$coefficients[,lhs]/z$STATS[[lhs]]$se
     z$STATS[[lhs]]$pval <- 2*pt(abs(z$STATS[[lhs]]$tval),z$df,lower.tail=FALSE)
@@ -572,7 +619,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
     z$STATS[[lhs]]$rse <- sqrt(diag(z$STATS[[lhs]]$robustvcv))
     z$STATS[[lhs]]$rtval <- z$coefficients[,lhs]/z$STATS[[lhs]]$rse
     z$STATS[[lhs]]$rpval <- 2*pt(abs(z$STATS[[lhs]]$rtval),z$df,lower.tail=FALSE)
-    
+
     if(singlelhs) {
       z$se <- z$STATS[[lhs]]$se
       z$tval <- z$STATS[[lhs]]$tval
@@ -590,11 +637,12 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 }
 
 felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
-                 contrasts=NULL,...) {
+                 contrasts=NULL,weights=NULL,...) {
 
   knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats',
-                 'wildcard', 'kclass', 'fuller')
+                 'wildcard', 'kclass', 'fuller', 'keepCX')
   keepX <- FALSE
+  keepCX <- FALSE
   cmethod <- 'cgm'
   iv <- NULL
   clustervar <- NULL
@@ -603,16 +651,13 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   kclass <- NULL
   fuller <- 0
   deprec <- c('iv', 'clustervar')
-  mf <- match.call(expand.dots = FALSE)
+  mf <- match.call(expand.dots = TRUE)
   
   # Currently there shouldn't be any ... arguments
   # check that the list is empty
 
 #  if(length(mf[['...']]) > 0) stop('unknown argument ',mf['...'])
   
-  # When moved to the ... list, we use this:
-  # we do it right away, iv and clustervar can't possibly end up in ... yet, not with normal users
-
 
   args <- list(...)
   ka <- knownargs[pmatch(names(args),knownargs, duplicates.ok=FALSE)]
@@ -620,7 +665,8 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   dpr <- deprec[match(ka, deprec)]
   if(any(!is.na(dpr))) {
     bad <- dpr[which(!is.na(dpr))]
-    warning('Argument(s) ',paste(bad,collapse=','), ' are deprecated and will be removed, use multipart formula instead')
+    .Deprecated('',msg=paste('Argument(s)',paste(bad,collapse=','), 'are deprecated and will be removed, use multipart formula instead'))
+#    warning('Argument(s) ',paste(bad,collapse=','), ' are deprecated and will be removed, use multipart formula instead')
   }
   env <- environment()
   lapply(intersect(knownargs,ka), function(arg) assign(arg,args[[arg]], pos=env))
@@ -639,8 +685,6 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
     return(eval.parent(mf))
   }
 
-
-
   mm <- makematrix(mf, contrasts, pf=parent.frame(), clustervar, wildcard=wildcard)
   ivform <- mm$ivform
 
@@ -648,6 +692,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
     # no iv, just do the thing
     z <- newols(mm, nostats=nostats[1], exactDOF=exactDOF)
     if(keepX) z$X <- if(is.null(mm$orig)) mm$x else mm$orig$x
+    if(keepCX) {z$cX <- mm$x; z$cY <- mm$y}
     z$call <- match.call()
     return(z)
   }
@@ -690,7 +735,8 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   # nah, we should project on P_{Z,W}. Now, P_{Z,W} W = W
   if(!is.null(kappa)) {
     mm2 <- mm1 <- mm[names(mm) %in% c('fl','terms','cluster', 'numctrl',
-                                      'hasicpt','na.action','contrasts')]
+                                      'hasicpt','na.action','contrasts',
+                                      'weights')]
     nmx <- colnames(mm$x)
     mm1$y <- cbind(mm$x, mm$ivy)
     mm1$x <- cbind(mm$x, mm$ivx)
@@ -705,6 +751,8 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
     rm(mm1)
 #    setdimnames(mm2$x, list(NULL, c(fitnames,nmx)))
     z2 <- newols(mm2, exactDOF=exactDOF, kappa=kappa, nostats=nostats[1])
+    if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
+    if(keepCX) {z2$cX <- mm2$x; z2$cY <- mm2$y}
     z2$call <- match.call()
     return(z2)
   }
@@ -722,13 +770,16 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   exlist <- colnames(mm$x)
 
   mm1 <- mm[names(mm) %in% c('fl','terms','cluster', 'numctrl',
-                             'hasicpt','na.action','contrasts')]
+                             'hasicpt','na.action','contrasts',
+                             'weights')]
   mm1$y <- mm$ivy
   mm1$x <- cbind(mm$x, mm$ivx)
   mm1$orig$y <- mm$orig$ivy
   mm1$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
 
   z1 <- newols(mm1, nostats=nost1, exactDOF=exactDOF)
+  if(keepX) z1$X <- if(is.null(mm1$orig)) mm1$x else mm1$orig$x
+  if(keepCX) {z1$cX <- mm1$x; z1$cY <- mm1$y}
   rm(mm1)
 
   if(!nost1) {
@@ -749,7 +800,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   # we must set the names of the exogenous variables
 
   mm2 <- mm[names(mm) %in% c('fl','terms','cluster','numctrl','hasicpt',
-                             'na.action','contrasts', 'TSS')]
+                             'na.action','contrasts', 'TSS','weights')]
 
   mm2$x <- cbind(mm$x, z1$fitted.values)
   setdimnames(mm2$x, list(NULL, c(exlist,fitnames)))
@@ -764,6 +815,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
 
   z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF)
   if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
+  if(keepCX) {z2$cX <- mm2$x; z2$cY <- mm2$y}
   rm(mm2)
 
   z2$call <- match.call()

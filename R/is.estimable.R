@@ -1,4 +1,4 @@
-
+# $Id: is.estimable.R 1655 2015-03-18 18:51:06Z sgaure $
 # check whether a function is estimable
 is.estimable <- function(ef,fe,R=NULL,nowarn=FALSE,keepdiff=FALSE, threshold=1e-5) {
   if(!is.function(ef)) stop('ef must be a function')

@@ -51,24 +51,28 @@ as described in \cite{Gaure (2014)}.
 }
 
 \details{
-The bias expressions from \cite{Andrews et al.} are of the form 'tr(A B^\{-1\} C)'
-where A, B, and C are  matrices too large to be handled
+The bias expressions from \cite{Andrews et al.} are of the form \eqn{tr(AB^{-1}C)}
+where \eqn{A}, \eqn{B}, and \eqn{C} are  matrices too large to be handled
 directly. \code{bccorr} estimates the trace by using the formula \eqn{tr(M) = E(x^t M x)}
-where x is a vector with coordinates drawn uniformly from the set \{-1,1\}.
+where x is a vector with coordinates drawn uniformly from the set \eqn{\{-1,1\}}.
 More specifically, the expectation is estimated by
 sample means, i.e. in each sample a vector x is drawn, the
-equation 'Bv = Cx' is solved by a conjugate gradient method, and the
+equation \eqn{Bv = Cx} is solved by a conjugate gradient method, and the
 real number \eqn{x^t Av} is computed. 
 
-There are three bias corrections, for the variances of D theta (vD) and
-F psi (vF), and their covariance (vDF).The correlation is computed as
+There are three bias corrections, for the variances of \eqn{D\theta} (\code{vD}) and
+\eqn{F\psi} (\code{vF}), and their covariance (\code{vDF}).The correlation is computed as
 \code{rho <- vDF/sqrt(vD*vF)}.  The variances are estimated to a
 relative tolerance specified by the argument \code{tol}. The covariance
 bias is estimated to an absolute tolerance in the correlation \code{rho}
-(conditional on the already bias corrected vD and vF) specified by
+(conditional on the already bias corrected \code{vD} and \code{vF}) specified by
 \code{tol}.  The CG algortithm does not need to be exceedingly precise,
 it is terminated when the solution reaches a precision which is
 sufficient for the chosen precision in \code{vD, vF, vDF}.
+
+If \code{est} is the result of a weighted \code{\link{felm}} estimation,
+the variances and correlations are weighted too.
+
 }
 
 \note{

@@ -1,3 +1,4 @@
+# $Id: utils.R 1693 2015-04-07 09:36:29Z sgaure $
 # Author: Simen Gaure
 # Copyright: 2011, Simen Gaure
 # Licence: Artistic 2.0
@@ -9,9 +10,24 @@ setdimnames <- function(obj, nm) {
   .Call(C_setdimnames,obj,nm)
 }
 
+scalecols <- function(obj, vec) {
+  .Call(C_scalecols, obj, vec)
+}
+
 orthonormalize <- function(V) {
   structure(V %*% solve(chol(crossprod(V))), ortho=TRUE)
 }
+
+wmean <- function(x,w) sum(w*x)/sum(w)
+wcov <- function(x,y,w) {
+  sw <- w/sum(w)
+  mx <- sum(sw*x)
+  my <- sum(sw*y)
+  cx <- x - mx
+  cy <- y - my
+  sum(sw*cx*cy)/(1-sum(sw^2))
+}
+wvar <- function(x,w) wcov(x,x,w)
 
 pinvx <- function(X) {
 #    return(pinv(nazero(X)))
@@ -34,7 +50,6 @@ cholx <- function(mat, eps=1e-6) {
 
   # first, try a pivoted one
   tol <- N*getOption('lfe.eps')
-#  tol <- -1
   chp <- chol(mat,pivot=TRUE,tol=tol)
   rank <- attr(chp,'rank')
   if(rank == N) return(chol(mat))
@@ -97,8 +112,7 @@ mkgraph <- function(f1,f2) {
   if(!requireNamespace('igraph', quietly=TRUE)) stop('Package igraph not found')
 #  graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)
 #  graph.edgelist(cbind(500000000+as.integer(f1),f2), directed=FALSE)
-  igraph::graph.adjacency(tcrossprod(do.call(rBind,
-                                     lapply(list(f1,f2), as, 'sparseMatrix')))>0,
+  igraph::graph.adjacency(tcrossprod(makeDmatrix(list(f1,f2)))>0,
                   'undirected', diag=FALSE)
 }
 
@@ -151,8 +165,8 @@ rankDefic <- function(fl,method='cholesky',mctol=1e-3) {
     # be within a certain relative tolerance, which translates
     # to an absolute tolerance of tr
     tolfun <- function(tr) -mctol*abs((tr+totlev)+len)
-    initr <- 0
-    N - (mctrace(fl,tol=tolfun,initr=initr) + totlev)+len
+    init <- 0
+    N - (mctrace(fl,tol=tolfun,init=init) + totlev)+len
     
   } else {
     D <- makeDmatrix(fl)
@@ -161,22 +175,32 @@ rankDefic <- function(fl,method='cholesky',mctol=1e-3) {
 }
 
 
-makeDmatrix <- function(fl) {
+# in makeDmatrix/makePmatrix, the weights argument should be the
+# square root of the weights. This is what is stored in internal structures.
+# 
+makeDmatrix <- function(fl, weights=NULL) {
   # make the D matrix
   # for pure factors f, it's just the t(as(f,'sparseMatrix'))
   # if there's a covariate vector x, it's t(as(f,'sparseMatrix'))*x
   # for a covariate matrix x, it's the cbinds of the columns with the factor-matrix
-  do.call(cBind,lapply(fl, function(f) {
+  ans <- do.call(mycbind,lapply(fl, function(f) {
     x <- attr(f,'x')
     fm <- t(as(f,'sparseMatrix'))
     if(is.null(x)) return(fm)
     if(!is.matrix(x)) return(fm*x)
-    do.call(cBind,apply(x,2,'*',fm))
+    do.call(mycbind,apply(x,2,'*',fm))
   }))
+  nm <- names(fl)
+  if(is.null(nm)) nm <- paste('f',seq_along(fl),sep='')
+  levnm <- unlist(sapply(seq_along(fl), function(i) xlevels(nm[i],fl[[i]])))
+  if(!is.null(weights)) 
+      ans <- Diagonal(length(weights),weights) %*% ans
+  colnames(ans) <- levnm
+  ans
 }
 
-makePmatrix <- function(fl) {
-  D <- makeDmatrix(fl)
+makePmatrix <- function(fl, weights=NULL) {
+  D <- makeDmatrix(fl,weights)
   DtD <- crossprod(D)
   DtDi <- pinvx(as.matrix(DtD))
   badvars <- attr(DtDi,'badvars')

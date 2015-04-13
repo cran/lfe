@@ -1,9 +1,12 @@
+# $Id: demeanlist.R 1671 2015-03-23 13:04:42Z sgaure $
 demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
                        threads=getOption('lfe.threads'),
 		       progress=getOption('lfe.pint'),
                        accel=getOption('lfe.accel'),
                        randfact=TRUE,
-                       means=FALSE) {
+                       means=FALSE,
+                       weights=NULL,
+                       scale=TRUE) {
 
   if(length(fl) == 0) {
     if(means) {
@@ -20,18 +23,19 @@ demeanlist <- function(mtx,fl,icpt=0,eps=getOption('lfe.eps'),
   if(randfact && length(fl) > 2) fl <- fl[order(runif(length(fl)))]
 
   res <- .Call(C_demeanlist,
-     mtx,
-     as.list(fl),
-     as.integer(icpt),               
-     as.double(eps),
-     as.integer(threads),
-     as.integer(progress),
-     as.integer(accel),
-     as.logical(means))
+               mtx,
+               as.list(fl),
+               as.integer(icpt),               
+               as.double(eps),
+               as.integer(threads),
+               as.integer(progress),
+               as.integer(accel),
+               as.logical(means),
+               weights,
+               as.logical(scale))
 
   if(!islist) {
     res <- res[[1]]
-    names(res) <- names(mtx)
   }
   res
 }

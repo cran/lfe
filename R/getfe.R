@@ -1,18 +1,25 @@
+# $Id: getfe.R 1693 2015-04-07 09:36:29Z sgaure $
 # return a data-frame with the group fixed effects, including zeros for references
 getfe <- function(obj,references=NULL,se=FALSE,method='kaczmarz',ef='ref',bN=100, robust=FALSE, cluster=obj[['clustervar']], lhs=NULL) {
 
   if(length(obj$fe) == 0) return(NULL)
   if(!is.null(obj$numctrl) && obj$numctrl > 0)
       stop("Can't retrieve fixed effects when estimating with control variables")
-  if(method == 'kaczmarz') {
+  if(method == 'kaczmarz' || method == 'cg') {
     if(!is.null(references))
        warning('use estimable function (ef) instead of references in the Kaczmarz method')
     if(is.null(ef)) ef <- 'ln'
     if(!is.character(ef) && !is.function(ef))
       stop('ef must be a function when using the Kaczmarz method')
+    if(method == 'cg') {
+      oldopt <- options(lfe.usecg=TRUE)
+      on.exit(options(oldopt))
+    }
     return(getfe.kaczmarz(obj,se,ef=ef,bN=bN, robust=robust, cluster=cluster, lhs=lhs))
   }
-  if(method != 'cholesky') stop('method must be either kaczmarz or cholesky')
+  if(method != 'cholesky') stop('method must be either kaczmarz, cg, or cholesky')
+
+  .Deprecated('',msg="Cholesky method is deprecated. Please consider using either 'kaczmarz' or 'cg'")
   attr(se,'sefactor') <- obj$sefactor
   attr(obj$fe,'references') <- references
   R <- obj$r.residuals

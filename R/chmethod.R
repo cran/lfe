@@ -1,4 +1,4 @@
-
+# $Id: chmethod.R 1693 2015-04-07 09:36:29Z sgaure $
 findfe <- function(dd,Rhs,se=FALSE) {
   # find references
   refnames <- attr(dd,'refnames')
@@ -44,20 +44,21 @@ findfe <- function(dd,Rhs,se=FALSE) {
 }
 
 
-makedummies <- function(factors) {
-  nm <- c()
-  dummies <- Matrix(0,0,length(factors[[1]]))
-  for(i in 1:length(factors)) {
-    f <- factors[[i]]
-    dummies <- rBind(dummies,as(f,'sparseMatrix'))
-    nm <- c(nm,paste(names(factors)[[i]],levels(f),sep='.'))
-  }
-  rownames(dummies) <- nm
-  dummies
-}
+#makedummies <- function(factors) {
+#  nm <- c()
+#  dummies <- Matrix(0,0,length(factors[[1]]))
+#  for(i in 1:length(factors)) {
+#    f <- factors[[i]]
+#    dummies <- rBind(dummies,as(f,'sparseMatrix'))
+#    nm <- c(nm,paste(names(factors)[[i]],levels(f),sep='.'))
+#  }
+#  rownames(dummies) <- nm
+#  dummies
+#}
 
 makedd.full <- function(factors) {
-  dm <- makedummies(factors)
+#  dm <- makedummies(factors)
+  dm <- t(makeDmatrix(factors))
   nm <- rownames(dm)
   dd <- tcrossprod(dm)
   rownames(dd) <- colnames(dd) <- nm

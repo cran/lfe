@@ -1,3 +1,4 @@
+# $Id: felm.old.R 1655 2015-03-18 18:51:06Z sgaure $
 felm.old <- function(formula,fl,data) {
   mf <- match.call(expand.dots = FALSE)
 

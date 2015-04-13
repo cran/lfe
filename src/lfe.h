@@ -1,7 +1,5 @@
 /*
- Author: Simen Gaure
- Copyright: 2011, Simen Gaure
- Licence: Artistic 2.0
+ $Id: lfe.h 1671 2015-03-23 13:04:42Z sgaure $
 */
 
 #include "config.h"
@@ -119,24 +117,25 @@ typedef struct {
 
 
 /* Routines used in more than one source file */
-FACTOR** makefactors(SEXP flist, int allowmissing);
+FACTOR** makefactors(SEXP flist, int allowmissing, double *weights);
 int checkInterrupt();
 void initmsg();
 void pushmsg(char *s, LOCK_T lock);
 void printmsg(LOCK_T lock);
 
 /* R interface routines */
-SEXP R_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores);
-SEXP R_wwcomp(SEXP flist);
-SEXP R_conncomp(SEXP flist);
-SEXP R_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
-		  SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans);
-SEXP R_scalecols(SEXP mat, SEXP vec);
-SEXP R_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta);
-SEXP R_piproduct(SEXP inX, SEXP inY);
-SEXP R_setdimnames(SEXP obj, SEXP nm);
-SEXP R_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA);
-SEXP R_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB);
-SEXP R_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat);
-SEXP R_address(SEXP x);
+SEXP MY_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores);
+SEXP MY_wwcomp(SEXP flist);
+SEXP MY_conncomp(SEXP flist);
+SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
+		   SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans,
+		   SEXP weights, SEXP Rscale);
+SEXP MY_scalecols(SEXP mat, SEXP vec);
+SEXP MY_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta);
+SEXP MY_piproduct(SEXP inX, SEXP inY);
+SEXP MY_setdimnames(SEXP obj, SEXP nm);
+SEXP MY_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA);
+SEXP MY_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB);
+SEXP MY_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat);
+SEXP MY_address(SEXP x);
 SEXP df_string;

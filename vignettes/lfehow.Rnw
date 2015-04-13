@@ -1,4 +1,5 @@
 %\VignetteEngine{knitr::knitr}
+% $Id: lfehow.Rnw 1655 2015-03-18 18:51:06Z sgaure $
 \documentclass{amsart}
 
 \usepackage[utf8]{inputenc}
