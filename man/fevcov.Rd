@@ -1,6 +1,6 @@
 \name{fevcov}
 \alias{fevcov}
-\title{Compute bias corrrected covariance matrix between fixed effects}
+\title{Compute limited mobility bias corrected covariance matrix between fixed effects}
 \concept{Limited Mobility Bias}
 \description{
 With a model like \eqn{y = X\beta + D\theta + F\psi + \epsilon}, where \eqn{D}
@@ -58,10 +58,8 @@ as described in \cite{Gaure (2014)}.
   columns \code{'fe'} and \code{'effect'} like the default estimable
   functions from \code{\link{efactory}}.
 
-  In the case that the \code{\link{felm}}-estimation has weights, with
-  \eqn{W} the diagonal matrix with the square root of the weights on the
-  diagonal, it is the weighted variances and covariance 
-  which are bias corrected.
+  In the case that the \code{\link{felm}}-estimation has weights,
+  it is the weighted variances and covariance  which are bias corrected.
 
 }
 

@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-04-06 r68154) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-04-19 r68206) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -61,6 +61,29 @@ Multiple R-squared(proj model): 0.601   Adjusted R-squared: 0.585
 F-statistic(full model, *iid*): 125 on 15 and 384 DF, p-value: <2e-16 
 F-statistic(proj model):  217 on 4 and 384 DF, p-value: <2e-16 
 F-statistic(endog. vars):56.2 on 2 and 384 DF, p-value: <2e-16 
+
+
+> summary(felm(y ~ x+x2 | id+firm |(Q|R~x3+x4), kclass='liml'))
+
+Call:
+   felm(formula = y ~ x + x2 | id + firm | (Q | R ~ x3 + x4), kclass = "liml") 
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-5.552 -1.348  0.001  1.271  6.079 
+
+Coefficients:
+   Estimate Std. Error t value Pr(>|t|)
+x     3.095      1.919    1.61     0.11
+x2   -0.586      1.026   -0.57     0.57
+Q    -1.724      2.525   -0.68     0.50
+R     4.219      2.986    1.41     0.16
+
+Residual standard error: 1.94 on 384 degrees of freedom
+Multiple R-squared(full model): 0.807   Adjusted R-squared: 0.799 
+Multiple R-squared(proj model): 0.601   Adjusted R-squared: 0.585 
+F-statistic(full model): 107 on 15 and 384 DF, p-value: <2e-16 
+F-statistic(proj model):  211 on 4 and 384 DF, p-value: <2e-16 
 
 
 > update(est, . ~ x)
@@ -177,4 +200,4 @@ attr(,"quantiles")attr(,"samples")
 > 
 > proc.time()
    user  system elapsed 
-  3.146   0.115   2.616 
+  2.782   1.381   2.644 

@@ -1,6 +1,6 @@
 \name{waldtest}
 \alias{waldtest}
-\title{Compute Wald test for linear restriction or joint significance}
+\title{Compute Wald test for joint linear restrictions}
 \description{
   Compute a Wald test for a linear hypothesis on some coefficients.
 }

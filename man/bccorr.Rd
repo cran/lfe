@@ -1,12 +1,12 @@
 \name{bccorr}
 \alias{bccorr}
-\title{Compute bias corrrected correlation between fixed effects}
+\title{Compute limited mobility bias corrected correlation between fixed effects}
 \concept{Limited Mobility Bias}
 \description{
-With a model like 'y = X beta + D theta + F psi + epsilon', where 'D'
-and 'F' are matrices with dummy encoded factors, one application of \pkg{lfe} is to
-study the correlation 'cor(D theta, F psi)'.  However, if we use
-estimates for theta and psi, the resulting correlation is biased.
+With a model like \eqn{y = X\beta + D\theta + F\psi + \epsilon}, where \eqn{D}
+and \eqn{F} are matrices with dummy encoded factors, one application of \pkg{lfe} is to
+study the correlation \eqn{cor(D\theta, F\psi)}.  However, if we use
+estimates for \eqn{\theta} and \eqn{\psi}, the resulting correlation is biased.
 The function \code{bccorr} computes a bias corrected correlation
 as described in \cite{Gaure (2014)}.
 }

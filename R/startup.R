@@ -1,4 +1,4 @@
-# $Id: startup.R 1697 2015-04-08 11:55:42Z sgaure $
+# $Id: startup.R 1702 2015-04-29 09:34:44Z sgaure $
 setoption <- function(opt,default) {
   optnam <- paste('lfe',opt,sep='.')
   if(!is.null(getOption(optnam))) return()
@@ -49,16 +49,18 @@ if(!exists('anyNA')) anyNA <- function(x) any(is.na(x))
 RV <- R.Version()
 rv <- paste(RV$major,RV$minor, sep='.')
 mv <- sessionInfo()$otherPkgs$Matrix$Version
-..usecBind <- compareVersion('3.2-0',rv) > 0 || compareVersion('1.2-0',mv) > 0
-mycbind <- function(...) {
-  cl <- match.call()
-  if(..usecBind)
-      cl[[1L]] <- quote(Matrix::cBind)
-  else
-      cl[[1L]] <- quote(cbind)
-  eval(cl,parent.frame())
+if(compareVersion('3.2-0',rv) > 0 || compareVersion('1.2-0',mv) > 0) {
+  ..cbind.. <- quote(Matrix::cBind)
+} else {
+  ..cbind.. <- quote(cbind)
 }
-rm(rv,RV,mv)
+# make it local so we can avoid having the constant ..cbind.. in the namespace
+mycbind <- local(function(...) {
+  cl <- match.call()
+  cl[[1L]] <- ..cbind..
+  eval.parent(cl)
+}, list(..cbind..=..cbind..))
+rm(rv,RV,mv,..cbind..)
 
 numcores <- function() {
   "This function is snatched from package 'multicore'"

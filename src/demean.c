@@ -1,5 +1,5 @@
 /*
-  $Id: demean.c 1671 2015-03-23 13:04:42Z sgaure $
+  $Id: demean.c 1700 2015-04-22 11:36:09Z sgaure $
 */
 #include "lfe.h"
 /* Need sprintf */
@@ -578,9 +578,12 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   PROTECT(reslist = NEW_LIST(listlen)); protectcount++;
   SET_NAMES(reslist, GET_NAMES(vlist));
   if(isdf) {
-    setAttrib(reslist, R_RowNamesSymbol, getAttrib(vlist, R_RowNamesSymbol));
-    classgets(reslist,df_string);
-    //    classgets(reslist,PROTECT(mkString("data.frame"))); UNPROTECT(1);
+    if(inherits(vlist, "pdata.frame")) {
+      DUPLICATE_ATTRIB(reslist, vlist);
+    } else {
+      setAttrib(reslist, R_RowNamesSymbol, getAttrib(vlist, R_RowNamesSymbol));
+      classgets(reslist,df_string);
+    }
   }
 
   /* First, count the number of vectors in total */

@@ -20,6 +20,7 @@ y <- x + 0.5*x2 + id.eff[id] + firm.eff[firm] + Q + R + u
 ## estimate and print result
 est <- felm(y ~ x+x2 | id+firm |(Q|R~x3+x4))
 summary(est,robust=TRUE)
+summary(felm(y ~ x+x2 | id+firm |(Q|R~x3+x4), kclass='liml'))
 update(est, . ~ x)
 # try it from within a function 
 fr <- data.frame(y,x,id,firm,Q,R,x3,x4)

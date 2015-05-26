@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-04-06 r68154) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-04-19 r68206) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -485,6 +485,17 @@ iid F 0.148
 attr(,"df1")
 [1] 2
 > 
+> # autoload plm:
+> if(require('plm', quietly=TRUE)) {
++   data("EmplUK", package = "plm")
++   Em <- pdata.frame(EmplUK)
++   detach('package:plm', unload=TRUE)
++   print(felm(emp~output+capital + lag(wage,1)|firm, data=Em))
++ }
+Loading required namespace: plm
+      output      capital lag(wage, 1) 
+      0.0613       0.9570      -0.1073 
+> 
 > proc.time()
    user  system elapsed 
-  3.261   0.104   2.953 
+   3.77    2.06    3.55 

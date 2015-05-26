@@ -109,24 +109,29 @@ off by using \code{\link{lm}}.
     projected out.}
   \item{response}{a numerical vector. The response vector.}
   \item{fitted.values}{a numerical vector. The fitted values.}
+
   \item{residuals}{a numerical vector. The residuals of the full
   system, with dummies.  For IV-estimations, this is the residuals
   when the original endogenous variables are used, not their predictions
   from the 1st stage.}
+
   \item{r.residuals}{a numerical vector. Reduced residuals, i.e. the residuals resulting from
   predicting \emph{without} the dummies.}
+
   \item{iv.residuals}{numerical vector. When using instrumental
   variables, residuals from 2. stage, i.e. when predicting with the
   predicted endogenous variables from the 1st stage.}
+
   \item{weights}{numeric. The square root of the argument \code{weights}.}
+
   \item{cfactor}{factor of length N. The factor describing the connected
     components of the two first terms in the second part of the model formula.}
+
   \item{vcv}{a matrix. The variance-covariance matrix.}
+
   \item{fe}{list of factors. A list of the terms in the second part of
   the model formula.}
 
-  \item{weights}{numeric vector.  The \emph{square root} of the weights
-  specified in the \code{weights} argument to \code{felm}.}
 
   \item{stage1}{The '\code{felm}' objects for the IV 1st stage, if
     used. The 1st stage has multiple left hand sides if there are more
@@ -211,6 +216,17 @@ They will be removed in some future update.
 }
 
 \note{
+
+  Side effect: If \code{data} is an object of class \code{"pdata.frame"}
+  (from the \pkg{plm} package), the \pkg{plm} namespace is loaded if
+  available, and \code{data} is coerced to a \code{"data.frame"} with
+  \code{as.data.frame} which dispatches to a \pkg{plm} method.  This
+  ensures that transformations like \code{diff} and \code{lag} from
+  \pkg{plm} works as expected, but it also incurs an additional copy of
+  the \code{data}, and the \pkg{plm} namespace remains loaded after
+  \code{felm} returns.  When working with \code{"pdata.frame"}s, this is
+  what is usually wanted anyway.
+
   For technical reasons, when running IV-estimations, the data frame supplied in the \code{data}
   argument to \code{felm}, should \emph{not} contain variables with
   names ending in \code{'(fit)'}.  Variables with such names are used

@@ -1,6 +1,6 @@
 \name{makeDmatrix}
 \alias{makeDmatrix}
-\title{Make sparse matrix of dummies}
+\title{Make sparse matrix of dummies from factor list}
 \description{
   Given a list of factors, return the matrix of dummies as a sparse matrix.
 }

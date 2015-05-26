@@ -1,7 +1,18 @@
 \name{NEWS}
 \title{lfe news}
 
-\section{Changes in version 2.2 (2015-04-01)}{
+\section{Changes in version 2.3}{
+  \itemize{
+
+    \item \code{felm} now has some support for \code{"pdata.frame"}s from package plm.
+    In particular, it is now possible to use things like \code{felm(y ~ x+
+    lag(wage), data=pdata)} where \code{pdata} is a \code{"pdata.frame"}.
+
+    \item A bug preventing the use of k-class estimators has been fixed.
+
+  }
+}
+\section{Changes in version 2.2 (2015-04-13)}{
   \itemize{
 
     \item A bug which caused \code{\link{felm}} to crash R when all

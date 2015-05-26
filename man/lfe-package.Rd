@@ -30,12 +30,16 @@ special method for projecting out multiple group fixed effects from the
 normal equations, hence it is faster. It is a generalization of the
 within estimator.  This may be required if the groups have high
 cardinality (many levels), resulting in tens or hundreds of thousands of
-dummy-variables.  It is also useful if one only wants to control for the
+dummy variables.  It is also useful if one only wants to control for the
 group effects, without actually estimating them.  The package may
 optionally compute standard errors for the group effects by
 bootstrapping, but this is a very time- and memory-consuming process
 compared to finding the point estimates.  If you only have a single huge
-factor, the package \pkg{plm} is probably better suited.
+factor, the package \pkg{plm} is probably better suited.  If your
+factors don't have thousands of levels, \code{\link[stats]{lm}} or other
+packages are probably better suited. \pkg{lfe} is designed to produce
+the same results as \code{\link[stats]{lm}} will do if run with the
+full set of dummies.
 
 As of version 1.6, projecting out interactions between continuous
 covariates and factors is supported. I.e. individual slopes, not
@@ -50,7 +54,7 @@ method is described by \cite{Gaure (2013)}, but also appears in \cite{Guimaraes 
 Portugal (2010)}, disguised as the Gauss-Seidel algorithm.
 
 There's also a function \code{\link{demeanlist}} which just does the
-centering on an arbitrary matrix, and there's a function
+centering on an arbitrary matrix or data frame, and there's a function
 \code{\link{compfactor}} which computes the connected components which
 are used for interpreting the group effects when there are only two
 factors (see the Abowd et al references), they are also returned by
@@ -63,7 +67,8 @@ correlations and variances with the method described in \cite{Gaure (2014b)}.
 
 Instrumental variable estimations are supported with 2SLS. Conditional
 F statistics for testing reduced rank weak instruments as in \cite{Sanderson
- and Windmeijer (2014)} are available in \code{\link{condfstat}}.
+ and Windmeijer (2014)} are available in \code{\link{condfstat}}.  Joint
+signficance testing of coefficients is available in \code{\link{waldtest}}.
 
 The centering on the means is done with a tolerance which is
 set by \code{options(lfe.eps=1e-8)} (the default).  This is a somewhat
@@ -79,8 +84,8 @@ environment variable \env{LFE_THREADS}, \env{OMP_THREAD_LIMIT}, \env{OMP_NUM_THR
 \env{NUMBER_OF_PROCESSORS} (for Windows), and
 stored by \code{options(lfe.threads=n)}.  This option can be changed prior to
 calling \code{\link{felm}}, if so desired.  Note that, typically,
-\pkg{lfe} is limited by memory-bandwidth, not cpu-speed, thus fast
-memory and large cache is more important than clock-frequency. It is
+\pkg{lfe} is limited by memory bandwidth, not cpu speed, thus fast
+memory and large cache is more important than clock frequency. It is
 therefore also not always true that running on all available cores is
 much better than running on half of them.
 
@@ -99,9 +104,12 @@ levels (the \code{\link{felm}} took about 50 minutes on 8 cpus, the
 only the size of the dataset matters, but also its structure, as
 demonstrated by \cite{Gaure (2014a)}.
 
-The package will work with any positive number of grouping factors, but if
+The package will work with any number of grouping factors, but if
 more than two, their interpretation is in general not well understood,
-i.e. one should make sure that the coefficients are estimable.
+i.e. one should make sure that the group coefficients are estimable.
+A discussion of estimability, the algorithm used, and convergence rate
+are available in vignettes, as well as in the published papers in the citation
+list (\code{citation('lfe')}).
 
 In the exec-directory there is a perl-script \code{lfescript} which
 is used at the author's site for automated creation of R-scripts from 
@@ -109,7 +117,8 @@ a simple specification file.  The format is documented in
 \code{doc/lfeguide.txt}.
 
 \pkg{lfe} is similar in function, though not in method, to the
-Stata modules \code{a2reg} and \code{felsdvreg}.
+Stata modules \code{a2reg} and \code{felsdvreg}.  The method is very
+similar to the one in the Stata module \code{reghdfe}.
 }
 
 \references{
@@ -133,6 +142,12 @@ Cornelissen, T. (2008)
   high-dimensional fixed effects.}
 Stata Journal, 8(2):170--189, 2008.
 \url{http://econpapers.repec.org/RePEc:tsj:stataj:v:8:y:2008:i:2:p:170-189}
+
+Correia, S. (2014)
+\cite{REGHDFE: Stata module to perform linear or instrumental-variable
+  regression absorbing any number of high-dimensional fixed effects},
+Statistical Software Components, Boston College Department of Economics.
+\url{http://econpapers.repec.org/RePEc:boc:bocode:s457874}
 
 Croissant, Y. and G. Millo (2008)
 \cite{Panel Data Econometrics in R: The plm Package},

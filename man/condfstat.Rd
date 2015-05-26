@@ -1,7 +1,7 @@
 \name{condfstat}
 \alias{condfstat}
 \title{Compute conditional F statistic for weak instruments in an
-  IV-estimation with multiple endogenous variables.}
+  IV-estimation with multiple endogenous variables}
 \description{
   When using multiple instruments for multiple endogenous variables,
   the ordinary individual t-tests for the instruments in the first stage
@@ -98,10 +98,12 @@ summary(est)
 summary(est$stage1, lhs='x1')
 summary(est$stage1, lhs='x2')
 }
+
+# the joint significance of the instruments in both the first stages are ok:
+t(sapply(est$stage1$lhs, function(lh) waldtest(est$stage1, ~z1|z2, lhs=lh)))
 # everything above looks fine, t-tests for instruments, 
 # as well as F-tests for excluded instruments in the 1st stages.
-# The standard errors are large, though
-# The conditional F-test reveals that the instruments are weak
+# The conditional F-test reveals that the instruments are jointly weak
 # (it's close to being only one instrument, z1+z2, for both x1 and x2)
 condfstat(est, quantiles=c(0.05, 0.95))
 }

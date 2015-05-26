@@ -43,3 +43,11 @@ condfstat(est2, type=NULL)
 
 est0 <- felm( y ~ 1|0|(Q~z1))
 condfstat(est0)
+
+# autoload plm:
+if(require('plm', quietly=TRUE)) {
+  data("EmplUK", package = "plm")
+  Em <- pdata.frame(EmplUK)
+  detach('package:plm', unload=TRUE)
+  print(felm(emp~output+capital + lag(wage,1)|firm, data=Em))
+}

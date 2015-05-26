@@ -1,4 +1,4 @@
-# $Id: felm.R 1695 2015-04-07 13:02:40Z sgaure $
+# $Id: felm.R 1709 2015-05-26 09:12:20Z sgaure $
 # makematrix is a bit complicated. The purpose is to make model matrices for the various
 # parts of the formulas.  The complications are due to the iv stuff.
 # If there's an IV-part, its right hand side should be with the
@@ -91,9 +91,28 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
     fullF <- wildcard(fullF, wildnames, re=rewild)
   }
   environment(fullF) <- formenv
+  mf[['formula']] <- fullF 
 
-  mf[['formula']] <- fullF
+  # coerce pdata.frame (from plm) to ensure classes and attributes are preserved in model.frame
+  # http://stackoverflow.com/questions/29724813/how-to-calculate-dynamic-panel-models-with-lfe-package
+  if(!is.null(mf[['data']])) {
+    frname <- deparse(mf[['data']])
+    assign('..pdata.coerce..',
+           function(x) {
+             if(inherits(x,'pdata.frame')) {
+               if(!requireNamespace('plm'))
+                   stop('Needs package plm to handle pdata.frame ', frname, call.=FALSE)
+               as.data.frame(x)
+             } else {
+               x
+             }
+           },
+           dataenv)
+    mf[['data']] <- bquote(..pdata.coerce..(.(mf[['data']])))
+  }
+
   mf <- eval(mf, dataenv)
+
   if(nrow(mf) == 0) stop('0 (non-NA) cases; no valid data')
   rm(dataenv)
   naact <- na.action(mf)
@@ -424,7 +443,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 
   z$contrasts <- mm$contrasts
   if(length(mm$fl) != 0) {
-    z$r.residuals <- orig$y - orig$x %*% nabeta
+#    message('dims:');print(dim(orig$y)); print(dim(orig$x)); print(dim(nabeta))
+    if(is.null(kappa)) z$r.residuals <- orig$y - orig$x %*% nabeta
 #    if(!is.null(weights)) .Call(C_scalecols,z$r.residuals,weights)
   } else {
     z$r.residuals <- z$residuals
@@ -535,6 +555,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   # Thus we modify it in place with a .Call. The scaled variant is also used in the cluster computation.
 
     rscale <- ifelse(res==0,1e-40,res)  # make sure nothing is zero
+    if(!is.null(weights)) rscale <- rscale*weights
     # This one scales the columns without copying
     # For xz, remember to scale it back, because we scale directly into
     # mm$x
@@ -727,6 +748,8 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
                     liml=limlk(mm),
                     fuller=limlk(mm)-fuller/(N-KN),
                     stop('Unknown k-class: ',kclass,call.=FALSE))
+    if(identical(kclass,'liml') && fuller != 0)
+        kappa <- kappa - fuller/(N-KN)
   }
   # if k-class, we should add all the exogenous variables
   # to the lhs in the 1st stage, and obtain all the residuals
@@ -740,10 +763,11 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
     nmx <- colnames(mm$x)
     mm1$y <- cbind(mm$x, mm$ivy)
     mm1$x <- cbind(mm$x, mm$ivx)
+
     mm2$y <- mm$y
     mm2$x <- mm1$y
     mm2$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
-    mm2$orig$y <- cbind(mm$orig$x, mm$orig$ivy)
+    mm2$orig$y <- cbind(mm$orig$y, mm$orig$ivy)
     rm(mm)
     z1 <- newols(mm1, nostats=nost1)
 
@@ -813,7 +837,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   rm(mm)  # save some memory
 
 
-  z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF)
+  z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF, kappa=kappa)
   if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
   if(keepCX) {z2$cX <- mm2$x; z2$cY <- mm2$y}
   rm(mm2)

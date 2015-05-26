@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: lfescript 1655 2015-03-18 18:51:06Z sgaure $
+# $Id: lfescript 1708 2015-05-20 13:47:30Z sgaure $
 $wantse = 0;
 $nofe = 0;
 $savecomp = 0;
@@ -17,6 +17,7 @@ $usecg = 'FALSE';
 $accel = 1;
 $ivtest = 0;
 $ivboot = 0;
+$fecorr = 0;
 while(<>) {
   chomp($_);
   # strip comments
@@ -69,6 +70,8 @@ while(<>) {
       $analyze = 1;
   } elsif($cmd eq 'merge') {
       $merge = 1;
+  } elsif($cmd eq 'fecorr') {
+      $fecorr = 1;
   } elsif($cmd eq 'accel') {
       $accel = 1;
   } elsif($cmd eq 'complim') {
@@ -87,7 +90,6 @@ while(<>) {
     die "Unknown line starting with $cmd";
   }
 }
-
 
 if($datafile =~ m/\.dta$/i) {
     $format = 'dta';
@@ -221,6 +223,11 @@ for(i in seq_along(factors)) {
 
 cf <- compfactor(factors)
 cat(date(),'There are',nlevels(cf),'connected components\\n')
+if($fecorr && nlevels(cf) > 1) {
+  message('  Doing analysis on the largest component only (N=',sum(cf==1),')')
+  subs <- (cf == 1)
+} else
+  subs <- NULL
 if(length(factors) > 2) 
   cat(date(),'There are more than 2 dummy-groups, so nobody can help you if the dummies are non-estimable\\n')
 cat(date(),'Centering tolerance is',getOption('lfe.eps'),'\\n')
@@ -234,11 +241,14 @@ $edf = '';
 if($exactDF == 1) {
     $edf = ", exactDOF=TRUE";
 }
+if($fecorr) {
+    $extra = ",keepX=TRUE";
+}
 #print "print('felm($model,data=tab$cvar$edf)');print(names(tab))\n";
 if(defined($iv)) {
-    print "est <- felm($model,data=tab,iv=$iv$cvar$edf)\n";
+    print "est <- felm($model,data=tab,subset=subs,iv=$iv$cvar$edf$extra, wildcard='g')\n";
 } else {
-  print "est <- felm($model,data=tab$cvar$edf,wildcard='g')\n";
+  print "est <- felm($model,data=tab,subset=subs$cvar$edf$extra,wildcard='g')\n";
 }
 print "
 robust <- $robust || !is.null(est\$clustervar)
@@ -300,6 +310,8 @@ print(data.frame(value=est\$coefficients, se=se, row.names=rownames(est\$coeffic
 sink(NULL)
 cat(date(),'Coefficients written to coef.csv\\n')
 ";
+
+
 if($savecomp) {
   print "
   fr <- data.frame(comp=cf,factors)
@@ -312,6 +324,12 @@ if($savecomp) {
 
   ";
 }
+
+if($fecorr && $nofe) {
+    print "message('*** Both fecorr and nofe specified, ignoring nofe')\n";
+    $nofe = 0;
+}
+
 
 if($nofe) {
   print "cat(date(),'Fixed effects not requested, finishing\\n')
@@ -334,15 +352,28 @@ print "
 
 # We need to save some memory by ditching the large parts of est
 # (the qr and stuff, keep only what's needed)
-est <- est[c('fe','residuals','refnames','r.residuals','cfactor','lhs')]
-invisible(gc())
-class(est) <- NULL
+if(!$fecorr) {
+  est <- est[c('fe','residuals','refnames','r.residuals','cfactor','lhs')]
+  invisible(gc())
+  class(est) <- NULL
+}
 ";
 if($bN > 0) {
     print "fes <- getfe(est,se=TRUE,bN=$bN)\n";
 } else {
     print "fes <- getfe(est)\n";
 }
+if($fecorr) {
+  print "
+  message(date(),' Computing limited mobility bias corrected correlations')
+  fecv <- fevcov(est,fes)
+  message('Bias corrected variances and covariances:')
+  print(fecv)
+  message('\\nBias corrected correlations:')
+  print(cov2cor(fecv[,]))
+"
+}
+
 print "
 lhs <- est\$lhs
 rm(est)
