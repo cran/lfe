@@ -1,4 +1,4 @@
-# $Id: generics.R 1666 2015-03-21 22:06:05Z sgaure $
+# $Id: generics.R 1774 2015-09-22 11:33:17Z sgaure $
 print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   z <- x
   if(z$p == 0) {
@@ -18,7 +18,8 @@ print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
 
 coef.felm <- function(object, ..., lhs=NULL) {
   if(is.null(lhs)) {
-    if(ncol(object$coefficients) == 1) return({r <- as.vector(object$coefficients); names(r) <- rownames(object$coefficients); r})
+    if(is.null(object$coefficients) || ncol(object$coefficients) == 1)
+        return({r <- as.vector(object$coefficients); names(r) <- rownames(object$coefficients); r})
     object$coefficients
   } else {
 #    if(anyNA(match(lhs, colnames(object$coefficients))))
@@ -30,8 +31,7 @@ coef.felm <- function(object, ..., lhs=NULL) {
 
 residuals.felm <- function(object, ..., lhs=NULL) {
   if(is.null(lhs)) {
-    if(ncol(object$coefficients) == 1) return({r <- as.vector(object$coefficients); names(r) <- rownames(object$coefficients); r})
-    object$coefficients
+    object$residuals
   } else {
 #    if(anyNA(match(lhs, colnames(object$coefficients))))
     if(any(!(lhs %in% colnames(object$coefficients))))
@@ -84,6 +84,14 @@ update.felm <- function (object, formula., ..., evaluate = TRUE)
         eval(call, parent.frame())
     else call
 }
+
+estfun.felm <- function(x, ...) {
+  cl <- match.call(expand.dots=FALSE)
+  do.call(getS3method('estfun','lm'), as.list(cl)[-1])
+}
+
+weights.felm <- function(object,...) object$weights^2
+
 
 xtable.summary.felm <- function(x, caption=NULL, label=NULL, align=NULL, digits=NULL,
                                 display=NULL, ...) {

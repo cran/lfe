@@ -1,4 +1,4 @@
-# $Id: startup.R 1702 2015-04-29 09:34:44Z sgaure $
+# $Id: startup.R 1748 2015-07-10 20:29:00Z sgaure $
 setoption <- function(opt,default) {
   optnam <- paste('lfe',opt,sep='.')
   if(!is.null(getOption(optnam))) return()
@@ -17,11 +17,11 @@ setoption <- function(opt,default) {
   
   setoption('usecg',FALSE)
   setoption('eps',1e-8)
-  setoption('pint',300)
+  setoption('pint',1800)
   setoption('accel',1)
   setoption('bootmem',500)
 
-  if(is.null(getOption('lfe.threads'))) {
+  if(is.null(cr <- getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_THREAD_LIMIT'))
@@ -32,6 +32,7 @@ setoption <- function(opt,default) {
     }
     options(lfe.threads=cr)
   }
+#  .Call(C_threads,cr)
 }
 
 .onUnload <- function(libpath) {

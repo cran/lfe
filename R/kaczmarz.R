@@ -1,4 +1,4 @@
-# $Id: kaczmarz.R 1693 2015-04-07 09:36:29Z sgaure $
+# $Id: kaczmarz.R 1767 2015-09-08 14:44:27Z sgaure $
 kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,
                      threads=getOption('lfe.threads')) {
   if(getOption('lfe.usecg')) {
@@ -19,14 +19,12 @@ kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,
 
 getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100,
                            robust=FALSE, cluster=NULL, lhs=NULL) {
-
   if(is.character(ef)) {
     ef <- efactory(obj,opt=ef)
   }
   if(!isTRUE(attr(ef,'verified')) && !is.estimable(ef, obj$fe)) {
     warning('Supplied function seems non-estimable')
   }
-
   multlhs <- length(obj$lhs) > 1
   if(is.null(lhs)) {
     R <- obj$r.residuals-obj$residuals
@@ -46,6 +44,7 @@ getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100
     extra <- attr(v,'extra')
     nm <- names(v)
   }
+
   res <- data.frame(effect=v)
   if(multlhs) colnames(res) <- paste('effect',colnames(R),sep='.')
   if(!is.null(extra)) res <- cbind(res,extra)
@@ -81,7 +80,7 @@ getfe.kaczmarz <- function(obj,se=FALSE,eps=getOption('lfe.eps'),ef='ref',bN=100
 # return level names in appropriate order
 # the G(x:f) with x a matrix makes it slightly complicated
 xlevels <- function(n,f,sep='.') {
-  x <- attr(f,'x')
+  x <- attr(f,'x',exact=TRUE)
   plev <- paste(n,levels(f),sep=sep)
   if(is.null(x) || !is.matrix(x)) return(plev)
   nam <- attr(f,'xnam')
@@ -94,7 +93,7 @@ xlevels <- function(n,f,sep='.') {
 }
 
 nxlevels <- function(n,f) {
-  x <- attr(f,'x')
+  x <- attr(f,'x',exact=TRUE)
   plev <- rep(n,nlevels(f))
   if(is.null(x) || !is.matrix(x)) return(plev)
   nam <- attr(f,'xnam')

@@ -1,7 +1,7 @@
 
-R Under development (unstable) (2015-04-07 r68158) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-09-06 r69305) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -40,22 +40,22 @@ Loading required package: Matrix
 > 
 > alpha=getfe(est)
 > bccorr(est,alpha,corrfactors=c(3,1))
-    corr       v1       v2      cov       d1       d2      d12 
--0.06839  0.56967  1.01795 -0.05208  0.05328  0.09815 -0.00376 
+     corr        v1        v2       cov        d1        d2       d12 
+-0.068876  0.569748  1.019840 -0.052502  0.053202  0.096269 -0.003341 
 > fevcov(est,alpha)
            id     firm      foo
-id    1.02757  0.03349 -0.04665
-firm  0.03349  1.15353 -0.05090
-foo  -0.04665 -0.05090  0.58397
+id    1.02325  0.03151 -0.05270
+firm  0.03151  1.14241 -0.05449
+foo  -0.05270 -0.05449  0.56626
 attr(,"bias")
             id      firm       foo
-id    0.088541 -0.007153 -0.009192
-firm -0.007153  0.062255 -0.005607
-foo  -0.009192 -0.005607  0.038984
+id    0.092862 -0.005165 -0.003148
+firm -0.005165  0.073373 -0.002016
+foo  -0.003148 -0.002016  0.056688
 > varvars(est,alpha)
 [1] 0.010610 0.011591 0.006263
 > 
 > 
 > proc.time()
    user  system elapsed 
-  2.740   0.913   2.720 
+  3.620   0.968   3.625 

@@ -1,4 +1,4 @@
-# $Id: cgsolve.R 1688 2015-03-26 14:06:06Z sgaure $
+# $Id: cgsolve.R 1771 2015-09-21 13:32:27Z sgaure $
 # From "A practical termination criterion for the conjugate gradient method", E.F. Kaasschieter
 # BIT 28 (1988), 308-322  (2.6). 
 # return the vector phi_i(x) for i=1:j
@@ -112,17 +112,17 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
   eps <- abs(eps)
   eps <- ifelse(negeps, eps, eps/(1+eps))
   pint <- getOption('lfe.pint')
-  if(pint == 0) pint <- Inf
   while(TRUE) {
 
     k <- k+1
     delta <- mu * ifelse(negeps,1,sqrt(colSums(x^2)))
 
     now <- Sys.time()
-    if(now - last > pint) {
+    dt <- as.numeric(now-last, units='secs')
+    if(dt > pint) {
       last <- now
-      message(date(), ' CG iter ',k,' ',name,' target=',min(eps),
-              ' delta=',max(sqrt(r2)/delta), ' vecs=',length(delta), ' mu ',min(mu))
+      message(date(), ' CG iter ',k,' ',name,' target=',signif(min(eps),3),
+              ' delta=',signif(max(sqrt(r2)/delta),3), ' vecs=',length(delta), ' mu ',signif(min(mu),3))
     }
 
 
@@ -174,5 +174,9 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
     mu <- newmus(mu, k+1, allalpha, allbeta)
   }
 #  message('CG iters:',k)
+  now <- Sys.time()
+  dt <- as.numeric(now-start, units='secs')
+  if(dt > pint)
+      message('  *** cgsolve(',name,') finished with ',k,' iters in ',as.integer(dt),' seconds')
   res
 }

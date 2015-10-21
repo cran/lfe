@@ -1,3 +1,6 @@
+May 26, 2015.  2.3-1708 -- Fixed a bug with kclass.  Fixed a bug with weighted clustered se's.
+	Some support for lags etc. from plm.
+
 Apr 6, 2015.   2.2-1691 -- Don't use cBind/rBind for R >= 3.2-0 and Matrix > 1.1.
 	Add optional argument keepCX to felm(), to keep the centred covariates and outcome.
 	Requested by Thiemo Fetzer.

@@ -73,8 +73,8 @@ in \code{\link{felm}(...,iv=)}. The new multipart syntax must be used.
 \references{
 Sanderson, E. and F. Windmeijer (2014)
 \cite{A weak instrument F-test in linear IV models with multiple
-endogenous variables}, Disc. Paper 14/644, Univ of Bristol.
-\url{http://www.efm.bris.ac.uk/economics/working_papers/pdffiles/dp14644.pdf}
+endogenous variables}, Journal of Econometrics, 2015.
+\url{http://www.sciencedirect.com/science/article/pii/S0304407615001736}
 
 Stock, J.H. and M. Yogo (2004)
 \cite{Testing for weak instruments in linear IV regression},

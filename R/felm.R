@@ -1,4 +1,4 @@
-# $Id: felm.R 1709 2015-05-26 09:12:20Z sgaure $
+# $Id: felm.R 1784 2015-09-23 12:08:42Z sgaure $
 # makematrix is a bit complicated. The purpose is to make model matrices for the various
 # parts of the formulas.  The complications are due to the iv stuff.
 # If there's an IV-part, its right hand side should be with the
@@ -7,7 +7,7 @@
 
 
 makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
-                       clustervar=NULL, wildcard='n') {
+                       clustervar=NULL, wildcard='n', onlymm=FALSE) {
   m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
   wpos <- which(!is.na(pmatch(names(mf),'weights')))
   if(length(wpos) > 0) {
@@ -112,7 +112,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   }
 
   mf <- eval(mf, dataenv)
-
+    
   if(nrow(mf) == 0) stop('0 (non-NA) cases; no valid data')
   rm(dataenv)
   naact <- na.action(mf)
@@ -132,27 +132,77 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   # which we evaluate in the frame
   # make a function for ':'
   env <- new.env(parent = formenv)
-# make  ':' a function of two arguments to do the interaction.
-  assign(':', function(a,b) {
-    anam <- deparse(substitute(a))
-    bnam <- deparse(substitute(b))
-    if(is.factor(a) && is.factor(b)) ret <- structure(interaction(a,b,drop=TRUE),xnam=bnam,fnam=anam)
-    else if(is.factor(b)) ret <- structure(factor(b),x=a,xnam=anam,fnam=bnam)
-    else if(is.factor(a)) ret <- structure(factor(a),x=b,xnam=bnam,fnam=anam)
-    else stop('Error in term ',anam,':',bnam,'. Neither ',anam, ' nor ',bnam,' is a factor')
-    ret
-  }, env)
-
+# make  '*' a function of two arguments to do the interaction.
+#  assign(':', function(a,b) {
+#    anam <- deparse(substitute(a))
+#    bnam <- deparse(substitute(b))
+#    message(' call : ',anam, ':' ,bnam)
+#    if(is.factor(a) && is.factor(b)) ret <- structure(interaction(a,b,drop=TRUE),xnam=bnam,fnam=anam)
+#    else if(is.factor(b)) ret <- structure(factor(b),x=a,xnam=anam,fnam=bnam)
+#    else if(is.factor(a)) ret <- structure(factor(a),x=b,xnam=bnam,fnam=anam)
+#    else stop('Error in term ',anam,':',bnam,'. Neither ',anam, ' nor ',bnam,' is a factor')
+#    ret
+#  }, env)
 #  fl <- eval(attr(ftm,'variables'), mf, env)
+  vmat <- attr(ftm,'factors')
+
   fl <- lapply(attr(ftm,'term.labels'), function(tm) {
-    f <- eval(parse(text=tm), mf, env)
-    if(is.null(attr(f, 'fnam'))) factor(f) else f
+    # function for finding a factor name in the model frame.
+    # It's really just to do mf[[n]], but in case of non-syntactical names like `a+b`,
+    # the index name in mf is "a+b", whereas it's "`a+b'" in the terms object
+    # so we must remove backticks before trying.
+    gv <- function(n) mf[[sub('^`(.*)`$','\\1',n)]]
+    f <- gv(tm)
+
+    # if it's a variable and only occurs in one term, pass it on
+    if(!is.null(f) && sum(vmat[tm,] > 0) == 1) return(structure(factor(f),fnam=tm))
+#    if(!is.null(f)) return(structure(factor(f),fnam=tm))
+    # It's an interaction of some sort, find the variables in the interaction
+    vars <- attr(ftm,'factors')[,tm]
+    vars <- vars[vars != 0]
+    nm <- names(vars)
+    # find the factors
+    isfac <- sapply(nm, function(n) is.factor(gv(n)))
+    xx <- names(vars)[which(!isfac)]
+    if(length(xx) > 1) stop('Interaction only allowed for one non-factor')
+    # interact the factors
+    # remove a reference level from the ones which are 1
+    hasref <- vars == 1
+    noref <- vars == 2
+    
+    # find the reference, we choose the largest level
+    reffac <- which(isfac & hasref)
+    namref <- names(vars[reffac])
+    reflev <- sapply(namref, function(n) which(names(which.max(table(gv(n)))) %in% levels(gv(n))))
+    names(reflev) <- namref
+    # make a list with the reference level replaced
+    if(length(xx) == 0) {
+#      rflist <- lapply(namref, function(n) {f <- mf[[n]]; levels(f)[[1]] <- NA; f})
+      if(length(namref) == 1 && sum(noref&isfac) == 0)
+          rflist <- list(gv(namref))
+      else
+          rflist <- lapply(namref, function(n) {f <- gv(n); levels(f)[[reflev[[n]]]] <- NA; f})
+      names(rflist) <- namref
+      f <- addNA(do.call(interaction,c(rflist,lapply(names(vars[noref&isfac]), function(n) gv(n)), drop=TRUE)),
+                 ifany=TRUE)
+      refnam <- paste(sapply(namref, function(n) levels(gv(n))[reflev[n]]), collapse='+')
+      levels(f)[is.na(levels(f))] <- refnam
+#      structure(f, fnam=names(vars)[1], xnam=paste(names(vars)[-1],collapse=':'))
+      structure(f, fnam=paste(names(vars),collapse=':'))
+    } else {
+      f <- do.call(interaction,c(mf[names(vars)[isfac]], drop=TRUE))
+      f <- f[!is.na(f)]
+      structure(f,fnam=paste(names(vars[isfac]),collapse=':'), x=mf[[xx]], xnam=xx)
+    }
+    #    f <- eval(parse(text=tm), mf, env)
+#    if(is.null(attr(f, 'fnam'))) factor(f) else f
   })
   names(fl) <- attr(ftm, 'term.labels')
+
   # Name the interactions with the matrix first, then the factor name
   names(fl) <- sapply(names(fl), function(n) {
     f <- fl[[n]]
-    x <- attr(f,'x')
+    x <- attr(f,'x',exact=TRUE)
     if(is.null(x)) return(n)
     return(paste(attr(f,'xnam'),attr(f,'fnam'), sep=':'))
   })
@@ -249,22 +299,29 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
 
   rm(mf) # save some memory
 
+  mm <- list(x=x, y=y, ivx=ivx, ivy=ivy, ctrl=ctrl, fl=fl, weights=weights)
+  mm$extra <- list(icpt=icpt,xterms=xterms,cluster=cluster,Form=Form,ivform=ivform,
+                   inames=inames,naact=naact)
+  if(onlymm) return(mm)
+  mmdemean(mm)
+}
+
+mmdemean <- function(mm) {
   # orig is necessary to compute the r.residuals, i.e. residuals without dummies
   # it's used in getfe() and btrap, but is of no use if we have ctrl variables
-  if(is.null(weights))
-      TSS <- apply(y,2,var)*(nrow(y)-1)
+  if(is.null(mm$weights))
+      TSS <- apply(mm$y,2,var)*(nrow(mm$y)-1)
   else
-      TSS <- apply(y, 2, function(yy) sum( weights^2*(yy-sum(weights^2*yy/sum(weights^2)))^2))
-  names(TSS) <- colnames(y)
+      TSS <- apply(mm$y, 2, function(yy) sum( mm$weights^2*(yy-sum(mm$weights^2*yy/sum(mm$weights^2)))^2))
+  names(TSS) <- colnames(mm$y)
 
-
-  if(length(fl) != 0) {
-    result <- demeanlist(list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl), fl=fl,weights=weights)
-    if(is.null(ctrl)) result$orig <- list(y=y, x=x, ivy=ivy, ivx=ivx)
+  if(length(mm$fl) != 0) {
+    result <- demeanlist(list(y=mm$y, x=mm$x, ivy=mm$ivy, ivx=mm$ivx, ctrl=mm$ctrl),
+                         fl=mm$fl,weights=mm$weights)
+    if(is.null(mm$ctrl)) result$orig <- list(y=mm$y, x=mm$x, ivy=mm$ivy, ivx=mm$ivx)
   } else {
-    result <- list(y=y, x=x, ivy=ivy, ivx=ivx, ctrl=ctrl)
+    result <- list(y=mm$y, x=mm$x, ivy=mm$ivy, ivx=mm$ivx, ctrl=mm$ctrl)
   }
-  rm(x,y,ivx,ivy,ctrl)  
 
   if(!is.null(result$ctrl)) {
     # pure control variables to project out
@@ -274,7 +331,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
     result$ctrl <- NULL
 #    fit <- .lm.fit(x,y)
 # my own is much faster for large datasets
-    fit <- newols(list(y=y,x=x,weights=weights), nostats=TRUE)
+    fit <- newols(list(y=y,x=x,weights=mm$weights), nostats=TRUE)
     resid <- as.matrix(fit$residuals)
     setdimnames(resid, list(NULL, colnames(y)))
     numctrl <- fit$rank
@@ -290,23 +347,23 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   }
 
   result$TSS <- TSS
-  result$hasicpt <- icpt
+  result$hasicpt <- mm$extra$icpt
   result$numctrl <- numctrl
-  result$ctrlnames <- ctrlnames
-  result$fl <- fl
-  result$terms <- xterms
-  result$cluster <- cluster
-  result$formula <- Form
-  result$ivform <- ivform
-  result$inames <- inames
-  result$na.action <- naact
-  result$weights <- weights
+  result$ctrlnames <- colnames(mm$ctrl)
+  result$fl <- mm$fl
+  result$terms <- mm$extra$xterms
+  result$cluster <- mm$extra$cluster
+  result$formula <- mm$extra$Form
+  result$ivform <- mm$extra$ivform
+  result$inames <- mm$extra$inames
+  result$na.action <- mm$extra$naact
+  result$weights <- mm$weights
   result
 }
 
 
 newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=FALSE,
-                   kappa=NULL) {
+                   kappa=NULL, onlyse=FALSE) {
 
   if(!is.null(mm$orig))
       orig <- mm$orig
@@ -317,12 +374,13 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 
   numctrl <- if(is.null(mm$numctrl)) 0 else mm$numctrl
   hasicpt <- if(is.null(mm$hasicpt)) FALSE else mm$hasicpt
+  cfactor <- compfactor(mm$fl)
   if(is.numeric(exactDOF)) {
     df <- exactDOF
     totvar <- nrow(mm$y) - df
   } else {
     # numrefs is also used later
-    numrefs <- nrefs(mm$fl, compfactor(mm$fl), exactDOF) 
+    numrefs <- nrefs(mm$fl, cfactor, exactDOF) 
     totvar <- totalpvar(mm$fl)-numrefs + numctrl
     df <- nrow(mm$y)-totvar
   }
@@ -331,15 +389,23 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 
   if(is.null(mm$x) || ncol(mm$x) == 0) {
     
-    z <- list(N=nrow(mm$x), r.residuals=orig$y,fe=mm$fl,p=totvar,Pp=0,cfactor=compfactor(mm$fl),
+    z <- list(N=nrow(mm$x), 
+              p=totvar,Pp=0,
               na.action=mm$na.action, contrasts=mm$contrasts,
-              fitted.values=orig$y - mm$y,
               df=df,
               nostats=FALSE,
               numctrl=numctrl,
               hasicpt=hasicpt,
-              residuals=mm$y,clustervar=mm$cluster, call=match.call())
-    z$df.residual <- z$df
+              call=match.call())
+    if(!onlyse) {
+      z$r.residuals <- orig$y
+      z$fe <- mm$fl
+      z$cfactor <- cfactor
+      z$fitted.values <- orig$y - mm$y
+      z$df.residual <- z$df
+      z$residuals=mm$y
+      z$clustervar=mm$cluster
+    }
     class(z) <- 'felm'
     return(z)
   }
@@ -409,13 +475,14 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   z$hasicpt <- hasicpt
   z$TSS <- mm$TSS
   z$kappa <- kappa
+
   if(is.null(weights)) 
       z$P.TSS <- apply(mm$y,2,var)*(nrow(mm$y)-1)
   else
       z$P.TSS <- apply(mm$y, 2, function(yy) sum( weights^2*(yy-sum(weights^2*yy/sum(weights^2)))^2))
 
   names(z$P.TSS) <- colnames(mm$y)
-  z$weights <- weights
+  if(!onlyse) z$weights <- weights
 
   z$numctrl <- numctrl
   z$coefficients <- z$beta <- beta
@@ -428,26 +495,24 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   zfit <- mm$x %*% nabeta
   zresid <- mm$y - zfit
   
-  z$response <- orig$y
-  z$fitted.values <- zfit 
   z$residuals <- zresid
 
-#  if(!is.null(weights) && length(mm$fl) != 0) {
-#    .Call(C_scalecols, z$residuals, iweights)
-#    .Call(C_scalecols, z$fitted.values, iweights)
-#  }
-#  if(!is.null(weights) && length(mm$fl) == 0) {
-#    .Call(C_scalecols,z$residuals,weights)
-#    .Call(C_scalecols,z$fitted.values,weights)
-#  }
+  if(!onlyse) {
+    z$response <- orig$y
+    z$fitted.values <- zfit 
+    z$cfactor <- compfactor(mm$fl)
+    z$fe <- mm$fl
+  }
 
   z$contrasts <- mm$contrasts
-  if(length(mm$fl) != 0) {
+  if(!onlyse) {
+    if(length(mm$fl) != 0) {
 #    message('dims:');print(dim(orig$y)); print(dim(orig$x)); print(dim(nabeta))
-    if(is.null(kappa)) z$r.residuals <- orig$y - orig$x %*% nabeta
+      if(is.null(kappa)) z$r.residuals <- orig$y - orig$x %*% nabeta
 #    if(!is.null(weights)) .Call(C_scalecols,z$r.residuals,weights)
-  } else {
-    z$r.residuals <- z$residuals
+    } else {
+      z$r.residuals <- z$residuals
+    }
   }
 
   # For IV, the residuals should be the residuals from the original
@@ -459,19 +524,21 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 
   if(!is.null(stage1)) {
     # we need the centred response in condfstat()
-    z$c.response <- mm$y
     fitnam <- makefitnames(stage1$lhs)
     ivresid <- stage1$residuals %*% nabeta[fitnam,,drop=FALSE]
-    z$iv.residuals <- z$residuals
+    
     z$residuals <- z$residuals - ivresid    
-    z$r.iv.residuals <- z$r.residuals
-    z$r.residuals <- z$r.residuals - ivresid
-    z$endovars <- stage1$lhs
-    z$fitted.values <- z$response - z$residuals
+    if(!onlyse) {
+      z$c.response <- mm$y
+      z$iv.residuals <- zresid
+      z$r.iv.residuals <- z$r.residuals
+      z$r.residuals <- z$r.residuals - ivresid
+      z$endovars <- stage1$lhs
+      z$fitted.values <- z$response - z$residuals
+    }
   }
-
+  
   z$terms <- mm$terms
-  z$cfactor <- compfactor(mm$fl)
   totlev <- totalpvar(mm$fl)
 
   if(is.numeric(exactDOF)) {
@@ -487,7 +554,6 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   z$rank <- z$N - z$df
   z$exactDOF <- exactDOF
 
-  z$fe <- mm$fl
 # should we subtract 1 for an intercept?
 # a similar adjustment is done in summary.felm when computing rdf
   z$p <- z$p + numdum #- 1  
@@ -495,7 +561,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   z$na.action <- mm$na.action
   class(z) <- 'felm'
   cluster <- mm$cluster
-  z$clustervar <- cluster
+  if(!onlyse) z$clustervar <- cluster
   z$stage1 <- stage1
   if(nostats) {
     z$nostats <- TRUE
@@ -654,6 +720,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
     # reset this for next lhs
     .Call(C_scalecols, xz, 1/rscale)
   }
+  if(onlyse) z$residuals <- NULL
   z
 }
 
@@ -661,7 +728,8 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
                  contrasts=NULL,weights=NULL,...) {
 
   knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats',
-                 'wildcard', 'kclass', 'fuller', 'keepCX')
+                 'wildcard', 'kclass', 'fuller', 'keepCX', 'Nboot',
+                 'bootexpr', 'bootcluster','onlyse')
   keepX <- FALSE
   keepCX <- FALSE
   cmethod <- 'cgm'
@@ -671,9 +739,14 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   wildcard <- 'n'
   kclass <- NULL
   fuller <- 0
+  Nboot <- 0
+  onlyse <- FALSE
+  bootexpr <- NULL
+  bootcluster <- NULL
   deprec <- c('iv', 'clustervar')
+
   mf <- match.call(expand.dots = TRUE)
-  
+
   # Currently there shouldn't be any ... arguments
   # check that the list is empty
 
@@ -705,13 +778,117 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
     mf[[1L]] <- quote(..oldfelm)
     return(eval.parent(mf))
   }
-
+  pint <- getOption('lfe.pint')
+  start <- last <- Sys.time()
   mm <- makematrix(mf, contrasts, pf=parent.frame(), clustervar, wildcard=wildcard)
-  ivform <- mm$ivform
+  now <- Sys.time()
+  if(now  > last + pint) {last <- now; message(date(), ' finished making model matrix')}
+  z <- felm.mm(mm,nostats,exactDOF,keepX,keepCX,kclass,fuller,onlyse)
+  z$call <- match.call()
+  if(Nboot > 0) {
+    now <- Sys.time()
+    if(now > last + pint) {last <- now; message(date(), ' finished estimate, starting bootstrap')}
 
+    mm <- makematrix(mf, contrasts, pf=parent.frame(), clustervar, wildcard=wildcard,
+                     onlymm=TRUE)
+    if(is.null(bootexpr)) bootexpr <- quote(beta)
+    if(FALSE) olsmms <- mms <- est <- NA  # avoid warnings about undefined variables
+    if(is.null(bootcluster))
+        csample <- function() sort(sample(nrow(mm$x), replace=TRUE))
+    else if(is.function(bootcluster))
+        csample <- bootcluster
+    else if(is.factor(bootcluster))
+        csample <- function() resample(bootcluster)
+    else
+        stop('bootcluster must be either a factor or a function')
+    bootstat <- FALSE
+    if(!is.null(attr(nostats,'boot'))) bootstat <- attr(nostats,'boot')
+    iii <- 0
+    bootfun <- function() {
+      now <<- Sys.time()
+      iii <<- iii+1
+      if(now > last + pint) {
+        last <<- now; message(date(), ' done boot iter ',iii)
+      }
+      bootenv <- new.env()
+      # we delay assign to avoid unnecessary estimating and copying
+      delayedAssign('mms',
+                    {
+#                      s <- sample(nrow(mm$x),replace=TRUE)
+                      s <- csample()
+                      assign('s',s,bootenv)
+                      mm1 <- list()
+                      mm1$extra <- mm$extra
+                      mm1$x <- mm$x[s,,drop=FALSE]
+                      mm1$y <- mm$y[s,,drop=FALSE]
+                      if(!is.null(mm$ivx)) mm1$ivx <- mm$ivx[s,,drop=FALSE]
+                      if(!is.null(mm$ivy)) mm1$ivy <- mm$ivy[s,,drop=FALSE]
+                      if(!is.null(mm$ctrl)) mm1$ctrl <- mm$ctrl[s,,drop=FALSE]
+                      if(!is.null(mm$fl)) mm1$fl <- lapply(mm$fl,function(f) factor(f[s]))
+                      if(!is.null(weights)) mm1$weights <- mm$weights[s]
+                      mmdemean(mm1)
+                    },
+                    eval.env=bootenv,
+                    assign.env=bootenv)
+      delayedAssign('est',
+                    felm.mm(mms,bootstat,exactDOF,keepX,keepCX,kclass,fuller,onlyse),
+                    eval.env=bootenv,
+                    assign.env=bootenv)
+      delayedAssign('beta', coef(est), assign.env=bootenv, eval.env=bootenv)
+      for(n in colnames(mm$x)) {
+        do.call(delayedAssign,list(n,bquote(est$coefficients[.(n),]),
+                                   eval.env=bootenv,
+                                   assign.env=bootenv))
+        do.call(delayedAssign,list(paste0('var.',n),bquote(mms$x[,.(n)]),
+                                   eval.env=bootenv,
+                                   assign.env=bootenv))
+
+      }
+
+      for(n in colnames(mm$y)) {
+        do.call(delayedAssign,list(n,bquote(mms$y[,.(n)]),
+                                   eval.env=bootenv,
+                                   assign.env=bootenv))
+      }
+
+      if(!is.null(mm$ivy)) {
+        # it's an IV-estimation, make provisions for using the OLS-version
+        delayedAssign('olsmms',
+                      {
+                        if(FALSE) s <- NULL  # avoid warnings about undefined s
+                        # make the s by evaluating mms
+                        mms
+                        mm1 <- list()
+                        mm1$extra <- mm$extra
+                        mm1$extra$ivform <- NULL
+                        mm1$x <- cbind(mm$x[s,,drop=FALSE],mm$ivy[s,,drop=FALSE])
+                        mm1$y <- mm$y[s,,drop=FALSE]
+                        if(!is.null(mm$ctrl)) mm1$ctrl <- mm$ctrl[s,,drop=FALSE]
+                        if(!is.null(mm$fl)) mm1$fl <- lapply(mm$fl,function(f) factor(f[s]))
+                        if(!is.null(weights)) mm1$weights <- mm$weights[s]
+                         mmdemean(mm1)
+                      },
+                      eval.env=bootenv,
+                      assign.env=bootenv)
+        
+        delayedAssign('ols',
+                      felm.mm(olsmms,bootstat,exactDOF,keepX,keepCX,onlyse=onlyse),
+                      eval.env=bootenv,
+                      assign.env=bootenv)
+        
+      }
+      eval(bootexpr, bootenv)
+    }
+    z$boot <- replicate(Nboot, bootfun())
+  } 
+  z
+}
+
+felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,kclass=NULL,fuller=NULL,onlyse=FALSE) {
+  ivform <- mm$ivform
   if(is.null(ivform)) {
     # no iv, just do the thing
-    z <- newols(mm, nostats=nostats[1], exactDOF=exactDOF)
+    z <- newols(mm, nostats=nostats[1], exactDOF=exactDOF, onlyse=onlyse)
     if(keepX) z$X <- if(is.null(mm$orig)) mm$x else mm$orig$x
     if(keepCX) {z$cX <- mm$x; z$cY <- mm$y}
     z$call <- match.call()
@@ -769,12 +946,12 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
     mm2$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
     mm2$orig$y <- cbind(mm$orig$y, mm$orig$ivy)
     rm(mm)
-    z1 <- newols(mm1, nostats=nost1)
+    z1 <- newols(mm1, nostats=nost1, onlyse=onlyse)
 
     mm2$noinst <- z1$residuals
     rm(mm1)
 #    setdimnames(mm2$x, list(NULL, c(fitnames,nmx)))
-    z2 <- newols(mm2, exactDOF=exactDOF, kappa=kappa, nostats=nostats[1])
+    z2 <- newols(mm2, exactDOF=exactDOF, kappa=kappa, nostats=nostats[1], onlyse=onlyse)
     if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
     if(keepCX) {z2$cX <- mm2$x; z2$cY <- mm2$y}
     z2$call <- match.call()
@@ -801,7 +978,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   mm1$orig$y <- mm$orig$ivy
   mm1$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
 
-  z1 <- newols(mm1, nostats=nost1, exactDOF=exactDOF)
+  z1 <- newols(mm1, nostats=nost1, exactDOF=exactDOF, onlyse=onlyse)
   if(keepX) z1$X <- if(is.null(mm1$orig)) mm1$x else mm1$orig$x
   if(keepCX) {z1$cX <- mm1$x; z1$cY <- mm1$y}
   rm(mm1)
@@ -837,7 +1014,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   rm(mm)  # save some memory
 
 
-  z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF, kappa=kappa)
+  z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF, kappa=kappa, onlyse=onlyse)
   if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
   if(keepCX) {z2$cX <- mm2$x; z2$cY <- mm2$y}
   rm(mm2)

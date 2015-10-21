@@ -67,7 +67,7 @@ correlations and variances with the method described in \cite{Gaure (2014b)}.
 
 Instrumental variable estimations are supported with 2SLS. Conditional
 F statistics for testing reduced rank weak instruments as in \cite{Sanderson
- and Windmeijer (2014)} are available in \code{\link{condfstat}}.  Joint
+ and Windmeijer (2015)} are available in \code{\link{condfstat}}.  Joint
 signficance testing of coefficients is available in \code{\link{waldtest}}.
 
 The centering on the means is done with a tolerance which is
@@ -96,6 +96,8 @@ is also the \code{lfe.eps} option.
 For some datasets the Kaczmarz-method is converging very slowly, in this
 case it may be replaced with a conjugate gradient method by setting the
 option \code{options(lfe.usecg=TRUE)}.
+Various time-consuming parts of \pkg{lfe} may print progress reports,
+the minimum interval in seconds is \code{options(lfe.pint=1800)}.
 
 The package has been tested on datasets with approx 20,000,000
 observations with 15 covariates and approx 2,300,000 and 270,000 group
@@ -176,9 +178,9 @@ Statistical Software Components S456942, Boston College Department of Economics.
 \url{http://ideas.repec.org/c/boc/bocode/s456942.html}
 
 Sanderson, E. and F. Windmeijer (2014)
-\cite{A weak instrument F-test in linear iv models with multiple
-endogenous variables}, Disc. Paper 14/644 Univ of Bristol.
-\url{http://www.efm.bris.ac.uk/economics/working_papers/pdffiles/dp14644.pdf}
+\cite{A weak instrument F-test in linear IV models with multiple
+endogenous variables}, Journal of Econometrics, 2015.
+\url{http://www.sciencedirect.com/science/article/pii/S0304407615001736}
 
 }
 

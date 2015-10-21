@@ -1,8 +1,8 @@
-# $Id: efactory.R 1655 2015-03-18 18:51:06Z sgaure $
+# $Id: efactory.R 1767 2015-09-08 14:44:27Z sgaure $
 efactory <- function(obj, opt='ref', ...) {
 
   # only factors without covariates are relevant to analyze
-  purefes <- sapply(obj$fe, function(f) is.null(attr(f,'x')))
+  purefes <- sapply(obj$fe, function(f) is.null(attr(f,'x',exact=TRUE)))
   pfe <- obj$fe[purefes]
 
 #  allnm <- unlist(lapply(names(obj$fe),function(n) paste(n,levels(obj$fe[[n]]),sep='\003')))
@@ -22,7 +22,7 @@ efactory <- function(obj, opt='ref', ...) {
 
 #  allobs <- unlist(lapply(obj$fe,table))
   allobs <- unlist(lapply(obj$fe,function(f) {
-    x <- attr(f,'x')
+    x <- attr(f,'x',exact=TRUE)
     if(is.null(x)) return(table(f))
     if(!is.matrix(x)) return(table(f))
     return(rep(table(f), ncol(x)))
@@ -77,7 +77,7 @@ efactory <- function(obj, opt='ref', ...) {
   # level of the factor
 #  idx <- factor(unlist(lapply(obj$fe,function(f) levels(f))))
   idx <- factor(unlist(lapply(obj$fe,function(f) {
-    x <- attr(f,'x')
+    x <- attr(f,'x',exact=TRUE)
     if(is.null(x) || !is.matrix(x)) return(levels(f))
     return(rep(levels(f), ncol(x)))
   })))

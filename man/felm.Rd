@@ -80,6 +80,25 @@ off by using \code{\link{lm}}.
       \code{felm} also accepts the argument \code{fuller=<numeric>}, for
       using a Füller adjustment of the liml-estimator.
 
+      \item \code{Nboot, bootexpr, bootcluster} Since \code{felm} has
+      quite a bit of overhead in the creation of the model matrix, if
+      one wants confidence intervals for some function of the estimated
+      parameters, it is possible to bootstrap internally in \code{felm}.
+      That is, the model matrix is resampled \code{Nboot} times and
+      estimated, and the \code{bootexpr} is evaluated inside an
+      \code{sapply}. The estimated coefficients and the left hand
+      side(s) are available by name. Any right hand side variable
+      \code{x} is available by the name \code{var.x}.  The
+      \code{"felm"}-object for each estimation is available as
+      \code{est}. If a \code{bootcluster} is specified as a factor,
+      entire levels are resampled. \code{bootcluster} can also be a
+      function with no arguments, it should return a vector of integers,
+      the rows to use in the sample. \code{bootexpr} should be an
+      expression, e.g. like \code{quote(x/x2 * abs(x3)/mean(y))}.
+      It could be wise to specify \code{nostats=TRUE} when
+      bootstrapping, unless the covariance matrices are needed in the
+      bootstrap. 
+
       \item \code{iv, clustervar} deprecated.  These arguments will be
       removed at a later time, but are still supported in this
       field. Users are \emph{STRONGLY} encouraged to use multipart
@@ -150,7 +169,9 @@ off by using \code{\link{lm}}.
   \item{cX, cY}{matrix. The centred expanded data matrix. Only included if
     \code{felm(keepCX=TRUE)}.
   }
-    
+
+  \item{boot}{The result of a \code{replicate} applied to the
+    \code{bootexpr} (if used).}
 }
 
 \details{

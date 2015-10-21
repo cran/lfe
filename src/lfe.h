@@ -1,5 +1,5 @@
 /*
- $Id: lfe.h 1671 2015-03-23 13:04:42Z sgaure $
+ $Id: lfe.h 1748 2015-07-10 20:29:00Z sgaure $
 */
 
 #include "config.h"
@@ -138,4 +138,6 @@ SEXP MY_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA);
 SEXP MY_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB);
 SEXP MY_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat);
 SEXP MY_address(SEXP x);
+SEXP MY_ppf(SEXP flist, SEXP Rtype);
 SEXP df_string;
+int LFE_GLOBAL_THREADS;

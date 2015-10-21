@@ -1,17 +1,18 @@
-# $Id: is.estimable.R 1655 2015-03-18 18:51:06Z sgaure $
+# $Id: is.estimable.R 1767 2015-09-08 14:44:27Z sgaure $
 # check whether a function is estimable
 is.estimable <- function(ef,fe,R=NULL,nowarn=FALSE,keepdiff=FALSE, threshold=1e-5) {
   if(!is.function(ef)) stop('ef must be a function')
-  
   N <- sum(unlist(lapply(fe,function(f) {
-    x <- attr(f,'x')
+    x <- attr(f,'x', exact=TRUE)
     if(is.matrix(x)) nlevels(f)*ncol(x) else nlevels(f)
   })))
+
   if(is.null(R)) {
     # make a suitable residual
+
     nr <- length(fe[[1]])
     vec <- unlist(lapply(fe,function(f) {
-      x <- attr(f,'x')
+      x <- attr(f,'x', exact=TRUE)
       if(is.matrix(x)) return(unlist(apply(x,2,function(cl) cl*runif(nlevels(f))[f])))
       r <- runif(nlevels(f))[f]
       if(is.null(x)) r else unlist(r*x)

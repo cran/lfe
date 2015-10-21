@@ -31,3 +31,8 @@ for(ef in c('ln','ref')) {
   options(scipen=8)
   print(summary(lm(y ~ x + x2 + x3 + ideff + firmeff + shoeeff -1),digits=8))
 }
+
+# Perform a bootstrap
+a <- felm(y ~ x+x2 + x3 | id + firm, nostats=TRUE, Nboot=10, bootexpr=quote(x/x3*x2))
+mean(a$boot)
+sd(a$boot)

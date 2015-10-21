@@ -69,6 +69,8 @@ as described in \cite{Gaure (2014)}.
 }
 
 \note{
+  Bias correction for IV-estimates are not supported as of now.
+
   Note that if \code{est} is the result of a call to \code{\link{felm}}
   with \code{keepX=FALSE} (the default), the biases will be computed
   as if the covariates X are independent of the factors. This will be
@@ -77,6 +79,9 @@ as described in \cite{Gaure (2014)}.
   non-trivial, they may take quite some time.  It would be wise to start
   out with quite liberal tolerances, e.g. \cite{tol=0.1}, to
   get an idea of the time requirements.
+
+  If there are only two fixed effects, \code{fevcov} returns the same
+  information as \code{\link{bccorr}}, though in a slightly different format.
 }
 
 
@@ -108,6 +113,9 @@ fr <- data.frame(y,z,x,x2,id,firm,foo)
 est <- felm(y|z ~ x+x2|id+firm+foo, data=fr, keepX=TRUE)
 # find bias corrections, there's little bias in this example
 for(lh in est$lhs) print(fevcov(est, lhs=lh))
+## Here's how to compute the unbiased correlation matrix:
+cm <- cov2cor(fevcov(est, lhs='y'))
+structure(cm,bias=NULL)
 }
 
 \references{

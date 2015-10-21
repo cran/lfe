@@ -1,5 +1,5 @@
 /*
-  $Id: demean.c 1700 2015-04-22 11:36:09Z sgaure $
+  $Id: demean.c 1721 2015-06-15 13:17:28Z sgaure $
 */
 #include "lfe.h"
 /* Need sprintf */
@@ -84,7 +84,8 @@ static R_INLINE void centre(double *v, int N,
 static int demean(double *v, int N, double *res, double *weights,int *scale,
 		  FACTOR *infactors[],int e,double eps, double *means,
 		  double *prev, double *prev2,
-		  int *stop,int vecnum, LOCK_T lock, const int gkacc) {
+		  int *stop,int vecnum, LOCK_T lock, const int gkacc,
+		  const int quiet) {
   double delta;
   double norm2 = 0.0;
   int i;
@@ -203,7 +204,7 @@ static int demean(double *v, int N, double *res, double *weights,int *scale,
       // target should not be smaller than 3 bits of precision in each coordinate
     if(target < N*1e-15) target = N*1e-15;
     now = time(NULL);
-    if(now - last >= 3600 && delta > 0.0) {
+    if(quiet > 0 && now - last >= quiet && delta > 0.0) {
       int reqiter;
       double eta;
       char buf[256];
@@ -232,7 +233,6 @@ static int demean(double *v, int N, double *res, double *weights,int *scale,
 	//	  ctime_r(&arriv, timbuf);
 	sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
 		vecnum,iter,1.0-c,delta,target,timbuf);
-	
       }
       pushmsg(buf,lock);
       lastiter = iter;
@@ -302,7 +302,8 @@ static void *demeanlist_thr(void *varg) {
 		    arg->factors,arg->e,arg->eps,means,
 		    tmp1,tmp2,
 		    &arg->stop,vecnum+1,
-		    arg->lock,arg->gkacc);
+		    arg->lock,arg->gkacc,
+		    arg->quiet);
     now = time(NULL);
     LOCK(arg->lock);
     if(!okconv) {

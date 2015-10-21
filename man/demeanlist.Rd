@@ -75,6 +75,14 @@ the input should be scaled by \eqn{W}, and \code{scale[2]} specifies
 whether the output should be scaled by \eqn{W^{-1}}.  This is just
 a convenience to save some memory copies in other functions in the package.
 
+Note that for certain large datasets the overhead in \code{\link{felm}}
+is large compared to the time spent in \code{demeanlist}. If the data
+are present directly without having to use the formula-interface to
+\code{felm} for transformations etc, it is possible to run
+\code{demeanlist} directly on a matrix or \code{"data.frame"} and do the
+OLS "manually", e.g. with something like \code{cx <-
+demeanlist(mtx,...); beta <- solve(crossprod(cx)) \%*\% (t(x) \%*\% y)}
+
 In some applications it is known that a single centering iteration is
 sufficient. In particular, if \code{length(fl)==1} and there is no
 interaction attribute \code{x}.  In this case the centering algorithm is

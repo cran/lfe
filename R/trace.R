@@ -1,4 +1,4 @@
-# $Id: trace.R 1670 2015-03-23 11:49:50Z sgaure $
+# $Id: trace.R 1777 2015-09-22 14:10:21Z sgaure $
 # compute the trace of a matrix.
 # If we have a list of factors defining a projection, or a function for
 # multiplying the matrix with a matrix, we use an iterative method
@@ -38,11 +38,11 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf,
   maxvpt <- maxB %/% (2*8*N*threads)
   if(maxvpt*threads > 4096) maxvpt <- 4096 %/% threads
   
-  # ensure at least 4 vectors in first iteration
-  if(threads >= 4)
+  # ensure at least 8 vectors in first iteration
+  if(threads >= 8)
       vpt <- 1
   else
-      vpt <- 8 %/% (threads+1)
+      vpt <- 16 %/% (threads+1)
 
   blk <- vpt*threads
   if(blk > maxsamples) blk <- maxsamples
@@ -50,26 +50,28 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf,
   tr <- 0
   sqsum <- 0
   NN <- 0
-  start <- Sys.time()
-  last <- 0
+  last <- start <- Sys.time()
   # get a clue about the tolerance.
 #  cureps <- eps(as.numeric(fun(0, trtol=0)))/2
   if(missing(init)) init <- N
   cureps <- eps(init)/2
   pint <- getOption('lfe.pint')
-  if(pint <= 0) pint <- Inf
+
   while(NN < maxsamples && (NN < 4 || (cureps > 0 && relsd > cureps) || (cureps < 0 && sd > -cureps))) {
     i <- i+1
     now <- Sys.time()
     if(NN > 0) {
-      remaining <- as.integer((Ntarget-NN)/(NN/as.numeric(now-start)))
-      if(remaining > pint && now - last > pint) {
-        message('  *** trace ',trname,' sample ',NN,' of ',Ntarget,', expected finish at ',
+      remaining <- as.integer((Ntarget-NN)/(NN/as.numeric(now-start, units='secs')))
+      if(remaining > pint && as.numeric(now - last, units='secs') > pint) {
+        message('  *** trace ',trname,' sample ',NN,' of ',Ntarget,
+                ',mean ',signif(tr/NN,3), ', sd ',signif(sd,3),', target ', signif(cureps,3),
+                ', expected finish at ',
                 now + remaining) 
         last <- now
       }
     }
     ests <- fun(matrix(sample(c(-1,1), N*blk, replace=TRUE), N), trtol=abs(cureps))
+#    cat('ests : ', mean(ests), ' ', sd(ests)); print(fivenum(ests))
     NN <- NN + blk
     tr <- tr + sum(ests)
     sqsum <- sqsum + sum(ests^2)
@@ -85,12 +87,15 @@ mctrace <- function(mat, N, tol=1e-3, maxsamples=Inf,
     # desired tolerance.
     sdtarget <- if(cureps < 0) -cureps else cureps*abs(tr/NN)
     Ntarget <- as.integer((sd/sdtarget)^2*NN)
-    if(is.na(Ntarget)) stop('Too much variance in trace samples for ',trname)
+    if(is.na(Ntarget)) stop('Too much variance in trace samples for ',trname, ', sd ',sd,', cureps ',cureps)
     vpt <- 1 + (Ntarget-NN) %/% threads
     if(vpt > maxvpt) vpt <- maxvpt
     if(vpt < 1) vpt <- 1
     blk <- vpt*threads
   }
 #  if(last > start) cat('\n')
+  dt <- as.numeric(Sys.time()-start, units='secs')
+  if(dt > pint)
+      message('  *** trace ',trname,' ',NN, ' samples finished in ', as.integer(dt), ' seconds') 
   structure(tr/NN, sd=sd, iterations=NN)
 }

@@ -1,4 +1,4 @@
-# $Id: utils.R 1693 2015-04-07 09:36:29Z sgaure $
+# $Id: utils.R 1767 2015-09-08 14:44:27Z sgaure $
 # Author: Simen Gaure
 # Copyright: 2011, Simen Gaure
 # Licence: Artistic 2.0
@@ -184,7 +184,7 @@ makeDmatrix <- function(fl, weights=NULL) {
   # if there's a covariate vector x, it's t(as(f,'sparseMatrix'))*x
   # for a covariate matrix x, it's the cbinds of the columns with the factor-matrix
   ans <- do.call(mycbind,lapply(fl, function(f) {
-    x <- attr(f,'x')
+    x <- attr(f,'x',exact=TRUE)
     fm <- t(as(f,'sparseMatrix'))
     if(is.null(x)) return(fm)
     if(!is.matrix(x)) return(fm*x)
@@ -212,7 +212,7 @@ makePmatrix <- function(fl, weights=NULL) {
 totalpvar <- function(fl) {
   if(length(fl) == 0) return(0)
   sum(sapply(fl, function(f) {
-    x <- attr(f,'x')
+    x <- attr(f,'x',exact=TRUE)
     if(is.null(x) || !is.matrix(x)) return(nlevels(f))
     return(ncol(x)*nlevels(f))
   }))
@@ -221,7 +221,7 @@ totalpvar <- function(fl) {
 nrefs <- function(fl, cf, exactDOF=FALSE) {
   if(length(fl) == 0) return(0)
   if(missing(cf)) cf <- compfactor(fl)
-  numpure <- sum(sapply(fl,function(f) is.null(attr(f,'x'))))
+  numpure <- sum(sapply(fl,function(f) is.null(attr(f,'x',exact=TRUE))))
   if(numpure == 1) return(0)
   if(numpure == 2) return(nlevels(cf))
   if(identical(exactDOF,'rM')) {
@@ -345,4 +345,19 @@ limlk <- function(mm) {
   H <- crossprod(ye, newols(list(y=ye,x=cbind(mm$ivx,mm$x)), nostats=TRUE)$residuals)
   mat <- solve(H,H1)
   min(eigen(mat, only.values=TRUE)$values)
+}
+
+resample <- function(cluster, return.factor=FALSE) {
+  # resample entire levels of a factor
+  iclu <- as.integer(cluster)
+  cl <- sort(sample(nlevels(cluster), replace=TRUE))
+  # find a faster way to do this:
+  # s <- sort(unlist(sapply(cl, function(ll) which(clu==ll))))
+  s <- NULL
+  while(length(cl) > 0) {
+    s <- c(s,which(iclu %in% cl))
+    cl <- cl[c(1L,diff(cl)) == 0]
+  }
+  if(return.factor) return(cluster[s])
+  sort(s)
 }

@@ -76,6 +76,8 @@ the variances and correlations are weighted too.
 }
 
 \note{
+Bias correction for IV-estimates are not supported as of now.
+
 Note that if \code{est} is the result of a call to \code{\link{felm}}
 with \code{keepX=FALSE} (the default), the correlation will be computed
 as if the covariates X are independent of the two factors. This will be
@@ -88,8 +90,6 @@ get an idea of the time requirements.
 
 The algorithm used is not very well suited for small datasets with only
 a few thousand levels in the factors.
-
-Currently, only i.i.d. residuals are supported for this function.
 
 }
 

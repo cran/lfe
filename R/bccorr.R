@@ -1,4 +1,4 @@
-# $Id: bccorr.R 1699 2015-04-13 07:48:29Z sgaure $
+# $Id: bccorr.R 1777 2015-09-22 14:10:21Z sgaure $
 narowsum <- function(x, group) {
   opt <- options(warn=-1)
   res <- try(rowsum(x,group), silent=TRUE)
@@ -43,8 +43,8 @@ bccorr <- function(est, alpha=getfe(est), corrfactors=1L:2L,
   f2 <- est$fe[[corrfactors[[2]]]]
   nf1 <- names(est$fe)[[corrfactors[[1]]]]
   nf2 <- names(est$fe)[[corrfactors[[2]]]]
-  if(!is.null(attr(f1,'x'))) stop('Interacted factors "',nf1,'" are not supported')
-  if(!is.null(attr(f2,'x'))) stop('Interacted factors "',nf2,'" are not supported')
+  if(!is.null(attr(f1,'x',exact=TRUE))) stop('Interacted factors "',nf1,'" are not supported')
+  if(!is.null(attr(f2,'x',exact=TRUE))) stop('Interacted factors "',nf2,'" are not supported')
   effnam <- 'effect'
   if(length(est$lhs) == 1) lhs <- est$lhs
   if(!('effect' %in% colnames(alpha))) {
@@ -116,14 +116,19 @@ halftrace <- function(x, f, restf, MFX, tol, lmean, name, weights=NULL) {
 
   DtM1x <- rowsum(ww*demeanlist(x,lmean, weights=weights, scale=FALSE), f)
   # we use absolute tolerance, mctrace wil give us a trtol.
-  # we divide by the L2-norm of DtM1x, since we take the
-  # inner product with this afterwards
-  tol1 <- -tol/sqrt(colSums(DtM1x^2))
+  # however, we square our result:  (Rx + err)^2 = Rx^2 + 2*err*Rx + err^2
+  # so to get 2*err*Rx < tol, we must have err < tol/(2*Rx), i.e.
+  # we should use a relative tolerance
+#  tol1 <- -tol/sqrt(colSums(DtM1x^2))
+  tol1 <- tol
+#  message('cgsolve: tol1 ',tol1, ' tol ',tol)
   v <- cgsolve(invfun, DtM1x, eps=tol1,name=name)
-  if(!is.null(MFX))
-      Rx <- demeanlist(ww*v[f,],MFX)
-  else
-      Rx <- ww*demeanlist(v[f,],restf, weights=weights)
+ if(!is.null(MFX))
+     Rx <- ww2*demeanlist(demeanlist(ww*v[f,],MFX)/ww, restf, weights=w)
+ else
+     Rx <- ww*demeanlist(v[f,],restf, weights=weights)
+
+#  message("|v| = ",mean(sqrt(colSums(v^2))), '|Rx|=',mean(sqrt(colSums(Rx^2))))
   Rx
 }
 
@@ -135,8 +140,16 @@ halftrace <- function(x, f, restf, MFX, tol, lmean, name, weights=NULL) {
 # and Wx instead of x (i.e. WDtheta instead of Dtheta).
 # remember that the weights in the felm-object are the square roots.
 varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
-                    robust=!is.null(est$clustervar), resid, weights=NULL) {
+                    robust=!is.null(est$clustervar), resid, weights=NULL,dfadj=1) {
   if(length(index) != 1) stop("index must have length 1")
+  if(!is.null(est$stage1)) stop("Bias correction with IV not supported yet")
+  if(length(tol)==1) {
+    tracetol <- tol
+    cgtf <- 1
+  } else {
+    tracetol <- tol[[1]]
+    cgtf <- tol[[2]]
+  }
   f <- est$fe[[index]]
   restf <- est$fe[-index]
   name <- paste('var(',names(est$fe)[[index]],')', sep='')
@@ -172,11 +185,18 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
     }
   }
   
+  if(is.null(w))
+      epsvar <- sum(resid^2)/est$df
+  else
+      epsvar <- sum(ww2*resid^2)*N/est$df
+
+  vvfoo <- epsvar
   if(robust) {
     # residuals present, do cluster robust correction
     # create all the cluster interactions, so we don't have to do
     # it each time in the iteration
     docluster <- !is.null(est$clustervar)
+    toladj <- sqrt(sum((ww*resid)^2))
     if(docluster) {
       d <- length(est$clustervar)
       cia <- list()
@@ -187,13 +207,21 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
         cia[[i]] <- factor(do.call(paste,c(est$clustervar[iac],sep='\004')))
       }
     }
+
     trfun <- function(x,trtol) {
       # return crude estimate of the trace
       if(trtol == 0) return(abs(nlev))
-      Rx <- halftrace(x, f, restf, MFX, trtol, lmean, name, weights=w)
+      # since we square our result, we should use sqrt(trtol)/2 as a tolerance
+      # trtol is the absolute tolerance, but halftrace is squared, we should
+      # really use a relative tolerance, we use the square root of the tracetol
+#      message('trtol=',trtol, ' N ',N,' toladj ',toladj)
+      Rx <- halftrace(x, f, restf, MFX, -sqrt(trtol/toladj), lmean, name, weights=w)
+#      Rx <- halftrace(x, f, restf, MFX, sqrt(trtol)/2, lmean, name, weights=w)
+#      Rx <- halftrace(x, f, restf, MFX, trtol, lmean, name, weights=w)
 
       # now apply cluster stuff
       # first, scale with (weighted) residuals
+#
       .Call(C_scalecols, Rx, ww*resid)
       if(!docluster) {
         # It's heteroscedastic
@@ -202,10 +230,13 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
         # it's one or more clusters, do the Cameron et al detour
         result <- vector('numeric',ncol(Rx))
         for(i in 1:(2^d-1)) {
-          b <- rowsum(Rx,cia[[i]])
+          ia <- cia[[i]]
+          b <- rowsum(Rx,ia)
           # odd number is positive, even is negative
           sgn <- 2*(sum(as.logical(intToBits(i))[1:d]) %% 2) - 1
-          result <- result + sgn * colSums(b * b)
+          adj <- sgn*dfadj*nlevels(ia)/(nlevels(ia)-1)
+          result <- result + adj* colSums(b * b)
+#          result <- result + vvfoo*adj* colSums(Rx * Rx)
         }
         return(result)
       }
@@ -221,14 +252,10 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
       # we divide by the L2-norm of DtM1x, since we take the
       # inner product with this afterwards
 
-      tol1 <- -trtol/sqrt(colSums(DtM1x^2))/2
+      tol1 <- -trtol/cgtf/sqrt(colSums(DtM1x^2))/2
       v <- cgsolve(invfun, DtM1x, eps=tol1,name=name)
       colSums(DtM1x * v)
     }
-    if(is.null(w))
-        epsvar <- sum(resid^2)/est$df
-    else
-        epsvar <- sum(ww2*resid^2)*N/est$df
   }
   attr(trfun,'IP') <- TRUE
   epsvar <- epsvar * wc
@@ -242,8 +269,15 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
   # i.e. absolute precision should be 0.01*(bvar*N - epsvar*tr)/epsvar
   # where bvar is the biased variance
 
-  epsfun <- function(tr) -abs(tol)*abs(N*bvar - epsvar*tr)/epsvar
-  # the tolerance before mctrace has got a clue about where we are
+  epsfun <- function(tr) {
+    aa <- N*bvar - epsvar*tr
+    if(aa < 0) {
+      -abs(tracetol)*0.5*N*bvar/epsvar
+    } else {
+      -abs(tracetol)*aa/epsvar
+    }
+  }
+  # the tolerance before mctrace has got a clue about where we are,
   # is a problem. If the bias is very large compared to the variance, we will
   # be in trouble. 
   res <- epsvar*mctrace(trfun,N=N,tol=epsfun, trname=name,
@@ -255,8 +289,10 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
 # covariance. In this case, the biased covariance (bcov) and residual
 # variance (epsvar) must be specified. A negative tolerance is an
 # absolute tolerance
-covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL) {
+covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
+                    robust=!is.null(est$clustervar)) {
   if(length(index) != 2) stop("index must have length 2")
+  if(!is.null(est$stage1)) stop("Bias correction with IV not supported yet")
   if(length(est$fe) < 2) stop("fe must have length >= 2")
 
   w <- weights
@@ -273,7 +309,11 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL) {
   nlev2 <- nlevels(f2)
   N <- length(f1)
   name <- paste('cov(',paste(names(est$fe)[index],collapse=','),')',sep='')
+  name1 <- paste(name,names(est$fe)[index[[1]]],sep='.')
+  name2 <- paste(name,names(est$fe)[index[[2]]], sep='.')
   no2list <- est$fe[-index[[2]]]
+  no1list <- est$fe[-index[[1]]]
+
   restf <- est$fe[-index]
   fmean <- factor(rep(1,N))
   lmean <- list(fmean)
@@ -282,9 +322,13 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL) {
   else
       epsvar <- sum(ww2*resid^2)*N/est$df
 
+  MDX <- MFX <- NULL
   if(!is.null(est$X)) {
     MDX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,
                                     no2list,weights=w, scale=c(TRUE,FALSE)))))
+    MFX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,
+                                    no1list,weights=w, scale=c(TRUE,FALSE)))))
+
     invfun <- function(v) {
       rowsum(ww*demeanlist(demeanlist(ww*v[f2,],MDX), no2list,
                            weights=w, scale=FALSE), f2)
@@ -309,18 +353,72 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL) {
     rowsum(MXfun(v), f1)
   }
   
-  trfun <- function(x,trtol) {
-    # return crude estimate of the trace
-    if(trtol == 0) return(-abs(nlev1-nlev2))
-    M1x <- ww*demeanlist(x,lmean,weights=w,scale=FALSE)
-    DtM1x <- rowsum(M1x,f1)
-    FtM1x <- rowsum(M1x,f2)
-    d1 <- colSums(DtM1x^2)
-    d2 <- colSums(FtM1x^2)
-    v <- cgsolve(invfunX, DtM1x, eps=-trtol/sqrt(d1+d2)/3, name=name)
-    MXv <- rowsum(MXfun(v), f2)
-    sol <- cgsolve(invfun, FtM1x, eps=-trtol/sqrt(colSums(MXv^2))/3, name=name)
-    -colSums(sol* MXv)
+  if(robust) {
+    # residuals present, do cluster robust correction
+    # create all the cluster interactions, so we don't have to do
+    # it each time in the iteration
+    tolmod <- 1
+    docluster <- !is.null(est$clustervar)
+    if(docluster) {
+      tolmod <- 0
+      d <- length(est$clustervar)
+      cia <- list()
+      for(i in 1:(2^d-1)) {
+        # Find out which ones to interact
+        iac <- as.logical(intToBits(i))[1:d]
+        # interact the factors
+        cia[[i]] <- factor(do.call(paste,c(est$clustervar[iac],sep='\004')))
+        tolmod <- tolmod + nlevels(cia[[i]])
+      }
+    }
+    toladj <- sqrt(sum((ww*resid)^2))
+    trfun <- function(x,trtol) {
+      # return crude estimate of the trace
+      if(trtol == 0) return(abs(nlev1-nlev2))
+      # since we square our result, we should use sqrt(trtol)/2 as a tolerance
+    # trtol is the absolute tolerance, but halftrace is squared, we should
+      # really use a relative tolerance, we use the square root of the tracetol
+#      message('cov trtol=',trtol, ' tolmod ',tolmod, ' N ',N)
+      Lx <- halftrace(x, f1, no1list, MFX, -sqrt(trtol/toladj), lmean, name1, weights=w)
+      Rx <- halftrace(x, f2, no2list, MDX, -sqrt(trtol/toladj), lmean, name2, weights=w)
+#      Rx <- halftrace(x, f, restf, MFX, sqrt(trtol)/2, lmean, name, weights=w)
+#      Rx <- halftrace(x, f, restf, MFX, trtol, lmean, name, weights=w)
+
+      # now apply cluster stuff
+      # first, scale with (weighted) residuals
+      .Call(C_scalecols, Rx, ww*resid)
+      .Call(C_scalecols, Lx, ww*resid)
+      if(!docluster) {
+        # It's heteroscedastic
+        return(colSums(Lx * Rx))
+      } else {
+        # it's one or more clusters, do the Cameron et al detour
+        result <- vector('numeric',ncol(Rx))
+        for(i in 1:(2^d-1)) {
+          Lb <- rowsum(Lx, cia[[i]])
+          Rb <- rowsum(Rx, cia[[i]])
+          # odd number is positive, even is negative
+          sgn <- 2*(sum(as.logical(intToBits(i))[1:d]) %% 2) - 1
+          result <- result + sgn * colSums(Lb * Rb)
+        }
+        return(result)
+      }
+    }
+    epsvar <- 1  # now incorporated in the robust variance matrix, so don't scale
+  } else {
+    trfun <- function(x,trtol) {
+      # return crude estimate of the trace
+      if(trtol == 0) return(-abs(nlev1-nlev2))
+      M1x <- ww*demeanlist(x,lmean,weights=w,scale=FALSE)
+      DtM1x <- rowsum(M1x,f1)
+      FtM1x <- rowsum(M1x,f2)
+      d1 <- colSums(DtM1x^2)
+      d2 <- colSums(FtM1x^2)
+      v <- cgsolve(invfunX, DtM1x, eps=-trtol/sqrt(d1+d2)/3, name=name)
+      MXv <- rowsum(MXfun(v), f2)
+      sol <- cgsolve(invfun, FtM1x, eps=-trtol/sqrt(colSums(MXv^2))/3, name=name)
+      -colSums(sol* MXv)
+    }
   }
   # our function does the inner product, not just matrix application. Signal to mctrace.
   attr(trfun,'IP') <- TRUE
@@ -427,7 +525,9 @@ varvars <- function(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE, lhs=NULL
 fevcov <- function(est, alpha=getfe(est), tol=0.01, robust=!is.null(est$clustervar),
                    maxsamples=Inf, lhs=NULL) {
   if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
-
+  iaf <- sapply(est$fe, function(f) !is.null(attr(f,'x',exact=TRUE)))
+  if(any(iaf))
+      stop("Bias correction for interacted factor ",paste(names(est$fe)[iaf],collapse=', '), " not supported")
   if(length(est$lhs) > 1 && is.null(lhs))
       stop('Please specify lhs=[one of ',paste(est$lhs, collapse=','),']')      
   if(length(est$lhs) == 1) lhs <- est$lhs
@@ -462,7 +562,7 @@ fevcov <- function(est, alpha=getfe(est), tol=0.01, robust=!is.null(est$clusterv
   names(effs) <- names(fe)
   bvcv <- matrix(0,K,K)
   colnames(bvcv) <- rownames(bvcv) <- names(fe)
-#  diag(bvcv) <- sapply(effs, var)
+  diag(bvcv) <- sapply(effs, var)
   for(i in 1:K) {
     for(j in i:K) {
       if(is.null(est$weights)) {
@@ -472,17 +572,26 @@ fevcov <- function(est, alpha=getfe(est), tol=0.01, robust=!is.null(est$clusterv
       }
     }
   }
-
   # compute the variances
   bias <- matrix(0,K,K)
   colnames(bias) <- rownames(bias) <- names(fe)
   resid <- est$residuals[,lhs]
+  cgtf <- rep(1,K)
   diag(bias) <- sapply(1:K, function(i) varbias(i, est, tol[i,i], bvcv[i,i],
-                                                maxsamples, resid=resid,weights=est$weights))
-
+                                                maxsamples, resid=resid,weights=est$weights,
+                                                dfadj=(est$N-1)/est$df))
+  
+  wtf <- diag(bias) > diag(bvcv)
   # update off-diagonal tolerances by the variances
   offdiag <- col(tol) != row(tol)
-  tol[offdiag] <- -(abs(tol)*sqrt(tcrossprod(diag(bvcv)-diag(bias))))[offdiag]
+  if(any(wtf)) {
+    message('Some variance biases are larger than the variances. Setting them equal:')
+    print(cbind(variance=diag(bvcv),bias=diag(bias)))
+    diag(bias)[wtf] <- 0.999*diag(bvcv)[wtf]
+    tol[offdiag] <- -(abs(tol)*sqrt(abs(tcrossprod(diag(bvcv)-0.9*diag(bias)))))[offdiag]
+  } else {
+    tol[offdiag] <- -(abs(tol)*sqrt(abs(tcrossprod(diag(bvcv)-diag(bias)))))[offdiag]
+  }
   # compute the covariances
   for(i in 1:(K-1)) {
     for(j in (i+1):K)

@@ -18,6 +18,7 @@ summary(felm(y ~ x + id + firm, wei=w))
 # felm with projection says
 est <- felm(y ~x | id + firm, wei=w, keepX=TRUE)
 summary(est)
+head(sandwich::estfun(est))
 
 # test getfe:
 Kid <- nlevels(id)

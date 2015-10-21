@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: lfescript 1708 2015-05-20 13:47:30Z sgaure $
+# $Id: lfescript 1786 2015-10-07 11:15:24Z sgaure $
 $wantse = 0;
 $nofe = 0;
 $savecomp = 0;
@@ -15,6 +15,7 @@ $exactDF = 0;
 $robust = 'FALSE';
 $usecg = 'FALSE';
 $accel = 1;
+$subset = '';
 $ivtest = 0;
 $ivboot = 0;
 $fecorr = 0;
@@ -86,6 +87,9 @@ while(<>) {
       $usecg = 'TRUE';
   } elsif($cmd eq 'tol') {
       $tol = shift(@line);
+  } elsif($cmd eq 'subset') {
+      $subset = join(' ',@line);
+      if($subset > 0) {$subset = "runif(nrow(tab)) < $subset";}
   } else {
     die "Unknown line starting with $cmd";
   }
@@ -160,8 +164,13 @@ fvars <- all.vars(parse(text=festr))
 if(dformat == 'dta') {
     library(foreign)
     cat(date(),'Start reading Stata file','$datafile\\n')
-    tab <- read.dta('$datafile',convert.factors=NA)
+    tab <- try(read.dta('$datafile',convert.factors=NA))
+    if(inherits(tab, 'try-error')) {
+      require(readstata13)
+      tab <- read.dta13('$datafile', convert.factors=NA)
+    }
     cat(date(),nrow(tab),' records read from','$datafile\\n')
+    cat('Variables present:\n'); print(colnames(tab))
 } else if(dformat == 'rda') {
     load('$datafile')
 } else {
@@ -203,11 +212,6 @@ if(dformat == 'dta') {
   cat(date(),'File read\\n')
 }
 
-# convert to factors manually
-for( f in forcefact) {
-    tab[[f]] <- factor(tab[[f]])
-}
-
 if(!inherits(tab,'data.frame')) {
   # fake a data.frame
   #attr(tab,'row.names') <- 1:length(tab[[1]])
@@ -215,6 +219,21 @@ if(!inherits(tab,'data.frame')) {
   attr(tab,'row.names') <- NULL
 }
 
+# convert to factors manually
+for( f in forcefact) {
+    tab[[f]] <- factor(tab[[f]])
+}
+";
+if($subset ne '') {
+print "
+  cat('Using subset specification: $subset ')
+  N <- nrow(tab)
+  tab <- subset(tab,$subset)
+  cat(' resulting in',nrow(tab), 'records\n')
+";
+}
+
+print "
 factors <- lfe:::parseformula(model,tab)[['fl']]
 
 for(i in seq_along(factors)) {
@@ -225,7 +244,9 @@ cf <- compfactor(factors)
 cat(date(),'There are',nlevels(cf),'connected components\\n')
 if($fecorr && nlevels(cf) > 1) {
   message('  Doing analysis on the largest component only (N=',sum(cf==1),')')
-  subs <- (cf == 1)
+  tab <- tab[cf==1,]
+#  subs <- (cf == 1)
+  subs <- NULL
 } else
   subs <- NULL
 if(length(factors) > 2) 
@@ -251,6 +272,7 @@ if(defined($iv)) {
   print "est <- felm($model,data=tab,subset=subs$cvar$edf$extra,wildcard='g')\n";
 }
 print "
+cfactor <- est\$cfactor
 robust <- $robust || !is.null(est\$clustervar)
 if(!is.null(est\$stage1)) {
   cat('First stage estimation:\\n')
@@ -298,17 +320,23 @@ message('**** conditional F-test specified, but no IV performed')
 }
 ";
 }
-
 print "
+if(!is.null(est\$clustervar)) nse <- 'cse' else if($robust) nse <- 'rse' else nse <- 'se'
 if(length(est\$lhs) == 1) {
-  se <- est\$se
+  se <- est[[nse]]
 } else {
-  se <- do.call(cbind, lapply(est\$STATS, function(s) s\$se))
+  se <- do.call(cbind, lapply(est\$STATS, function(s) s[[nse]]))
 }
-sink('coef.csv')
-print(data.frame(value=est\$coefficients, se=se, row.names=rownames(est\$coefficients)))
-sink(NULL)
-cat(date(),'Coefficients written to coef.csv\\n')
+cfdat <- data.frame(value=est\$coefficients, se=se, row.names=rownames(est\$coefficients))
+if(dformat == 'dta') {
+  write.dta(cfdat,'coef.dta')
+  cat(date(),'Coefficients written to coef.dta\\n')
+} else {
+  sink('coef.csv')
+  print(cfdat)
+  sink(NULL)
+  cat(date(),'Coefficients written to coef.csv\\n')
+}
 ";
 
 
@@ -366,7 +394,7 @@ if($bN > 0) {
 if($fecorr) {
   print "
   message(date(),' Computing limited mobility bias corrected correlations')
-  fecv <- fevcov(est,fes)
+  fecv <- fevcov(est,fes,tol=0.01)
   message('Bias corrected variances and covariances:')
   print(fecv)
   message('\\nBias corrected correlations:')
@@ -396,13 +424,25 @@ for(nm in levels(fes[,'fe'])) {
   whch <- which(fes[,'fe'] == nm)
   fr <- fes[whch,]
   fn <- paste('fe-',nm,'.',dformat,sep='')  
-  fr[,nm] <- fr[,'idx']
-  rownames(fr) <- fr[,nm]
+# Now, if there's an interaction (a ':' in nm), we should
+# split it
+  nms <- strsplit(nm,':',fixed=TRUE)[[1]]
+  if(length(nms) == 1) {
+    fr[,nm] <- fr[,'idx']
+    rownames(fr) <- fr[,nm]
+  } else {
+    ii <- fr[,'idx']
+    lv <- levels(ii)[ii]
+    idxs <- strsplit(lv, '.',fixed=TRUE)
+    fr[,nm] <- lv
+    fr[,nms] <- t(as.data.frame(idxs, row.names=NULL))
+    nms <- c(nms,nm)
+  }
 ";
 if($bN > 0) {
-    print "fr <- fr[,c(nm,effnam,senam,'comp','obs')]\n";
+    print "fr <- fr[,c(nms,effnam,senam,'comp','obs')]\n";
 } else {
-    print "fr <- fr[,c(nm,effnam,'comp','obs')]\n";
+    print "fr <- fr[,c(nms,effnam,'comp','obs')]\n";
 }
 
 print "
@@ -426,16 +466,18 @@ if($merge) {
 
 cat(date(),'Doing some more bookkeeping, i.e. merging...\\n')
 class(tab) <- 'list'
-tab[['comp']] <- cf
+tab[['comp']] <- cfactor
+
 for(en in effnam) {
  for(f in names(frms)) {
    fr <- frms[[f]]
-   fact <- tab[[f]]
+   fact <- tab[strsplit(f,':',fixed=TRUE)[[1]]]
    eff <- paste(f,en,sep='.')
 
-   tab[[eff]] <- rep(0,length(fact))
-   split(tab[[eff]],fact) <- fr[,en]
-#   tab[[effnam]] <- fr[fact,'effect'] 
+   tab[[eff]] <- rep(0,length(cfactor))
+   ia <- factor(do.call(paste,c(fact,sep='.')))
+   oo <- match(levels(ia), fr[,f])
+   split(tab[[eff]],ia) <- fr[oo,en]
  }
 }
 class(tab) <- 'data.frame'
@@ -443,7 +485,7 @@ class(tab) <- 'data.frame'
 cat(date(),'Writing merged data set to fe-merged.',dformat,'\\n')
 rownames(tab) <- 1:length(tab[[1]])
 if(dformat == 'dta') {
-  write.dta(tab,'fe-merged.dta')
+  write.dta(tab,'fe-merged.dta',convert.factors='numeric')
 } else {
   write.table(tab,'fe-merged.csv',quote=FALSE,row.names=FALSE)
 }

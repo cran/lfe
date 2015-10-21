@@ -19,6 +19,7 @@ dummy year
 merge
 robust
 test x x2
+subset ife > 2
 ----cut----
 
 Most of this is self-explanatory, there's a file-name, it's supposed to be
