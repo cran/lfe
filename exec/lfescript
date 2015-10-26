@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: lfescript 1786 2015-10-07 11:15:24Z sgaure $
+# $Id: lfescript 1788 2015-10-26 11:46:59Z sgaure $
 $wantse = 0;
 $nofe = 0;
 $savecomp = 0;
@@ -381,7 +381,7 @@ print "
 # We need to save some memory by ditching the large parts of est
 # (the qr and stuff, keep only what's needed)
 if(!$fecorr) {
-  est <- est[c('fe','residuals','refnames','r.residuals','cfactor','lhs')]
+  est <- est[c('fe','residuals','refnames','r.residuals','cfactor','lhs','na.action')]
   invisible(gc())
   class(est) <- NULL
 }
@@ -404,6 +404,7 @@ if($fecorr) {
 
 print "
 lhs <- est\$lhs
+naact <- est\$na.action
 rm(est)
 invisible(gc())
 cat(date(),'Fixed effects found; just doing some bookkeeping now...\\n')
@@ -465,6 +466,11 @@ if($merge) {
 # stuff it back into the dataset
 
 cat(date(),'Doing some more bookkeeping, i.e. merging...\\n')
+# remove any missing values from tab                                                               
+if(!is.null(naact)) {
+  tab <- tab[-naact,]
+}
+
 class(tab) <- 'list'
 tab[['comp']] <- cfactor
 

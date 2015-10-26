@@ -1,6 +1,6 @@
 Package: lfe
-Version: 2.4-1786
-Date: 2015-10-07
+Version: 2.4-1788
+Date: 2015-10-26
 Title: Linear Group Fixed Effects
 Author: Simen Gaure, Ragnar Frisch Centre for Economic Research
 Maintainer: Simen Gaure <Simen.Gaure@frisch.uio.no>
@@ -19,6 +19,6 @@ License: Artistic-2.0
 Classification/JEL: C13, C23, C60
 Classification/MSC: 62J05, 65F10, 65F50
 NeedsCompilation: yes
-Packaged: 2015-10-13 11:29:00 UTC; sgaure
+Packaged: 2015-10-26 11:48:01 UTC; sgaure
 Repository: CRAN
-Date/Publication: 2015-10-21 11:36:44
+Date/Publication: 2015-10-26 18:06:33

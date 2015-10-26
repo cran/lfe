@@ -1,4 +1,4 @@
-# $Id: bccorr.R 1777 2015-09-22 14:10:21Z sgaure $
+# $Id: bccorr.R 1788 2015-10-26 11:46:59Z sgaure $
 narowsum <- function(x, group) {
   opt <- options(warn=-1)
   res <- try(rowsum(x,group), silent=TRUE)
@@ -150,6 +150,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
     tracetol <- tol[[1]]
     cgtf <- tol[[2]]
   }
+  X <- est$X
   f <- est$fe[[index]]
   restf <- est$fe[-index]
   name <- paste('var(',names(est$fe)[[index]],')', sep='')
@@ -172,8 +173,11 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
 # use M_{F,X} = M_F M_{M_F X}
 # precompute and orthonormalize M_F X
 
-  if(!is.null(est$X)) {
-    MFX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,restf,
+  if(!is.null(X)) {
+    # Find NA's in the coefficients, remove corresponding variables from X
+    bad <- apply(est$coefficients,1,anyNA)
+    if(any(bad)) X <- X[,!bad,drop=FALSE]
+    MFX <- list(structure(fmean,x=orthonormalize(demeanlist(X,restf,
                                     weights=w,scale=c(TRUE,FALSE)))))
     invfun <- function(v) {
       rowsum(ww*demeanlist(demeanlist(ww*v[f,],MFX), restf, weights=w, scale=FALSE), f)
@@ -303,6 +307,7 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
     ww <- w; ww2 <- w^2
     wc <- sum(w^2)/(sum(w^2)^2 - sum(w^4))
   }
+  X <- est$X
   f1 <- est$fe[[index[[1]]]]
   f2 <- est$fe[[index[[2]]]]
   nlev1 <- nlevels(f1)
@@ -322,11 +327,16 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
   else
       epsvar <- sum(ww2*resid^2)*N/est$df
 
+  if(!is.null(X)) {
+    bad <- apply(est$coefficients,1,anyNA)
+    if(any(bad)) X <- X[,!bad,drop=FALSE]
+  }
   MDX <- MFX <- NULL
-  if(!is.null(est$X)) {
-    MDX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,
+
+  if(!is.null(X)) {
+    MDX <- list(structure(fmean,x=orthonormalize(demeanlist(X,
                                     no2list,weights=w, scale=c(TRUE,FALSE)))))
-    MFX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,
+    MFX <- list(structure(fmean,x=orthonormalize(demeanlist(X,
                                     no1list,weights=w, scale=c(TRUE,FALSE)))))
 
     invfun <- function(v) {
@@ -334,12 +344,12 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
                            weights=w, scale=FALSE), f2)
     }
     if(length(restf) > 0) {
-      MX <- list(structure(fmean,x=orthonormalize(demeanlist(est$X,
+      MX <- list(structure(fmean,x=orthonormalize(demeanlist(X,
                                      restf,weights=w, scale=c(TRUE,FALSE)))))
       MXfun <- function(v) ww*demeanlist(demeanlist(ww*v[f1,], MX), restf, weights=w,
                                          scale=FALSE)
     } else {
-      MX <- list(structure(fmean, x=orthonormalize(ww*est$X)))
+      MX <- list(structure(fmean, x=orthonormalize(ww*X)))
       MXfun <- function(v) ww*demeanlist(ww*v[f1,], MX)
     }
   } else {
