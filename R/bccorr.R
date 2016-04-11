@@ -1,4 +1,4 @@
-# $Id: bccorr.R 1788 2015-10-26 11:46:59Z sgaure $
+# $Id: bccorr.R 1968 2016-04-11 08:54:30Z sgaure $
 narowsum <- function(x, group) {
   opt <- options(warn=-1)
   res <- try(rowsum(x,group), silent=TRUE)
@@ -24,8 +24,112 @@ narowsum <- rowsum
 # its argument in-place, and returns it.  This is a violation of Rs
 # immutable semantics. Use with caution.  a <- scalecols(b,r) will scale a, but also change b!
 
+
+#' Compute limited mobility bias corrected correlation between fixed effects
+#' @concept Limited Mobility Bias
+#'
+#' @description
+#' With a model like \eqn{y = X\beta + D\theta + F\psi + \epsilon}, where \eqn{D}
+#' and \eqn{F} are matrices with dummy encoded factors, one application of \pkg{lfe} is to
+#' study the correlation \eqn{cor(D\theta, F\psi)}.  However, if we use
+#' estimates for \eqn{\theta} and \eqn{\psi}, the resulting correlation is biased.
+#' The function \code{bccorr} computes a bias corrected correlation
+#' as described in \cite{Gaure (2014)}.
+#' @param est an object of class '"felm"', the result of a call to
+#'  \code{\link{felm}(keepX=TRUE)}.
+#' @param alpha a data frame, the result of a call to \code{\link{getfe}}.
+#' @param corrfactors integer or character vector of length 2. The factors to
+#'    correlate. The default is fine if there are only two factors in the model.
+#' @param nocovar logical. Assume no other covariates than the two
+#'  factors are present, or that they are uncorrelated with them.
+#' @param tol The absolute tolerance for the bias-corrected correlation.
+#' @param maxsamples Maximum number of samples for the trace sample means estimates
+#' @param lhs character. Name of left hand side if multiple left hand sides.
+
+#' @return
+#'  \code{bccorr} returns a named integer vector with the following fields:
+#'
+#'  \item{corr}{the bias corrected correlation.}
+#'  \item{v1}{the bias corrected variance for the first factor specified
+#'  by \code{corrfactors}.}
+#'  \item{v2}{the bias corrected variance for the second factor.}
+#'  \item{cov}{the bias corrected covariance between the two factors.}
+#'  \item{d1}{the bias correction for the first factor.}
+#'  \item{d2}{the bias correction for the second factor.}
+#'  \item{d12}{the bias correction for covariance.}
+#'
+#'  The bias corrections have been subtracted from the bias estimates.
+#'  E.g. v2 = v2' - d2, where v2' is the biased variance.
+
+#' @details
+#' The bias expressions from \cite{Andrews et al.} are of the form \eqn{tr(AB^{-1}C)}
+#' where \eqn{A}, \eqn{B}, and \eqn{C} are  matrices too large to be handled
+#' directly. \code{bccorr} estimates the trace by using the formula \eqn{tr(M) = E(x^t M x)}
+#' where x is a vector with coordinates drawn uniformly from the set \eqn{\{-1,1\}}.
+#' More specifically, the expectation is estimated by
+#' sample means, i.e. in each sample a vector x is drawn, the
+#' equation \eqn{Bv = Cx} is solved by a conjugate gradient method, and the
+#' real number \eqn{x^t Av} is computed. 
+#' 
+#' There are three bias corrections, for the variances of \eqn{D\theta} (\code{vD}) and
+#' \eqn{F\psi} (\code{vF}), and their covariance (\code{vDF}).The correlation is computed as
+#' \code{rho <- vDF/sqrt(vD*vF)}.  The variances are estimated to a
+#' relative tolerance specified by the argument \code{tol}. The covariance
+#' bias is estimated to an absolute tolerance in the correlation \code{rho}
+#' (conditional on the already bias corrected \code{vD} and \code{vF}) specified by
+#' \code{tol}.  The CG algortithm does not need to be exceedingly precise,
+#' it is terminated when the solution reaches a precision which is
+#' sufficient for the chosen precision in \code{vD, vF, vDF}.
+#' 
+#' If \code{est} is the result of a weighted \code{\link{felm}} estimation,
+#' the variances and correlations are weighted too.
+
+#' @note
+#' Bias correction for IV-estimates are not supported as of now.
+#' 
+#' Note that if \code{est} is the result of a call to \code{\link{felm}}
+#' with \code{keepX=FALSE} (the default), the correlation will be computed
+#' as if the covariates X are independent of the two factors. This will be
+#' faster (typically by a factor of approx. 4), and possibly wronger.
+#' 
+#' Note also that the computations performed by this function are
+#' non-trivial, they may take quite some time.  It would be wise to start
+#' out with quite liberal tolerances, e.g. \cite{tol=0.1}, to
+#' get an idea of the time requirements.
+#' 
+#' The algorithm used is not very well suited for small datasets with only
+#' a few thousand levels in the factors.
+
+#' @seealso \code{\link{fevcov}}
+
+#' @examples
+#' x <- rnorm(500)
+#' x2 <- rnorm(length(x))
+#' 
+#' ## create individual and firm
+#' id <- factor(sample(40,length(x),replace=TRUE))
+#' firm <- factor(sample(30,length(x),replace=TRUE,prob=c(2,rep(1,29))))
+#' foo <- factor(sample(20,length(x),replace=TRUE))
+#' ## effects
+#' id.eff <- rnorm(nlevels(id))
+#' firm.eff <- rnorm(nlevels(firm))
+#' foo.eff <- rnorm(nlevels(foo))
+#' ## left hand side
+#' y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + foo.eff[foo] + rnorm(length(x))
+#' 
+#' # make a data frame
+#' fr <- data.frame(y,x,x2,id,firm,foo)
+#' ## estimate and print result
+#' est <- felm(y ~ x+x2|id+firm+foo, data=fr, keepX=TRUE)
+#' # find bias corrections
+#' bccorr(est)
+
+#' @references
+#'  Gaure, S. (2014), \cite{Correlation bias correction in two-way
+#'  fixed-effects linear regression}, Stat 3(1):379:390, 2014.
+#' @export
 bccorr <- function(est, alpha=getfe(est), corrfactors=1L:2L,
-                   nocovar=is.null(est$X) && length(est$fe)==2,
+                   nocovar=(length(est$X)==0) && length(est$fe)==2,
                    tol=0.01, maxsamples=Inf, lhs=NULL) {
 
   if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
@@ -143,6 +247,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
                     robust=!is.null(est$clustervar), resid, weights=NULL,dfadj=1) {
   if(length(index) != 1) stop("index must have length 1")
   if(!is.null(est$stage1)) stop("Bias correction with IV not supported yet")
+#  on.exit({rm(list=ls()); gc()})
   if(length(tol)==1) {
     tracetol <- tol
     cgtf <- 1
@@ -173,7 +278,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
 # use M_{F,X} = M_F M_{M_F X}
 # precompute and orthonormalize M_F X
 
-  if(!is.null(X)) {
+  if(length(X) > 0) {
     # Find NA's in the coefficients, remove corresponding variables from X
     bad <- apply(est$coefficients,1,anyNA)
     if(any(bad)) X <- X[,!bad,drop=FALSE]
@@ -188,7 +293,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
       rowsum(ww*demeanlist(v[f,], restf, weights=w,scale=c(TRUE,FALSE)), f)
     }
   }
-  
+
   if(is.null(w))
       epsvar <- sum(resid^2)/est$df
   else
@@ -211,10 +316,11 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
         cia[[i]] <- factor(do.call(paste,c(est$clustervar[iac],sep='\004')))
       }
     }
-
+    wwres <- ww*resid
     trfun <- function(x,trtol) {
       # return crude estimate of the trace
       if(trtol == 0) return(abs(nlev))
+#      on.exit({rm(list=ls()); gc()})
       # since we square our result, we should use sqrt(trtol)/2 as a tolerance
       # trtol is the absolute tolerance, but halftrace is squared, we should
       # really use a relative tolerance, we use the square root of the tracetol
@@ -226,7 +332,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
       # now apply cluster stuff
       # first, scale with (weighted) residuals
 #
-      .Call(C_scalecols, Rx, ww*resid)
+      .Call(C_scalecols, Rx, wwres)
       if(!docluster) {
         # It's heteroscedastic
         return(colSums(Rx * Rx))
@@ -240,6 +346,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
           sgn <- 2*(sum(as.logical(intToBits(i))[1:d]) %% 2) - 1
           adj <- sgn*dfadj*nlevels(ia)/(nlevels(ia)-1)
           result <- result + adj* colSums(b * b)
+          rm(b)
 #          result <- result + vvfoo*adj* colSums(Rx * Rx)
         }
         return(result)
@@ -251,6 +358,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
     trfun <- function(x,trtol) {
       # return crude estimate of the trace
       if(trtol == 0) return(abs(nlev))
+#      on.exit({rm(list=ls()); gc()})
       DtM1x <- rowsum(ww*demeanlist(x,lmean,weights=w,scale=FALSE), f)
       # we use absolute tolerance, mctrace wil give us a trtol.
       # we divide by the L2-norm of DtM1x, since we take the
@@ -298,7 +406,7 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
   if(length(index) != 2) stop("index must have length 2")
   if(!is.null(est$stage1)) stop("Bias correction with IV not supported yet")
   if(length(est$fe) < 2) stop("fe must have length >= 2")
-
+#  on.exit({rm(list=ls()); gc()})
   w <- weights
   if(is.null(w)) {
     wc <- ww2 <- ww <- 1
@@ -327,13 +435,13 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
   else
       epsvar <- sum(ww2*resid^2)*N/est$df
 
-  if(!is.null(X)) {
+  if(length(X) > 0) {
     bad <- apply(est$coefficients,1,anyNA)
     if(any(bad)) X <- X[,!bad,drop=FALSE]
   }
   MDX <- MFX <- NULL
 
-  if(!is.null(X)) {
+  if(length(X) > 0) {
     MDX <- list(structure(fmean,x=orthonormalize(demeanlist(X,
                                     no2list,weights=w, scale=c(TRUE,FALSE)))))
     MFX <- list(structure(fmean,x=orthonormalize(demeanlist(X,
@@ -382,9 +490,11 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
       }
     }
     toladj <- sqrt(sum((ww*resid)^2))
+    wwres <- ww*resid
     trfun <- function(x,trtol) {
       # return crude estimate of the trace
       if(trtol == 0) return(abs(nlev1-nlev2))
+#      on.exit({rm(list=ls()); gc()})
       # since we square our result, we should use sqrt(trtol)/2 as a tolerance
     # trtol is the absolute tolerance, but halftrace is squared, we should
       # really use a relative tolerance, we use the square root of the tracetol
@@ -396,8 +506,8 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
 
       # now apply cluster stuff
       # first, scale with (weighted) residuals
-      .Call(C_scalecols, Rx, ww*resid)
-      .Call(C_scalecols, Lx, ww*resid)
+      .Call(C_scalecols, Rx, wwres)
+      .Call(C_scalecols, Lx, wwres)
       if(!docluster) {
         # It's heteroscedastic
         return(colSums(Lx * Rx))
@@ -419,6 +529,7 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
     trfun <- function(x,trtol) {
       # return crude estimate of the trace
       if(trtol == 0) return(-abs(nlev1-nlev2))
+#      on.exit({rm(list=ls()); gc()})
       M1x <- ww*demeanlist(x,lmean,weights=w,scale=FALSE)
       DtM1x <- rowsum(M1x,f1)
       FtM1x <- rowsum(M1x,f2)
@@ -463,7 +574,7 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01,
   N <- length(f)
   lmean <- list(factor(rep(1,N)))
   name <- paste('varvar(',names(fe)[[index]],')', sep='')
-  if(is.null(X)) {
+  if(length(X)==0) {
       MFX <- fe[-index]
       invfun <- function(x) {
         rowsum(ww2*demeanlist(x[f,], MFX, weights=w),f)
@@ -501,6 +612,94 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01,
   (meanpart-trpart)/N^2
 }
 
+
+
+
+
+
+
+#' Compute the variance of the fixed effect variance estimate
+#' 
+#' With a model like 'y = X beta + D theta + F psi + epsilon', where 'D' and
+#' 'F' are matrices with dummy encoded factors, one application of \pkg{lfe} is
+#' to study the variances 'var(D theta), var(F psi)' and covariances 'cov(D
+#' theta, F psi)' The function \code{\link{fevcov}} computes bias corrected
+#' variances and covariances.  However, these variance estimates are still
+#' random variables for which \code{\link{fevcov}} only estimate the
+#' expectation. The function \code{varvars} estimates the variance of these
+#' estimates.
+#' 
+#' This function returns valid results only for normally distributed residuals.
+#' Note that the estimates for the fixed effect variances from
+#' \code{\link{fevcov}} are not normally distributed, but a sum of chi-square
+#' distributions which depends on the eigenvalues of certain large matrices. We
+#' do not compute that distribution. The variances returned by \code{varvars}
+#' can therefore \emph{not} be used directly to estimate confidence intervals,
+#' other than through coarse methods like the Chebyshev inequality. These
+#' estimates only serve as a rough guideline as to how wrong the variance
+#' estimates from \code{\link{fevcov}} might be.
+#' 
+#' Like the fixed effect variances themselves, their variances are also biased
+#' upwards.  Correcting this bias can be costly, and is therefore by default
+#' switched off.
+#' 
+#' The variances tend to zero with increasing number of observations. Thus, for
+#' large datasets they will be quite small.
+#' 
+#' @param est an object of class '"felm"', the result of a call to
+#' \code{\link{felm}(keepX=TRUE)}.
+#' @param alpha a data frame, the result of a call to \code{\link{getfe}}.
+#' @param tol numeric. The absolute tolerance for the bias-corrected
+#' correlation.
+#' @param biascorrect logical. Should the estimates be bias corrected?
+#' @param lhs character. Name of left hand side if multiple left hand sides.
+#' @return \code{varvars} returns a vector with a variance estimate for each
+#' fixed effect variance.  I.e. for the diagonal returned by
+#' \code{\link{fevcov}}.
+#' @note The \code{tol} argument specifies the tolerance as in
+#' \code{\link{fevcov}}.  Note that if \code{est} is the result of a call to
+#' \code{\link{felm}} with \code{keepX=FALSE} (the default), the variances will
+#' be estimated as if the covariates X are independent of the factors.  There
+#' is currently no function available for estimating the variance of the
+#' covariance estimates from \code{\link{fevcov}}.
+#' 
+#' The cited paper does not contain the expressions for the variances computed
+#' by \code{varvars} (there's a 10 page limit in that journal), though they can
+#' be derived in the same fashion as in the paper, with the formula for the
+#' variance of a quadratic form.
+#' @seealso \code{\link{bccorr}} \code{\link{fevcov}}
+#' @references Gaure, S. (2014), \cite{Correlation bias correction in two-way
+#' fixed-effects linear regression}, Stat 3(1):379-390, 2014.
+#' @examples
+#' 
+#' x <- rnorm(500)
+#' x2 <- rnorm(length(x))
+#' 
+#' ## create individual and firm
+#' id <- factor(sample(40,length(x),replace=TRUE))
+#' firm <- factor(sample(30,length(x),replace=TRUE,prob=c(2,rep(1,29))))
+#' foo <- factor(sample(20,length(x),replace=TRUE))
+#' ## effects
+#' id.eff <- rnorm(nlevels(id))
+#' firm.eff <- rnorm(nlevels(firm))
+#' foo.eff <- rnorm(nlevels(foo))
+#' ## left hand side
+#' id.m <- id.eff[id]
+#' firm.m <- 2*firm.eff[firm]
+#' foo.m <- 3*foo.eff[foo]
+#' y <- x + 0.25*x2 + id.m + firm.m + foo.m + rnorm(length(x))
+#' 
+#' # make a data frame
+#' fr <- data.frame(y,x,x2,id,firm,foo)
+#' ## estimate and print result
+#' est <- felm(y ~ x+x2|id+firm+foo, data=fr, keepX=TRUE)
+#' alpha <- getfe(est)
+#' # estimate the covariance matrix of the fixed effects
+#' fevcov(est, alpha)
+#' # estimate variances of the diagonal
+#' varvars(est, alpha)
+#' 
+#' @export varvars
 varvars <- function(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE, lhs=NULL) {
   if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
 
@@ -532,6 +731,109 @@ varvars <- function(est, alpha=getfe(est), tol=0.01, biascorrect=FALSE, lhs=NULL
 
 # a function for computing the covariance matrix between
 # all the fixed effects
+
+
+
+
+
+
+#' Compute limited mobility bias corrected covariance matrix between fixed
+#' effects
+#' 
+#' With a model like \eqn{y = X\beta + D\theta + F\psi + \epsilon}, where
+#' \eqn{D} and \eqn{F} are matrices with dummy encoded factors, one application
+#' of \pkg{lfe} is to study the variances \eqn{var(D\theta)}, \eqn{var(F\psi)}
+#' and covariances \eqn{cov(D\theta, F\psi)}. However, if we use estimates for
+#' \eqn{\theta} and \eqn{\psi}, the resulting variances are biased. The
+#' function \code{fevcov} computes a bias corrected covariance matrix as
+#' described in \cite{Gaure (2014)}.
+#' 
+#' The \code{tol} argument specifies the tolerance. The tolerance is relative
+#' for the variances, i.e. the diagonal of the output.  For the covariances,
+#' the tolerance is relative to the square root of the product of the
+#' variances, i.e. an absolute tolerance for the correlation.  If a numeric of
+#' length 1, \code{tol} specifies the same tolerance for all
+#' variances/covariances.  If it is of length 2, \code{tol[1]} specifies the
+#' variance tolerance, and \code{tol[2]} the covariance tolerance.  \code{tol}
+#' can also be a square matrix of size \code{length(est$fe)}, in which case the
+#' tolerance for each variance and covariance is specified individually.
+#' 
+#' The function performs no checks for estimability. If the fixed effects are
+#' not estimable, the result of a call to \code{fevcov} is not useable.
+#' Moreover, there should be just a single connected component among the fixed
+#' effects.
+#' 
+#' \code{alpha} must contain a full set of coefficients, and contain columns
+#' \code{'fe'} and \code{'effect'} like the default estimable functions from
+#' \code{\link{efactory}}.
+#' 
+#' In the case that the \code{\link{felm}}-estimation has weights, it is the
+#' weighted variances and covariance which are bias corrected.
+#' 
+#' @param est an object of class '"felm"', the result of a call to
+#' \code{\link{felm}(keepX=TRUE)}.
+#' @param alpha a data frame, the result of a call to \code{\link{getfe}}.
+#' @param tol numeric. The absolute tolerance for the bias-corrected
+#' correlation.
+#' @param robust logical. Should robust (heteroskedastic or cluster) residuals
+#' be used, rather than i.i.d.
+#' @param maxsamples integer. Maximum number of samples for expectation
+#' estimates.
+#' @param lhs character. Name of left hand side if multiple left hand sides.
+#' @return \code{fevcov} returns a square matrix with the bias corrected
+#' covariances. An attribute \code{'bias'} contains the biases.  The bias
+#' corrections have been subtracted from the bias estimates.  I.e. vc = vc' -
+#' b, where vc' is the biased variance and b is the bias.
+#' @note Bias correction for IV-estimates are not supported as of now.
+#' 
+#' Note that if \code{est} is the result of a call to \code{\link{felm}} with
+#' \code{keepX=FALSE} (the default), the biases will be computed as if the
+#' covariates X are independent of the factors. This will be faster (typically
+#' by a factor of approx. 4), and possibly wronger.  Note also that the
+#' computations performed by this function are non-trivial, they may take quite
+#' some time.  It would be wise to start out with quite liberal tolerances,
+#' e.g. \cite{tol=0.1}, to get an idea of the time requirements.
+#' 
+#' If there are only two fixed effects, \code{fevcov} returns the same
+#' information as \code{\link{bccorr}}, though in a slightly different format.
+#' @seealso \code{\link{varvars}} \code{\link{bccorr}}
+#' @references Gaure, S. (2014), \cite{Correlation bias correction in two-way
+#' fixed-effects linear regression}, Stat 3(1):379-390, 2014.
+#' \url{http://dx.doi.org/10.1002/sta4.68}
+#' @examples
+#' 
+#' x <- rnorm(5000)
+#' x2 <- rnorm(length(x))
+#' 
+#' ## create individual and firm
+#' id <- factor(sample(40,length(x),replace=TRUE))
+#' firm <- factor(sample(30,length(x),replace=TRUE,prob=c(2,rep(1,29))))
+#' foo <- factor(sample(20,length(x),replace=TRUE))
+#' ## effects
+#' id.eff <- rnorm(nlevels(id))
+#' firm.eff <- runif(nlevels(firm))
+#' foo.eff <- rchisq(nlevels(foo),df=1)
+#' ## left hand side
+#' id.m <- id.eff[id]
+#' firm.m <- firm.eff[firm]
+#' foo.m <- foo.eff[foo]
+#' # normalize them
+#' id.m <- id.m/sd(id.m)
+#' firm.m <- firm.m/sd(firm.m)
+#' foo.m <- foo.m/sd(foo.m)
+#' y <- x + 0.25*x2 + id.m + firm.m + foo.m + rnorm(length(x),sd=2)
+#' z <- x + 0.5*x2 + 0.7*id.m + 0.5*firm.m + 0.3*foo.m + rnorm(length(x),sd=2)
+#' # make a data frame
+#' fr <- data.frame(y,z,x,x2,id,firm,foo)
+#' ## estimate and print result
+#' est <- felm(y|z ~ x+x2|id+firm+foo, data=fr, keepX=TRUE)
+#' # find bias corrections, there's little bias in this example
+#' print(yv <- fevcov(est, lhs='y'))
+#' ## Here's how to compute the unbiased correlation matrix:
+#' cm <- cov2cor(yv)
+#' structure(cm,bias=NULL)
+#' 
+#' @export fevcov
 fevcov <- function(est, alpha=getfe(est), tol=0.01, robust=!is.null(est$clustervar),
                    maxsamples=Inf, lhs=NULL) {
   if(nlevels(est$cfactor) > 1) stop('Data should have just a single connected component')
@@ -541,6 +843,7 @@ fevcov <- function(est, alpha=getfe(est), tol=0.01, robust=!is.null(est$clusterv
   if(length(est$lhs) > 1 && is.null(lhs))
       stop('Please specify lhs=[one of ',paste(est$lhs, collapse=','),']')      
   if(length(est$lhs) == 1) lhs <- est$lhs
+  if(is.null(lhs)) lhs <- 1
   effnam <- 'effect'
   if(! ('effect' %in% colnames(alpha))) {
     effnam <- paste('effect',lhs,sep='.')
@@ -603,10 +906,12 @@ fevcov <- function(est, alpha=getfe(est), tol=0.01, robust=!is.null(est$clusterv
     tol[offdiag] <- -(abs(tol)*sqrt(abs(tcrossprod(diag(bvcv)-diag(bias)))))[offdiag]
   }
   # compute the covariances
-  for(i in 1:(K-1)) {
-    for(j in (i+1):K)
-        bias[i,j] <- bias[j,i] <- covbias(c(i,j),est,tol[i,j],maxsamples,
-                                          resid=resid, weights=est$weights)
-  }  
+  if(K > 1) {
+    for(i in 1:(K-1)) {
+      for(j in (i+1):K)
+          bias[i,j] <- bias[j,i] <- covbias(c(i,j),est,tol[i,j],maxsamples,
+                                            resid=resid, weights=est$weights)
+    }  
+  }
   structure(bvcv-bias, bias=bias)
 }

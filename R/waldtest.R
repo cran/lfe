@@ -1,4 +1,70 @@
-# $Id: waldtest.R 1655 2015-03-18 18:51:06Z sgaure $
+#' Compute Wald test for joint restrictions on coefficients
+#' 
+#' Compute a Wald test for a linear hypothesis on the coefficients.  Also
+#' supports Delta-approximation for non-linear hypotheses.
+#' 
+#' The function \code{waldtest} computes a Wald test for the H0: R beta = r,
+#' where beta is the estimated vector \code{coef(object)}.
+#' 
+#' If \code{R} is a character, integer, or logical vector it is assumed to
+#' specify a matrix which merely picks out a subset of the coefficients for
+#' joint testing. If \code{r} is not specified, it is assumed to be a zero
+#' vector of the appropriate length.
+#' 
+#' \code{R} can also be a formula which is linear in the estimated
+#' coefficients, e.g. of the type \code{~Q-2|x-2*z} which will test the joint
+#' hypothesis Q=2 and x=2*z.
+#' 
+#' If \code{R} is a function (of the coefficients), an approximate Wald test
+#' against H0: \code{R(beta) == 0}, using the Delta-method, is computed.
+#' 
+#' In case of an IV-estimation, the names for the endogenous variables in
+#' \code{coef(object)} are of the type \code{"`Q(fit)`"} which is a bit dull to
+#' type; if all the endogenous variables are to be tested they can be specified
+#' as \code{"endovars"}. It is also possible to specify an endogenous variable
+#' simply as \code{"Q"}, and \code{waldtest} will add the other syntactic sugar
+#' to obtain \code{"`Q(fit)`"}.
+#' 
+#' The \code{type} argument works as follows. If \code{type=='default'} it is
+#' assumed that the residuals are i.i.d., unless a cluster structure was
+#' specified to \code{\link{felm}}. If \code{type=='robust'}, a heteroscedastic
+#' structure is assumed, even if a cluster structure was specified in
+#' \code{\link{felm}}.
+#' 
+#' @param object object of class \code{"felm"}, a result of a call to
+#' \code{\link{felm}}.
+#' @param R matrix, character, formula, function, integer or logical.
+#' Specification of which exclusions to test.
+#' @param r numerical vector.
+#' @param type character. Error structure type.
+#' @param lhs character. Name of left hand side if multiple left hand sides.
+#' @param df1 integer. If you know better than the default df, specify it here.
+#' @param df2 integer. If you know better than the default df, specify it here.
+#' @return The function \code{waldtest} computes and returns a named numeric
+#' vector containing the following elements.
+#' 
+#' \itemize{ \item \code{p} is the p-value for the Chi^2-test \item \code{chi2}
+#' is the Chi^2-distributed statistic.  \item \code{df1} is the degrees of
+#' freedom for the Chi^2 statistic.  \item \code{p.F} is the p-value for the F
+#' statistics \item \code{F} is the F-distributed statistic.  \item \code{df2}
+#' is the additional degrees of freedom for the F statistic. }
+#' 
+#' The return value has an attribute \code{'formula'} which encodes the
+#' restrictions.
+#' @seealso \code{\link{nlexpect}}
+#' @examples
+#' 
+#' x <- rnorm(10000)
+#' x2 <- rnorm(length(x))
+#' y <- x - 0.2*x2 + rnorm(length(x))
+#' #Also works for lm
+#' summary(est <- lm(y ~ x + x2  ))
+#' # We do not reject the true values
+#' waldtest(est, ~ x-1|x2+0.2|`(Intercept)`)
+#' # The Delta-method coincides when the function is linear:
+#' waldtest(est, function(x) x - c(0, 1, -0.2))
+#' 
+#' @export waldtest
 waldtest <- function(object, R, r, type=c('default','iid','robust','cluster'), lhs=NULL, df1, df2) {
   if(inherits(object,'felm') && object$nostats) stop('No Wald test for objects created with felm(nostats=TRUE)')
   # We make a chi^2 to test whether the equation R theta = r holds.
@@ -34,6 +100,14 @@ waldtest <- function(object, R, r, type=c('default','iid','robust','cluster'), l
     Rr <- formtoR(R, nmc)
     R <- Rr[,-ncol(Rr), drop=FALSE]
     r <- Rr[,ncol(Rr)]
+  } else if(is.function(R)) {
+    # non-linear stuff. Compute value and gradient of R
+    pt <- coef(object,lhs=lhs)
+    pt[is.na(pt)] <- 0
+    val <- R(pt)
+    if(is.null(dim(val))) dim(val) <- c(length(val), 1)
+    gr <- numDeriv::jacobian(R,pt)
+    if(is.null(dim(gr))) dim(gr) <- c(1,length(gr))
   } else  if(!is.matrix(R)) {
     # it's not a matrix, so it's a list of parameters, either
     # names, logicals or indices
@@ -65,18 +139,24 @@ waldtest <- function(object, R, r, type=c('default','iid','robust','cluster'), l
     }
     R <- RR
   } 
-  if(missing(r) || is.null(r))
-      r <- rep(0,nrow(R))
-  else if(length(r) != nrow(R)) stop('nrow(R) != length(r)')
-  cf <- coef(object, lhs=lhs)
-  cf[is.na(cf)] <- 0
-  beta <- R %*% cf - r
-  V[is.na(V)] <- 0   # ignore NAs
-  W <- try(sum(beta * solve(R %*% V %*% t(R),beta)))
-
-  if(inherits(W,'try-error')) 
-      W <- as.numeric(t(beta) %*% pinvx(R %*% V %*% t(R)) %*% beta)
-
+  # Two cases here. If R is a function, we do a non-linear delta test against 0, otherwise
+  # we do the ordinary Wald test
+  if(is.function(R)) {
+    W <- as.numeric(t(val) %*% solve(gr %*% V %*% t(gr)) %*% val)
+    if(missing(df1)) df1 <- length(val)
+  } else {
+    if(missing(r) || is.null(r))
+        r <- rep(0,nrow(R))
+    else if(length(r) != nrow(R)) stop('nrow(R) != length(r)')
+    cf <- coef(object, lhs=lhs)
+    cf[is.na(cf)] <- 0
+    beta <- R %*% cf - r
+    V[is.na(V)] <- 0   # ignore NAs
+    W <- try(sum(beta * solve(R %*% V %*% t(R),beta)), silent=TRUE)
+    
+    if(inherits(W,'try-error')) 
+        W <- as.numeric(t(beta) %*% pinvx(R %*% V %*% t(R)) %*% beta)
+  }
   # W follows a chi2(Q) distribution, but the F-test has another
   # df which is ordinarily object$df. However, if there are clusters
   # the df should be reduced to the number of clusters-1
@@ -92,10 +172,11 @@ waldtest <- function(object, R, r, type=c('default','iid','robust','cluster'), l
 
   F <- W/df1
   # F follows a F(df1,df2) distribution
-
+  if(is.function(R)) frm <- R else  frm <- Rtoform(R,r,nmc)
+  
   structure(c(p=pchisq(W, df1, lower.tail=FALSE), chi2=W, df1=df1,
               p.F=pf(F,df1,df2, lower.tail=FALSE), F=F, df2=df2),
-            formula=Rtoform(R,r,nmc))
+            formula=frm)
 }
 
 # convert a formula which is a set of linear combinations like ~x+x3 | x2-x4+3 to

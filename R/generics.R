@@ -1,4 +1,6 @@
-# $Id: generics.R 1774 2015-09-22 11:33:17Z sgaure $
+# $Id: generics.R 1947 2016-04-08 07:45:56Z sgaure $
+#' @method print felm
+#' @export
 print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
   z <- x
   if(z$p == 0) {
@@ -16,10 +18,16 @@ print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
 #  l
 #}
 
+#' @method coef felm
+#' @export
 coef.felm <- function(object, ..., lhs=NULL) {
   if(is.null(lhs)) {
     if(is.null(object$coefficients) || ncol(object$coefficients) == 1)
-        return({r <- as.vector(object$coefficients); names(r) <- rownames(object$coefficients); r})
+        return({
+          r <- as.vector(object$coefficients)
+          names(r) <- rownames(object$coefficients)
+          if(is.null(names(r))) names(r) <- names(object$coefficients)
+          r})
     object$coefficients
   } else {
 #    if(anyNA(match(lhs, colnames(object$coefficients))))
@@ -29,6 +37,8 @@ coef.felm <- function(object, ..., lhs=NULL) {
   }
 }
 
+#' @method residuals felm
+#' @export
 residuals.felm <- function(object, ..., lhs=NULL) {
   if(is.null(lhs)) {
     object$residuals
@@ -39,9 +49,11 @@ residuals.felm <- function(object, ..., lhs=NULL) {
     object$residuals[,lhs,drop=FALSE]
   }
 }
-
-vcov.felm <- function(object,...,type=c('iid','robust','cluster'),lhs=NULL) {
+#' @method vcov felm
+#' @export
+vcov.felm <- function(object,...,type, lhs=NULL) {
 #  if(is.na(match(type[1], c('iid', 'robust', 'cluster'))))
+  if(missing(type)) type <- if(is.null(object$clustervar)) 'iid' else 'cluster'
   if(!(type[1] %in% c('iid', 'robust', 'cluster')))
       stop("specify vcov-type as 'iid', 'robust' or 'cluster'")
 
@@ -64,6 +76,8 @@ vcov.felm <- function(object,...,type=c('iid','robust','cluster'),lhs=NULL) {
   if(type[1] == 'cluster') return(object$STATS[[lhs]]$clustervcv)
 }
 
+#' @method update felm
+#' @export
 update.felm <- function (object, formula., ..., evaluate = TRUE) 
 {
     if (is.null(call <- getCall(object))) 
@@ -85,27 +99,34 @@ update.felm <- function (object, formula., ..., evaluate = TRUE)
     else call
 }
 
+#' @method estfun felm
+#' @export
 estfun.felm <- function(x, ...) {
   cl <- match.call(expand.dots=FALSE)
-  do.call(getS3method('estfun','lm'), as.list(cl)[-1])
+  do.call(utils::getS3method('estfun','lm'), as.list(cl)[-1])
 }
 
+#' @method weights felm
+#' @export
 weights.felm <- function(object,...) object$weights^2
 
-
+#' @method xtable summary.felm
+#' @export
 xtable.summary.felm <- function(x, caption=NULL, label=NULL, align=NULL, digits=NULL,
                                 display=NULL, ...) {
     cl <- match.call(expand.dots=FALSE)
-    do.call(getS3method('xtable','summary.lm'), as.list(cl)[-1])
+    do.call(utils::getS3method('xtable','summary.lm'), as.list(cl)[-1])
 }
 
-
+#' @method xtable felm
+#' @export
 xtable.felm <- function(x, caption=NULL, label=NULL, align=NULL, digits=NULL,
                         display=NULL, ...) {
     cl <- match.call(expand.dots=FALSE)
-    do.call(getS3method('xtable','lm'), as.list(cl)[-1])
+    do.call(utils::getS3method('xtable','lm'), as.list(cl)[-1])
 }
-
+#' @method print summary.felm
+#' @export
 print.summary.felm <- function(x,digits=max(3L,getOption('digits')-3L),...) {
   if(!is.null(x$lhs))
       cat('Summary for outcome',x$lhs,'\n')
@@ -174,6 +195,77 @@ print.summary.felm <- function(x,digits=max(3L,getOption('digits')-3L),...) {
   cat('\n\n')
 }
 
+
+
+
+
+
+
+#' Summarize felm model fits
+#' 
+#' \code{summary} method for class \code{"felm"}.
+#' 
+#' 
+#' @method summary felm
+#' @name summary
+#' @param object an object of class \code{"felm"}, a result of a call to
+#' \code{felm}.
+#' @param ... further arguments passed to or from other methods.
+#' @param robust logical. Use robust standard errors. See notes.
+#' @param lhs character. If multiple left hand sides, specify the name of the
+#' one to obtain a summary for.
+#' @return The function \code{summary.felm} returns an object of \code{class}
+#' \code{"summary.felm"}.  It is quite similar to en \code{"summary.lm"}
+#' object, but not entirely compatible.
+#' 
+#' The \code{"summary.felm"} object is a list containing the following fields:
+#' 
+#' \item{residuals}{a numerical vector. The residuals of the full system, with
+#' dummies.}
+#' \item{p}{an integer. The total number of coefficients, including
+#' those projected out.}
+#' \item{Pp}{an integer. The number of coefficients,
+#' excluding those projected out.}
+#' \item{coefficients}{a Pp x 4 matrix with
+#' columns for the estimated coefficients, their standard errors, t-statistic
+#' and corresponding (two-sided) p-value.}
+#' \item{rse}{residual standard error.}
+#' \item{r2}{R^2, the fraction of variance explained by the model.}
+#' \item{r2adj}{Adjusted R^2.}
+#' \item{fstat}{F-statistic.}
+#' \item{pval}{P-values.}
+#' \item{P.fstat}{Projected F-statistic. The result of a
+#' call to \code{\link{waldtest}}}
+#' \item{fe}{list of factors. A list of the
+#' terms in the second part of the model.}
+#' \item{lhs.}{character. If
+#' \code{object} is the result of an estimation with multiple left hand sides,
+#' the actual argument \code{lhs} will be copied to this field.}
+#' \item{iv1fstat}{F-statistic for excluded instruments in 1. step IV, see
+#' \code{\link{felm}}.}
+#' \item{iv1pval}{P-value for \code{iv1fstat}.}
+
+#' @note The standard errors are adjusted for the reduced degrees of freedom
+#' coming from the dummies which are implicitly present.  They are also
+#' small-sample corrected.
+#' 
+#' If the \code{robust} parameter is \code{FALSE}, the returned object will
+#' contain ordinary standard errors. If the \code{robust} parameter is
+#' \code{TRUE}, clustered standard errors are reported if a cluster was
+#' specified in the call to \code{felm}; if not, heteroskedastic robust
+#' standard errors are reported.
+#' 
+#' Several F-statistics reported. The \code{P.fstat} is for the projected
+#' system.  I.e. a joint test on whether all the \code{Pp} coefficients in
+#' \code{coefficients} are zero.  Then there are \code{fstat} and \code{pval}
+#' which is a test on all the coefficients including the ones projected out,
+#' except for an intercept.  This statistic assumes i.i.d. errors and is not
+#' reliable for robust or clustered data.
+#' 
+#' For a 1st stage IV-regression, an F-statistic against the model with
+#' excluded instruments is also computed.
+#' @seealso \code{\link{waldtest}}
+#' @export
 summary.felm <- function(object,...,robust=!is.null(object$clustervar),lhs=NULL) {
   z <- object
   if(z$nostats) stop('No summary for objects created with felm(nostats=TRUE)')
@@ -182,6 +274,7 @@ summary.felm <- function(object,...,robust=!is.null(object$clustervar),lhs=NULL)
         stop('Please specify lhs=[one of ',paste(z$lhs,collapse=','),']')
     STATS <- z
     lhs <- object$lhs
+    if(is.null(lhs)) lhs <- colnames(object$residuals)[1]
   } else {
     if(is.na(match(lhs, z$lhs))) 
         stop('Please specify lhs=[one of ',paste(z$lhs,collapse=','),']')

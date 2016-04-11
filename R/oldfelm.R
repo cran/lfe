@@ -1,4 +1,4 @@
-# $Id: oldfelm.R 1693 2015-04-07 09:36:29Z sgaure $
+# $Id: oldfelm.R 1942 2016-04-07 21:25:18Z sgaure $
 # Author: Simen Gaure
 # Copyright: 2011, Simen Gaure
 # Licence: Artistic 2.0
@@ -610,6 +610,7 @@ project <- function(mf,fl,data,contrasts,clustervar=NULL,pf=parent.frame()) {
   ret
 }
 
+#' @export
 ..oldfelm <- function(formula, data, exactDOF=FALSE, subset, na.action, contrasts=NULL,...) {
 
   knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats')

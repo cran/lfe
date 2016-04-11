@@ -1,7 +1,7 @@
 
-R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+R Under development (unstable) (2016-04-03 r70416) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -51,6 +51,10 @@ Loading required package: Matrix
 > data <- data.frame(y,x1,x2,x3,f1,clu1,clu2,clu3)
 > clu <- list('clu1', 'clu2', 'clu3')
 > summary(felm(y ~ x1 + x2 + f1|0|0|clu1+clu2+clu3, data))
+Warning in newols(mm, nostats = nostats[1], exactDOF = exactDOF, onlyse = onlyse,  :
+  Negative eigenvalues set to zero in multiway clustered variance matrix. See felm(...,psdef=FALSE)
+Warning in chol.default(mat, pivot = TRUE, tol = tol) :
+  the matrix is either rank-deficient or indefinite
 
 Call:
    felm(formula = y ~ x1 + x2 + f1 | 0 | 0 | clu1 + clu2 + clu3,      data = data) 
@@ -61,16 +65,16 @@ Residuals:
 
 Coefficients:
             Estimate Cluster s.e. t value Pr(>|t|)    
-(Intercept)   0.2398       0.3035    0.79  0.42962    
-x1            1.0078       0.0772   13.06  < 2e-16 ***
-x2            0.8897       0.0687   12.95  < 2e-16 ***
-f12          -0.5790       0.1598   -3.62  0.00031 ***
-f13          -0.7071       0.2889   -2.45  0.01455 *  
-f14          -0.0238       0.2284   -0.10  0.91697    
-f15          -0.3162       0.2296   -1.38  0.16868    
-f16          -0.6152       0.2477   -2.48  0.01317 *  
-f17          -0.3242       0.2234   -1.45  0.14713    
-f18          -0.4256       0.2486   -1.71  0.08725 .  
+(Intercept)   0.2398       0.3036    0.79  0.42977    
+x1            1.0078       0.0795   12.67  < 2e-16 ***
+x2            0.8897       0.0717   12.41  < 2e-16 ***
+f12          -0.5790       0.1714   -3.38  0.00076 ***
+f13          -0.7071       0.2895   -2.44  0.01477 *  
+f14          -0.0238       0.2340   -0.10  0.91897    
+f15          -0.3162       0.2299   -1.38  0.16932    
+f16          -0.6152       0.2486   -2.47  0.01349 *  
+f17          -0.3242       0.2288   -1.42  0.15689    
+f18          -0.4256       0.2490   -1.71  0.08766 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
@@ -78,7 +82,7 @@ Residual standard error: 1.81 on 990 degrees of freedom
 Multiple R-squared(full model): 0.417   Adjusted R-squared: 0.412 
 Multiple R-squared(proj model): 0.417   Adjusted R-squared: 0.412 
 F-statistic(full model, *iid*):78.6 on 9 and 990 DF, p-value: <2e-16 
-F-statistic(proj model): 24.2 on 9 and 79 DF, p-value: <2e-16 
+F-statistic(proj model): 47.8 on 9 and 79 DF, p-value: <2e-16 
 
 
 > #gclu <- structure(clu, method='gaure')
@@ -91,4 +95,4 @@ F-statistic(proj model): 24.2 on 9 and 79 DF, p-value: <2e-16
 > 
 > proc.time()
    user  system elapsed 
-  2.549   0.087   2.344 
+  2.221   0.611   2.171 

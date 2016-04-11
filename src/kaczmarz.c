@@ -1,5 +1,5 @@
 /*
-  $Id: kaczmarz.c 1666 2015-03-21 22:06:05Z sgaure $
+  $Id: kaczmarz.c 1915 2016-04-05 12:56:27Z sgaure $
 */
 #include "lfe.h"
 /* Need sprintf */
@@ -273,7 +273,6 @@ SEXP MY_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores) {
   /* Set up the message stack */
   initmsg();
 #endif
-  
   if(!isNull(initial)) {
     init = REAL(initial);
   }

@@ -1,4 +1,85 @@
-# $Id: btrap.R 1683 2015-03-26 09:24:47Z sgaure $
+# $Id: btrap.R 1943 2016-04-07 23:08:38Z sgaure $
+
+
+
+
+
+
+#' Bootstrap standard errors for the group fixed effects
+#' 
+#' Bootstrap standard errors for the group fixed effects which were swept out
+#' during an estimation with \code{\link{felm}}.
+#' 
+#' The bootstrapping is done in parallel if \code{threads > 1}.
+#' \code{\link{btrap}} is run automatically from \code{\link{getfe}} if
+#' \code{se=TRUE} is specified.  To save some overhead, the individual
+#' iterations are grouped together, the memory available for this grouping is
+#' fetched with \code{getOption('lfe.bootmem')}, which is initialized upon
+#' loading of \pkg{lfe} to \code{options(lfe.bootmem=500)} (MB).
+#' 
+#' If \code{robust=TRUE}, heteroskedastic robust standard errors are estimated.
+#' If \code{robust=FALSE} and \code{cluster=TRUE}, clustered standard errors
+#' with the cluster specified to \code{felm()} are estimated. If \code{cluster}
+#' is a factor, it is used for the cluster definition.  \code{cluster may} also
+#' be a list of factors.
+#' 
+#' @param alpha data frame returned from \code{\link{getfe}}
+#' @param obj object of class \code{"felm"}, usually, a result of a call to
+#' \code{\link{felm}}
+#' @param N integer.  The number of bootstrap iterations
+#' @param ef function.  An estimable function such as in \code{\link{getfe}}.
+#' The default is to use the one used on \code{alpha}
+#' @param eps double. Tolerance for centering, as in getfe
+#' @param threads integer.  The number of threads to use
+#' @param robust logical. Should heteroskedastic standard errors be estimated?
+#' @param cluster logical or factor. Estimate clustered standard errors.
+#' @param lhs character vector. Specify which left hand side if \code{obj} has
+#' multiple lhs.
+#' @return A data-frame of the same size as alpha is returned, with standard
+#' errors filled in.
+#' @examples
+#' 
+#' oldopts <- options(lfe.threads=2)
+#' ## create covariates
+#' x <- rnorm(3000)
+#' x2 <- rnorm(length(x))
+#' 
+#' ## create individual and firm
+#' id <- factor(sample(700,length(x),replace=TRUE))
+#' firm <- factor(sample(300,length(x),replace=TRUE))
+#' 
+#' ## effects
+#' id.eff <- rlnorm(nlevels(id))
+#' firm.eff <- rexp(nlevels(firm))
+#' 
+#' ## left hand side
+#' y <- x + 0.25*x2 + id.eff[id] + firm.eff[firm] + rnorm(length(x))
+#' 
+#' ## estimate and print result
+#' est <- felm(y ~ x+x2 | id + firm)
+#' summary(est)
+#' ## extract the group effects
+#' alpha <- getfe(est)
+#' head(alpha)
+#' ## bootstrap standard errors
+#' head(btrap(alpha,est))
+#' 
+#' ## bootstrap some differences
+#' ef <- function(v,addnames) {
+#'   w <- c(v[2]-v[1],v[3]-v[2],v[3]-v[1])
+#'   if(addnames) {
+#'      names(w) <-c('id2-id1','id3-id2','id3-id1')
+#'      attr(w,'extra') <- list(note=c('line1','line2','line3'))
+#'   }
+#'   w
+#' }
+#' # check that it's estimable
+#' is.estimable(ef,est$fe)
+#' 
+#' head(btrap(alpha,est,ef=ef))
+#' options(oldopts)
+#' 
+#' @export btrap
 btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
                   threads=getOption('lfe.threads'), robust=FALSE,
                   cluster=NULL, lhs=NULL) {
@@ -31,25 +112,14 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
     if(!is.null(attr(v,'extra'))) alpha <- cbind(alpha,attr(v,'extra'))
   }
 
-  if(is.null(lhs))
-      R <- obj$r.residuals-obj$residuals
-  else
-      R <- obj$r.residuals[,lhs]-obj$residuals[,lhs]
-  
-  # We use the variance in PY-PXbeta to generate variation V (i.e. the full.residuals),
-  # this is the outcome residuals, so the correct way to do it.
-  # Then we compute W=(I-P)V.  Now, W is a vector which has constant
-  # values for each level of each factor.  Couldn't we generate it by using a level
-  # variation for the factors?  (This doesn't sound right, that's the coefficients...)
-  # Then we adjust for the degrees of freedom, that's component specific
-  # this may as well be done after kaczmarz solution, it makes no difference
-  Rvec <- as.vector(R)  
-  sefact <- sqrt(obj$N/obj$df)
   if(is.null(lhs)) {
-    smpdraw <- as.vector(obj$residuals)
-  }  else {
-    smpdraw <- as.vector(obj$residuals[,lhs])
-  }
+      R <- obj$r.residuals-obj$residuals
+      smpdraw <- as.vector(obj$residuals)
+  } else {
+      R <- obj$r.residuals[,lhs]-obj$residuals[,lhs]
+      smpdraw <- as.vector(obj$residuals[,lhs])
+    }
+
   w <- obj$weights
   # if there are weights, smpdraw should be weighted
   if(!is.null(w)) smpdraw <- smpdraw * w
@@ -71,44 +141,64 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
   start <- last <- as.integer(Sys.time())
   gc()
 
+  if(is.null(lhs))
+      predy <- obj$fitted.values
+  else
+      predy <- obj$fitted.values[,lhs]
 
   if(!is.null(cluster)) {
   # now, what about multiway clustering?
-  # we can't scale with the residuals, but with the cluster demeaned residuals
-  # and the group means
-      skel <- lapply(cluster,function(cl) rep(0,nlevels(cl)))
-      cdres <- demeanlist(smpdraw,cluster)
-      rawmeans <- relist(kaczmarz(cluster,smpdraw-cdres),skel)
-      cmeans <- lapply(rawmeans, function(cm) cm - mean(cm))
-  } 
+    # try the Cameron-Gelbach-Miller stuff.
+    # make the interacted factors, with sign
+    iac <- list()
+    d <- length(cluster)
+    for(i in 1:(2^d-1)) {
+      # Find out which ones to interact
+      iab <- as.logical(intToBits(i))[1:d]
+      # odd number is positive, even is negative
+      sgn <- 2*(sum(iab) %% 2) - 1
+      iac[[i]] <- list(sgn=sgn/choose(d,sum(iab)),ib=iab)
+    }
+  }
+
   for(i in 1:blks) {
     if(robust) {
       # robust residuals, variance is each squared residual
-      rsamp <- rnorm(vpb*length(smpdraw))*abs(smpdraw)
+      #      rsamp <- rnorm(vpb*length(smpdraw))*abs(smpdraw)
+      rsamp <- lapply(1:vpb,function(i) rnorm(length(smpdraw))*abs(smpdraw))
     } else if(!is.null(cluster)) {
-        # We draw group specific errors, sum them, and add a draw of within group specific errors
-        rsamp <- as.vector(replicate(vpb, {
-            rowSums(as.matrix(sapply(seq_along(cluster), function(cl) {
-                clu <- cluster[[cl]]
-                (cmeans[[cl]]*rnorm(nlevels(clu)))[clu]
-            }))) + cdres*rnorm(length(R))
-        }))
+      # Wild bootstrap with Rademacher distribution
+      rsamp <- lapply(1:vpb, function (i) {
+        if(length(cluster) == 1) {
+          smpdraw*sample(c(-1,1),nlevels(cluster[[1]]), replace=TRUE)[cluster[[1]]]
+        } else {
+          # draw a Rademacher dist for each single cluster
+          rad <- lapply(cluster,function(f) sample(c(-1,1),nlevels(f),replace=TRUE)[f])
+          Reduce('+',lapply(iac, function(ia) ia$sgn*smpdraw * Reduce('*',rad[ia$ib])))
+        }
+      })
     } else {
       # IID residuals
-      rsamp <- sample(smpdraw,vpb*length(smpdraw),replace=TRUE)
+      rsamp <- lapply(1:vpb, function(i) sample(smpdraw, replace=TRUE))
     }
-    if(!is.null(w)) rsamp <- rsamp/w
-    dim(rsamp) <- c(length(smpdraw),vpb)
-    v <- kaczmarz(obj$fe,demeanlist(rsamp,obj$fe,eps=eps,threads=threads,
-                                    means=TRUE,weights=w)+Rvec,
-                  eps, threads=threads)*sefact
-#    newR <- rsamp - demeanlist(rsamp,obj$fe,eps=eps,threads=threads) + Rvec
-#    v <- kaczmarz(obj$fe,newR,eps,threads=threads)*sefact
-#    rm(newR)
-    rm(rsamp)
-    efv <- apply(v,2,ef,addnames=FALSE)
-    vsum <- vsum + rowSums(efv)
-    vsq <- vsq + rowSums(efv**2)
+    if(!is.null(w)) rsamp <- lapply(rsamp, function(x) x/w)
+    if(length(obj$cX) > 0) {
+      newr <- lapply(rsamp, function(rs) {
+        newy <- predy + rs
+        newbeta <- obj$inv %*% crossprod(obj$cX, newy)
+        newbeta[is.na(newbeta)] <- 0
+        as.vector(newy - obj$X %*% newbeta)
+      })
+    } else {
+      newr <- lapply(rsamp, function(rs) as.vector(predy) + rs)
+    }
+    v <- kaczmarz(obj$fe, demeanlist(newr, obj$fe, eps=eps, threads=threads,
+                                     means=TRUE, weights=w),
+                  eps=eps, threads=threads)
+    rm(rsamp,newr)
+    efv <- lapply(v,ef,addnames=FALSE)
+    vsum <- vsum + Reduce('+',efv)
+    vsq <- vsq + Reduce('+',Map(function(i) i^2, efv))
     now <- as.integer(Sys.time())
     if(now-last > 300) {
       cat('...finished',i*vpb,'of',newN,'vectors in',now-start,'seconds\n')
@@ -124,5 +214,5 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
   if(!is.null(lhs)) sename <- paste(sename,lhs,sep='.')
   alpha[,sename] <- sqrt(vsq/newN - (vsum/newN)**2)/(1-0.75/newN-7/32/newN**2-9/128/newN**3)
 
-  return(alpha)
+  return(structure(alpha,sename=sename))
 }

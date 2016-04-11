@@ -1,18 +1,33 @@
 /*
-  $Id: utils.c 1670 2015-03-23 11:49:50Z sgaure $
+  $Id: utils.c 1960 2016-04-10 05:55:18Z sgaure $
 */
 #include "lfe.h"
 
 SEXP MY_scalecols(SEXP mat, SEXP vec) {
   if(!isMatrix(mat)) error("first argument should be a matrix");
   mybigint_t col = ncols(mat), row = nrows(mat);
-  if(row != LENGTH(vec)) error("length of vector %d is different from number of rows %d",LENGTH(vec),row);
-  double *cmat = REAL(mat);
-  double *cvec = REAL(AS_NUMERIC(vec));
-  for(mybigint_t j = 0; j < col; j++) {
-    double *cc = &cmat[j*row];
-    for(mybigint_t i = 0; i < row; i++)
-      cc[i] *= cvec[i];
+  if(isMatrix(vec)) {
+    if(row != nrows(vec)) error("Rows of matrix should be the same as rows of vector");
+    double *cmat = REAL(mat);
+    double *cvec = REAL(AS_NUMERIC(vec));
+    for(mybigint_t j = 0; j < col; j++) {
+      double *cc = &cmat[j*row];
+      for(mybigint_t i = 0; i < row; i++) {
+	double tmp = 0.0;
+	for(int k = 0; k < ncols(vec); k++)
+	  tmp += cc[i]*cvec[i+k*row];
+	cc[i] = tmp;
+      }
+    }
+  } else {
+    if(row != LENGTH(vec)) error("length of vector %d is different from number of rows %d",LENGTH(vec),row);
+    double *cmat = REAL(mat);
+    double *cvec = REAL(AS_NUMERIC(vec));
+    for(mybigint_t j = 0; j < col; j++) {
+      double *cc = &cmat[j*row];
+      for(mybigint_t i = 0; i < row; i++)
+	cc[i] *= cvec[i];
+    }
   }
   return mat;
 }
@@ -187,6 +202,20 @@ SEXP MY_address(SEXP x) {
   return(mkString(chr));
 }
 
+SEXP MY_named(SEXP x, SEXP n) {
+  if(isNull(n)) {
+    // return NAMED status
+    SEXP res = allocVector(INTSXP, 1);
+    PROTECT(res);
+    INTEGER(res)[0] = NAMED(x);
+    setAttrib(res,install("x"),x);
+    UNPROTECT(1);
+    return(res);
+  }
+  // set named status
+  SET_NAMED(x,INTEGER(n)[0]);
+  return(x);
+}
 
 /* Trickery to check for interrupts when using threads */
 static void chkIntFn(void *dummy) {

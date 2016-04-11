@@ -1,4 +1,4 @@
-# $Id: cgsolve.R 1788 2015-10-26 11:46:59Z sgaure $
+# $Id: cgsolve.R 1943 2016-04-07 23:08:38Z sgaure $
 # From "A practical termination criterion for the conjugate gradient method", E.F. Kaasschieter
 # BIT 28 (1988), 308-322  (2.6). 
 # return the vector phi_i(x) for i=1:j
@@ -50,6 +50,76 @@ newmus <- function(oldmus, i, alpha, beta) {
 # conjugate gradient solver Ax = b, b may be matrix
 # If A is a function, it must be able to take a matrix argument
 # Algorithm 3 from Kaasschieter (1988)
+
+
+
+
+
+
+#' Solve a symmetric linear system with the conjugate gradient method
+#' 
+#' 
+#' \code{cgsolve} uses a conjugate gradient algorithm to solve the linear
+#' system \eqn{A x = b} where \eqn{A} is a symmetric matrix.  \code{cgsolve} is
+#' used internally in \pkg{lfe} in the routines \code{\link{fevcov}} and
+#' \code{\link{bccorr}}, but has been made public because it might be useful
+#' for other purposes as well.
+#' 
+#' 
+#' The argument \code{A} can be a symmetric matrix or a symmetric sparse matrix
+#' inheriting from \code{"Matrix"} of the package \pkg{Matrix}.  It can also be
+#' a function which performs the matrix-vector product. If so, the function
+#' must be able to take as input a matrix of column vectors.
+#' 
+#' If the matrix \code{A} is rank deficient, some solution is returned.  If
+#' there is no solution, a vector is returned which may or may not be close to
+#' a solution.  If \code{symmtest} is \code{FALSE}, no check is performed that
+#' \code{A} is symmetric. If not symmetric, \code{cgsolve} is likely to raise
+#' an error about divergence.
+#' 
+#' The tolerance \code{eps} is a relative tolerance, i.e.  \eqn{||x - x_0|| <
+#' \epsilon ||x_0||} where \eqn{x_0} is the true solution and \eqn{x} is the
+#' solution returned by \code{cgsolve}. Use a negative \code{eps} for absolute
+#' tolerance.  The termination criterion for \code{cgsolve} is the one from
+#' \cite{Kaasschieter (1988)}, Algorithm 3.
+#' 
+#' Preconditioning is currently not supported.
+#' 
+#' If \code{A} is a function, the test for symmetry is performed by drawing two
+#' random vectors \code{x,y}, and testing whether \eqn{|(Ax, y) - (x, Ay)| <
+#' 10^{-6} sqrt((||Ax||^2 + ||Ay||^2)/N)}, where \eqn{N} is the vector length.
+#' Thus, the test is neither deterministic nor perfect.
+#' 
+#' @param A matrix, Matrix or function.
+#' @param b vector or matrix of columns vectors.
+#' @param eps numeric. Tolerance.
+#' @param init numeric. Initial guess.
+#' @param symmtest logical. Should the matrix be tested for symmetry?
+#' @param name character. Arbitrary name used in progress reports.
+#' @return
+#' 
+#' A solution \eqn{x} of the linear system \eqn{A x = b} is returned.
+#' @seealso \code{\link{kaczmarz}}
+#' @references Kaasschieter, E. (1988) \cite{A practical termination criterion
+#' for the conjugate gradient method}, BIT Numerical Mathematics,
+#' 28(2):308-322.  \url{http://link.springer.com/article/10.1007\%2FBF01934094}
+#' @examples
+#' 
+#'   N <- 100000
+#' # create some factors
+#'   f1 <- factor(sample(34000,N,replace=TRUE))
+#'   f2 <- factor(sample(25000,N,replace=TRUE))
+#' # a matrix of dummies, which probably is rank deficient
+#'   B <- makeDmatrix(list(f1,f2))
+#'   dim(B)
+#' # create a right hand side
+#'   b <- as.matrix(B %*% rnorm(ncol(B)))
+#' # solve B' B x = B' b
+#'   sol <- cgsolve(crossprod(B), crossprod(B, b), eps=-1e-2)
+#'   #verify solution
+#'   sqrt(sum((B %*% sol - b)^2))
+#' 
+#' @export cgsolve
 cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
   start <- Sys.time()
   precon <- attr(A,'precon')
@@ -89,7 +159,6 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
   }
   p <- r
   tim <- 0
-
 # first iteration outside loop
   oldr2 <- colSums(r^2)
   minr2 <- sqrt(max(oldr2))
@@ -148,7 +217,7 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
     }
     r2rms <- sqrt(max(r2))
     minr2 <- min(minr2,r2rms)
-    if(k > N || kk > 500 || (k > 100 && r2rms > 10000*minr2)) {
+    if(k > N || ( kk > 1000 && r2rms > 100*minr2) || (k > 100 && r2rms > 10000*minr2)) {
       warning('cgsolve (',name,') seems to diverge, iter=',k,', ||r2||=',r2rms,
               ' returning imprecise solutions')
       res[,origcol[seq_len(ncol(x))]] <- x
@@ -163,6 +232,7 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
     p <- .Call(C_pdaxpy,r,p,beta)
 #    p <- r + t(beta*t(p))
     Ap <- fun(p)
+#    gc()
     alpha <- r2/.Call(C_piproduct, Ap, p)
 #    alpha <- r2/colSums(Ap*p)
 #    message(name, ' ', k, ' alpha '); print(alpha)

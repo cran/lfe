@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2015-09-06 r69305) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
+R Under development (unstable) (2016-04-03 r70416) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -278,12 +278,12 @@ F-statistic(proj model):  241 on 1 and 920 DF, p-value: <2e-16
 + }
 > head(getfe(est,ef=ef,se=TRUE))
              effect     se
-(Intercept)  2.9372 0.4752
-id2         -2.0997 0.5070
-id3         -0.6596 0.5050
-id4         -1.1326 0.5249
-id5         -2.5414 0.5312
-id6         -2.0993 0.5395
+(Intercept)  2.9372 0.4566
+id2         -2.0997 0.4874
+id3         -0.6596 0.4830
+id4         -1.1326 0.5011
+id5         -2.5414 0.5177
+id6         -2.0993 0.5101
 > # test fevcov
 > print(fv <- fevcov(est))
           id    firm
@@ -321,4 +321,4 @@ Warning messages:
 > 
 > proc.time()
    user  system elapsed 
-  3.908   1.165   3.959 
+  4.500   1.225   4.471 

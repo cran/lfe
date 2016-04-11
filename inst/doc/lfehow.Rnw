@@ -1,6 +1,10 @@
-%\VignetteEngine{knitr::knitr}
-% $Id: lfehow.Rnw 1655 2015-03-18 18:51:06Z sgaure $
+% $Id: lfehow.Rnw 1796 2015-11-12 13:10:20Z sgaure $
 \documentclass{amsart}
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{How lfe works}
+%\VignetteKeyword{Multiple Fixed Effects}
+%\VignetteKeyword{Kaczmarz Method}
+%\VignetteKeyword{Method of Alternating Projections}
 
 \usepackage[utf8]{inputenc}
 
@@ -12,10 +16,6 @@
 \newcommand{\bma}{\begin{bmatrix}}
 \newcommand{\ema}{\end{bmatrix}}
 
-%%\VignetteIndexEntry{How lfe works}
-%%\VignetteKeyword{Multiple Fixed Effects}
-%%\VignetteKeyword{Kaczmarz Method}
-%%\VignetteKeyword{Method of Alternating Projections}
 
 
 \title{How \pkg{lfe} works}

@@ -1,7 +1,7 @@
 
-R Under development (unstable) (2015-04-19 r68206) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+R Under development (unstable) (2016-04-03 r70416) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -18,7 +18,7 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 > set.seed(42)
-> options(digits=3, warn=1)
+> options(digits=3, warn=1,lfe.threads=1)
 > x <- rnorm(1000)
 > x1 <- rnorm(1000)
 > x2 <- rnorm(1000) 
@@ -123,19 +123,25 @@ F-statistic(proj model): 77.5 on 1 and 29 DF, p-value: 1.09e-09
 
 > 
 > #anomalies. No variables, etc.
-> summary(felm(y ~ 1 | f1|0|cluster, dat))
+> summary(est <- felm(y ~ 1 | f1|0|cluster, dat))
 
 Call:
    felm(formula = y ~ 1 | f1 | 0 | cluster, data = dat) 
 
 Residuals:
    Min     1Q Median     3Q    Max 
-    NA     NA     NA     NA     NA 
+ -9.25  -1.04  -0.14   1.11   7.29 
 
 Coefficients:
 (No coefficients)
 
 
+> fevcov(est)
+      f1
+f1 0.556
+attr(,"bias")
+       f1
+f1 0.0198
 > summary(felm(y ~ 0 | f1|0|cluster, dat))
 
 Call:
@@ -143,7 +149,7 @@ Call:
 
 Residuals:
    Min     1Q Median     3Q    Max 
-    NA     NA     NA     NA     NA 
+ -9.25  -1.04  -0.14   1.11   7.29 
 
 Coefficients:
 (No coefficients)
@@ -156,7 +162,7 @@ Call:
 
 Residuals:
    Min     1Q Median     3Q    Max 
-    NA     NA     NA     NA     NA 
+-7.096  0.452  1.574  2.687  9.603 
 
 Coefficients:
 (No coefficients)
@@ -498,4 +504,4 @@ Loading required namespace: plm
 > 
 > proc.time()
    user  system elapsed 
-   3.77    2.06    3.55 
+   4.57    2.11    4.41 

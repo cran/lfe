@@ -1,6 +1,8 @@
-%\VignetteEngine{knitr::knitr}
-% $Id: identification.Rnw 1693 2015-04-07 09:36:29Z sgaure $
+% $Id: identification.Rnw 1796 2015-11-12 13:10:20Z sgaure $
 \documentclass{amsproc}
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Multicollinearity, identification, and estimable functions}
+%\VignetteKeyword{Multiple Fixed Effects}
 
 \usepackage[utf8]{inputenc}
 
@@ -12,8 +14,6 @@
 \newcommand{\bma}{\begin{bmatrix}}
 \newcommand{\ema}{\end{bmatrix}}
 
-%%\VignetteIndexEntry{Multicollinearity, identification, and estimable functions}
-%%\VignetteKeyword{Multiple Fixed Effects}
 
 \title{Multicollinearity, identification, and estimable functions}
 

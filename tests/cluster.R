@@ -42,16 +42,19 @@ ols <- function(form, data, robust=FALSE, cluster=NULL,digits=getOption('digits'
 
 x <- rnorm(1000) 
 f1 <- sample(8,length(x), repl=T)
-clu <- factor(sample(15,length(x), replace=T))
+clu <- factor(sample(10,length(x), replace=T))
 cluerr <- rnorm(nlevels(clu))[clu]
-err <- abs(x)*rnorm(length(x)) + cluerr
+clu2 <- factor(sample(10,length(x), replace=T))
+cluerr2 <- rnorm(nlevels(clu2))[clu2]
+err <- abs(x)*rnorm(length(x)) + cluerr + cluerr2
 y <- x +rnorm(nlevels(clu),sd=0.3)[clu] +  log(f1) + err
-dat <- data.frame(y, x, f1=factor(f1), cluster=clu)
+dat <- data.frame(y, x, f1=factor(f1), cluster=clu,cluster2=clu2)
 summary(felm(y ~x |f1, dat))
 # CGM clustering, i.e. one factor means standard one-way clustering
 summary(felm(y ~x + f1, dat, clustervar='clu'))
 # this will make my experimental clustered errors for f1, typically better for few groups
-#summary(felm(y ~x + f1|0|0|cluster, dat, cmeth='gaure'))
+# summary(felm(y ~x + f1|0|0|cluster+cluster2, dat))
+summary(felm(y ~x + f1|0|0|cluster+cluster2, dat, psdef=FALSE))
 # this will sample them for f1, also test having cluster in the third component
 summary(estg <- felm(y ~x | f1|0|cluster, dat))
 # Comparable estimable function
@@ -63,7 +66,7 @@ ef <- function(gamma, addnames) {
   }
   res
 }
-getfe(estg,ef=ef,se=T,bN=200)
+getfe(estg,ef=ef,se=TRUE,bN=200)
 
 #summary(estr <- felm(y ~x + G(f1) + G(f2), dat), robust=TRUE)
 #ols(y ~x + f1 + f2, dat, robust=TRUE)

@@ -1,7 +1,25 @@
 \name{NEWS}
 \title{lfe news}
+\section{Changes in version 2.5}{
+  \itemize{
+  \item \code{demeanlist()} will now do the transformation in place if
+  given an unnamed input. This saves memory in various other places.
 
-\section{Changes in version 2.4}{
+  \item Multiway clustered standard errors now incorporate the negative
+  Eigenvalue adjustment of Cameron, Gelbach, Miller. I.e. they are
+  forced to zero. Can be switched off by \code{felm(...,psdef=FALSE)}.
+
+  \item Fixed a bug in \code{btrap} which could yield wrong bootstrapped standard
+  errors in \code{getfe}.
+
+  \item A function \code{nlexpect()} has been added to integrate
+  functions of estimated coefficients over the residual distribution.
+
+  \item \code{waldtest()} now supports non-linear restrictions with the Delta-method.
+  }
+}
+
+\section{Changes in version 2.4 (2015-10-26}{
 \itemize{
   \item A bug in bias correction with clustered errors has been fixed.
 

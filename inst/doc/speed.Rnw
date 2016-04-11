@@ -1,8 +1,9 @@
-%%\VignetteIndexEntry{Convergence rate with examples}
-%%\VignetteKeyword{Multiple Fixed Effects}
-%\VignetteEngine{knitr::knitr}
-% $Id: speed.Rnw 1655 2015-03-18 18:51:06Z sgaure $
+% $Id: speed.Rnw 1796 2015-11-12 13:10:20Z sgaure $
 \documentclass{amsproc}
+%\VignetteIndexEntry{Convergence rate with examples}
+%\VignetteKeyword{Multiple Fixed Effects}
+%\VignetteEngine{knitr::knitr}
+
 \usepackage[utf8]{inputenc}
 \newcommand{\strong}[1]{{\normalfont\fontseries{b}\selectfont #1}}
 \let\pkg=\strong

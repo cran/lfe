@@ -16,10 +16,12 @@ dummy year
 #nofe
 #se
 #exactdf
+#fecorr
 merge
 robust
 test x x2
 subset ife > 2
+subset x <- quantile(x,0.1)
 ----cut----
 
 Most of this is self-explanatory, there's a file-name, it's supposed to be
@@ -72,6 +74,9 @@ The 'se' line (commented out above) is included if you want standard errors
 on the fixed effects.  These are bootstrapped, and as such very time-consuming
 to compute.  Avoid if you don't need.
 
+The 'fecorr' line (commented out above) will compute bias corrected variances
+and covariances between the fixed effects
+
 The line 'merge' will cause the fixed effects to be merged into the original
 data-set and output as a file 'fe-merged.csv' for further analysis.
 
@@ -93,6 +98,52 @@ If the data-file is a Stata-file, the output files will also be Stata-files.
 
 Note that fixed effects from different components are not directly comparable
 because there's a separate reference value in each component.
+
+
+Subset
+------
+There may be zero or more lines starting with 'subset'. Each one is a filter
+specification, but subsequent lines are chained. As an example
+
+  subset x < mean(x) & y < mean(y)
+
+is different from
+
+  subset x < mean(x)
+  subset y < mean(y)
+
+The first specification will include all observations which have both
+x < mean(x) and y < mean(y). The second specification will first find
+the observations which have x < mean(x).  Then, in this new dataset,
+the observations with y < mean(y) are selected.
+
+A subset specification can be any R expression which evaluates to an array of
+logicals when evaluated in a dataset.  Some examples:
+
+Pick every observation with an id which occurs exactly 8 times:
+  subset (table(id) == 8)[id]
+
+25% random selection of id's:
+  subset id %in% sample(levels(id), 0.25*nlevels(id))
+
+Upper 2% of x:
+  subset x > quantile(x, 1-0.02)
+
+Any entire id which has some observation with x > 2:
+  subset tapply(x,id,function(.x) any(.x > 2))[id]
+
+The same, but more than half of the id's observations must have x > 2
+  subset tapply(x,id,function(.x) {sum(.x > 2) > length(.x)/2} )[id]
+
+Note that any variable used inside the subset spec which is not in the
+dataset, like the function argument above, should start with a ".".
+Otherwise weird things may happen, sometimes without yielding a warning or error.
+tapply, above, splits the x into chunks with equal id, and serves it to the
+specified function.  I.e. the variable .x is a vector of all x-observations
+for a single id.
+
+Note that if your conditions are independent it is much faster to specify them
+on a single line with '&' between, than on multiple lines.
 
 
 IV estimation

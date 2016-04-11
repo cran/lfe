@@ -1,6 +1,6 @@
 library(lfe)
 set.seed(42)
-options(digits=3, warn=1)
+options(digits=3, warn=1,lfe.threads=1)
 x <- rnorm(1000)
 x1 <- rnorm(1000)
 x2 <- rnorm(1000) 
@@ -22,7 +22,8 @@ summary(felm(y ~ x + G(f1)+G(f2), dat, clustervar=clu))
 summary(felm(y ~ x | f1+f2, dat, clustervar=clu))
 
 #anomalies. No variables, etc.
-summary(felm(y ~ 1 | f1|0|cluster, dat))
+summary(est <- felm(y ~ 1 | f1|0|cluster, dat))
+fevcov(est)
 summary(felm(y ~ 0 | f1|0|cluster, dat))
 summary(felm(y ~ 0 | 0|0|cluster, dat))
 

@@ -1,4 +1,62 @@
-# $Id: kaczmarz.R 1767 2015-09-08 14:44:27Z sgaure $
+# $Id: kaczmarz.R 1943 2016-04-07 23:08:38Z sgaure $
+
+
+
+
+
+
+#' Solve a linear system defined by factors
+#' 
+#' Uses the Kaczmarz method to solve a system of the type Dx = R, where D is
+#' the matrix of dummies created from a list of factors.
+#' 
+#' 
+#' @param fl A list of arbitrary factors of the same length
+#' @param R numeric.  A vector, matrix or list of such of the same length as
+#' the factors
+#' @param eps a tolerance for the method
+#' @param init numeric. A vector to use as initial value for the Kaczmarz
+#' iterations. The algorithm converges to the solution closest to this
+#' @param threads integer. The number of threads to use when \code{R} is more
+#' than one vector
+#' @return A vector \code{x} of length equal to the sum of the number of levels
+#' of the factors in \code{fl}, which solves the system \eqn{Dx=R}. If the
+#' system is inconsistent, the algorithm may not converge, it will give a
+#' warning and return something which may or may not be close to a solution. By
+#' setting \code{eps=0}, maximum accuracy (with convergence warning) will be
+#' achieved.
+#' @note This function is used by \code{\link{getfe}}, it's quite specialized,
+#' but it might be useful for other purposes too.
+#' 
+#' In case of convergence problems, setting \code{options(lfe.usecg=TRUE)} will
+#' cause the kaczmarz() function to dispatch to the more general conjugate
+#' gradient method of \code{\link{cgsolve}}.  This may or may not be faster.
+#' @seealso \code{\link{cgsolve}}
+#' @examples
+#' 
+#' ## create factors
+#'   f1 <- factor(sample(24000,100000,replace=TRUE))
+#'   f2 <- factor(sample(20000,length(f1),replace=TRUE))
+#'   f3 <- factor(sample(10000,length(f1),replace=TRUE))
+#'   f4 <- factor(sample(8000,length(f1),replace=TRUE))
+#' ## the matrix of dummies
+#'   D <- makeDmatrix(list(f1,f2,f3,f4))
+#'   dim(D)
+#' ## an x
+#'   truex <- runif(ncol(D))
+#' ## and the right hand side
+#'   R <- as.vector(D %*% truex)
+#' ## solve it
+#'   sol <- kaczmarz(list(f1,f2,f3,f4),R)
+#' ## verify that the solution solves the system Dx = R
+#'   sqrt(sum((D %*% sol - R)^2))
+#' ## but the solution is not equal to the true x, because the system is
+#' ## underdetermined
+#'   sqrt(sum((sol - truex)^2))
+#' ## moreover, the solution from kaczmarz has smaller norm
+#'   sqrt(sum(sol^2)) < sqrt(sum(truex^2))
+#' 
+#' @export kaczmarz
 kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,
                      threads=getOption('lfe.threads')) {
   if(getOption('lfe.usecg')) {

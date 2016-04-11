@@ -1,13 +1,13 @@
 Package: lfe
-Version: 2.4-1788
-Date: 2015-10-26
+Version: 2.5-1968
+Date: 2016-04-11
 Title: Linear Group Fixed Effects
 Author: Simen Gaure, Ragnar Frisch Centre for Economic Research
 Maintainer: Simen Gaure <Simen.Gaure@frisch.uio.no>
-Copyright: 2011-2015, Simen Gaure
+Copyright: 2011-2016, Simen Gaure
 Depends: R (>= 2.15.2), Matrix (>= 1.1-2)
-Imports: Formula, xtable, compiler, utils, methods, sandwich
-Suggests: knitr, igraph, plm
+Imports: Formula, xtable, compiler, utils, methods, sandwich, numDeriv
+Suggests: knitr, igraph, plm, R2Cuba
 VignetteBuilder: knitr
 ByteCompile: yes
 Description: Transforms away factors with many levels prior to doing an OLS. 
@@ -19,6 +19,6 @@ License: Artistic-2.0
 Classification/JEL: C13, C23, C60
 Classification/MSC: 62J05, 65F10, 65F50
 NeedsCompilation: yes
-Packaged: 2015-10-26 11:48:01 UTC; sgaure
+Packaged: 2016-04-11 08:55:35 UTC; sgaure
 Repository: CRAN
-Date/Publication: 2015-10-26 18:06:33
+Date/Publication: 2016-04-11 14:45:24

@@ -1,7 +1,7 @@
 
-R Under development (unstable) (2015-02-02 r67710) -- "Unsuffered Consequences"
-Copyright (C) 2015 The R Foundation for Statistical Computing
-Platform: x86_64-unknown-linux-gnu (64-bit)
+R Under development (unstable) (2016-04-03 r70416) -- "Unsuffered Consequences"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -44,8 +44,6 @@ Warning in chol.default(mat, pivot = TRUE, tol = tol) :
 > ## extract the group fixed effects
 > alpha <- getfe(est)
 > summary(est)  
-Error in solve.default(R %*% V %*% t(R), beta) : 
-  Lapack routine dgesv: system is exactly singular: U[1,1] = 0
 Warning in chol.default(mat, pivot = TRUE, tol = tol) :
   the matrix is either rank-deficient or indefinite
 
@@ -87,4 +85,4 @@ accuracy: 1.00000000e+00 1.00000000e+00>
 > 
 > proc.time()
    user  system elapsed 
-  2.396   0.108   2.381 
+  2.238   0.714   2.212 
