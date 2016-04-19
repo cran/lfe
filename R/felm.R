@@ -1,4 +1,3 @@
-# $Id: felm.R 1943 2016-04-07 23:08:38Z sgaure $
 # makematrix is a bit complicated. The purpose is to make model matrices for the various
 # parts of the formulas.  The complications are due to the iv stuff.
 # If there's an IV-part, its right hand side should be with the
@@ -656,7 +655,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
           # interact the factors
           ia <- factor(do.call(paste,c(cluster[iac],sep='\004')))
           adj <- sgn*dfadj*nlevels(ia)/(nlevels(ia)-1)
-          .Call(C_dsyrk,1.0,meat,adj,rowsum(xz,ia))
+          .Call(C_dsyrk,1.0,meat,adj,Crowsum(xz,ia))
         }
 
         cvcv <- .Call(C_sandwich,1.0,inv,meat)

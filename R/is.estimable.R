@@ -1,10 +1,3 @@
-# $Id: is.estimable.R 1943 2016-04-07 23:08:38Z sgaure $
-# check whether a function is estimable
-
-
-
-
-
 
 #' Verify estimability of function
 #' 
@@ -61,7 +54,7 @@
 #' options(oldopts)
 #' 
 #' @export is.estimable
-is.estimable <- function(ef,fe,R=NULL,nowarn=FALSE,keepdiff=FALSE, threshold=100*getOption('lfe.eps')) {
+is.estimable <- function(ef,fe,R=NULL,nowarn=FALSE,keepdiff=FALSE, threshold=500*getOption('lfe.eps')) {
   if(!is.function(ef)) stop('ef must be a function')
   N <- sum(unlist(lapply(fe,function(f) {
     x <- attr(f,'x', exact=TRUE)

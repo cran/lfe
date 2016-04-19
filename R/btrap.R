@@ -1,10 +1,3 @@
-# $Id: btrap.R 1943 2016-04-07 23:08:38Z sgaure $
-
-
-
-
-
-
 #' Bootstrap standard errors for the group fixed effects
 #' 
 #' Bootstrap standard errors for the group fixed effects which were swept out
@@ -192,6 +185,7 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
     } else {
       newr <- lapply(rsamp, function(rs) as.vector(predy) + rs)
     }
+
     v <- kaczmarz(obj$fe, demeanlist(newr, obj$fe, eps=eps, threads=threads,
                                      means=TRUE, weights=w),
                   eps=eps, threads=threads)

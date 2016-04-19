@@ -67,6 +67,7 @@
 #' @export waldtest
 waldtest <- function(object, R, r, type=c('default','iid','robust','cluster'), lhs=NULL, df1, df2) {
   if(inherits(object,'felm') && object$nostats) stop('No Wald test for objects created with felm(nostats=TRUE)')
+
   # We make a chi^2 to test whether the equation R theta = r holds.
   # The chi^2 is computed according to Wooldridge (5.34, 10.59).
   # I.e. a Wald test W = N*(beta' (R V^{-1} R')^{-1} beta) where beta = R theta - r
@@ -102,6 +103,7 @@ waldtest <- function(object, R, r, type=c('default','iid','robust','cluster'), l
     r <- Rr[,ncol(Rr)]
   } else if(is.function(R)) {
     # non-linear stuff. Compute value and gradient of R
+  if(!requireNamespace('numDeriv', quietly=TRUE)) {warning("package numDeriv must be available to use non-linear Wald test"); return(NULL)}
     pt <- coef(object,lhs=lhs)
     pt[is.na(pt)] <- 0
     val <- R(pt)

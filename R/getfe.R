@@ -1,11 +1,4 @@
-# $Id: getfe.R 1943 2016-04-07 23:08:38Z sgaure $
 # return a data-frame with the group fixed effects, including zeros for references
-
-
-
-
-
-
 
 #' Retrieve the group fixed effects
 #' 

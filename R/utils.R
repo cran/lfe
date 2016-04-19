@@ -1,4 +1,3 @@
-# $Id: utils.R 1956 2016-04-08 13:30:28Z sgaure $
 # Author: Simen Gaure
 # Copyright: 2011, Simen Gaure
 # Licence: Artistic 2.0
@@ -13,6 +12,8 @@ setdimnames <- function(obj, nm) {
 scalecols <- function(obj, vec) {
   .Call(C_scalecols, obj, vec)
 }
+
+Crowsum <- function(x,f,mean=FALSE) .Call(C_rowsum,x,f,mean)
 
 orthonormalize <- function(V) {
   structure(V %*% solve(chol(crossprod(V))), ortho=TRUE)

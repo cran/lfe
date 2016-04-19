@@ -190,7 +190,7 @@ id.7  -0.4285   5    1 id   7 0.468
 id.8   0.6823  12    1 id   8 0.332
 id.9   0.0886  10    1 id   9 0.348
 id.10 -0.8944   8    1 id  10 0.329
-> getfe(est,se=TRUE,lhs=c('w','z'))
+> getfe(est,method='cg',se=TRUE,lhs=c('w','z'))
       effect.w effect.z obs comp fe idx  se.w  se.z
 id.1   -0.4992   0.3717   3    1 id   1 0.498 0.603
 id.2   -0.5938  -0.1380  10    1 id   2 0.264 0.370
@@ -256,4 +256,4 @@ id.10    0.387    0.321    0.346    0.377
 > 
 > proc.time()
    user  system elapsed 
-   3.68    1.39    3.57 
+   4.12    1.48    4.06 

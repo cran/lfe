@@ -101,6 +101,8 @@
 #' # the same with nlexpect, i.e. probability for observing abs(x1)>abs(pt1) conditional
 #' # on E(x1) = 0.
 #' nlexpect(est, (x1-pt1)^2 > pt1^2)
+#' # which of course is the same as
+#' 2*nlexpect(est, x1 < 0)
 #' 
 #' \donttest{
 #' # then a joint test. Here we find the probability that

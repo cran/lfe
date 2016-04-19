@@ -1,6 +1,3 @@
-/*
-  $Id: utils.c 1960 2016-04-10 05:55:18Z sgaure $
-*/
 #include "lfe.h"
 
 SEXP MY_scalecols(SEXP mat, SEXP vec) {

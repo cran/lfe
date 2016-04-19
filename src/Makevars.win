@@ -1,5 +1,5 @@
-# $Id: Makevars.win 1655 2015-03-18 18:51:06Z sgaure $
 PKG_LIBS=$(BLAS_LIBS) $(FLIBS)
 PKG_CFLAGS=$(C_VISIBILITY)
-OBJECTS=lfe.o demean.o factor.o kaczmarz.o utils.o
+OBJECTS=lfe.o demean.o factor.o kaczmarz.o utils.o Crowsum.o
+
 

@@ -188,7 +188,8 @@
 #' @importFrom sandwich estfun
 #' @import 'stats'
 #' @import Formula
-#' @import Matrix
+#' @importFrom Matrix t Diagonal rankMatrix Cholesky nnzero crossprod tcrossprod diag
+#' @importClassesFrom Matrix sparseMatrix
 NULL
 
 

@@ -1,10 +1,3 @@
-# $Id: kaczmarz.R 1943 2016-04-07 23:08:38Z sgaure $
-
-
-
-
-
-
 #' Solve a linear system defined by factors
 #' 
 #' Uses the Kaczmarz method to solve a system of the type Dx = R, where D is
@@ -59,10 +52,16 @@
 #' @export kaczmarz
 kaczmarz <- function(fl,R,eps=getOption('lfe.eps'),init=NULL,
                      threads=getOption('lfe.threads')) {
+
   if(getOption('lfe.usecg')) {
-    if(is.list(R)) stop("cgsolve can't handle list R")
     mat <- makeDmatrix(fl)
-    return(cgsolve(crossprod(mat), crossprod(mat,R), eps=eps, init=init))
+    if(is.list(R)) {
+      mm <- crossprod(mat)
+      return(lapply(R, function(ll) drop(cgsolve(mm, crossprod(mat, ll), eps=max(eps,1e-6), init=init))))
+#      skel <- lapply(R,function(a) {if(is.matrix(a)) matrix(0,ncol(mat),ncol(a)) else rep(0,ncol(mat))})
+#      return(utils::relist(cgsolve(crossprod(mat), crossprod(mat,Reduce(cbind,R)), eps=eps, init=init), skel))
+    }
+    return(drop(cgsolve(crossprod(mat), crossprod(mat,R), eps=eps, init=init)))
   }
   if(is.null(threads)) threads <- 1
   islist <- is.list(R)

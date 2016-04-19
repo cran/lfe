@@ -1,5 +1,5 @@
 /*
- $Id: lfe.c 1959 2016-04-10 05:48:28Z sgaure $
+ $Id: lfe.c 1991 2016-04-14 15:56:45Z sgaure $
 */
 #include "lfe.h"
 SEXP MY_threads(SEXP rt) {
@@ -21,6 +21,7 @@ static R_CallMethodDef callMethods[] = {
   {"dsyr2k", (DL_FUNC) &MY_dsyr2k, 5},
   {"address", (DL_FUNC) &MY_address, 1},
   {"named", (DL_FUNC) &MY_named, 2},
+  {"rowsum", (DL_FUNC) &Crowsum, 3},
   //  {"setnamed", (DL_FUNC) &MY_setnamed, 2},
   //  {"ppf", (DL_FUNC) &MY_ppf, 2},
   //  {"threads", (DL_FUNC) &MY_threads, 1},

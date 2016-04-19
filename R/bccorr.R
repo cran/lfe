@@ -1,4 +1,4 @@
-# $Id: bccorr.R 1968 2016-04-11 08:54:30Z sgaure $
+# $Id: bccorr.R 1978 2016-04-12 14:30:55Z sgaure $
 narowsum <- function(x, group) {
   opt <- options(warn=-1)
   res <- try(rowsum(x,group), silent=TRUE)
@@ -9,6 +9,7 @@ narowsum <- function(x, group) {
   else
       res
 }
+
 # try without reference
 narowsum <- rowsum
 # to estimate the bias of the D-variance we need to find tr(D' P_1 D (D' P_{X,F} D)^{-1})
@@ -210,15 +211,15 @@ halftrace <- function(x, f, restf, MFX, tol, lmean, name, weights=NULL) {
 
   if(is.null(MFX)) {
     invfun <- function(v) {
-      rowsum(ww2*demeanlist(v[f,], restf, weights=w), f)
+      Crowsum(ww2*demeanlist(v[f,], restf, weights=w), f)
     }
   } else {
     invfun <- function(v) {
-      rowsum(ww2*demeanlist(demeanlist(ww*v[f,],MFX)/ww, restf, weights=w), f)
+      Crowsum(ww2*demeanlist(demeanlist(ww*v[f,],MFX)/ww, restf, weights=w), f)
     }
   }
 
-  DtM1x <- rowsum(ww*demeanlist(x,lmean, weights=weights, scale=FALSE), f)
+  DtM1x <- Crowsum(ww*demeanlist(x,lmean, weights=weights, scale=FALSE), f)
   # we use absolute tolerance, mctrace wil give us a trtol.
   # however, we square our result:  (Rx + err)^2 = Rx^2 + 2*err*Rx + err^2
   # so to get 2*err*Rx < tol, we must have err < tol/(2*Rx), i.e.
@@ -285,12 +286,12 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
     MFX <- list(structure(fmean,x=orthonormalize(demeanlist(X,restf,
                                     weights=w,scale=c(TRUE,FALSE)))))
     invfun <- function(v) {
-      rowsum(ww*demeanlist(demeanlist(ww*v[f,],MFX), restf, weights=w, scale=FALSE), f)
+      Crowsum(ww*demeanlist(demeanlist(ww*v[f,],MFX), restf, weights=w, scale=FALSE), f)
     }
   } else {
     MFX <- NULL
     invfun <- function(v) {
-      rowsum(ww*demeanlist(v[f,], restf, weights=w,scale=c(TRUE,FALSE)), f)
+      Crowsum(ww*demeanlist(v[f,], restf, weights=w,scale=c(TRUE,FALSE)), f)
     }
   }
 
@@ -341,7 +342,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
         result <- vector('numeric',ncol(Rx))
         for(i in 1:(2^d-1)) {
           ia <- cia[[i]]
-          b <- rowsum(Rx,ia)
+          b <- Crowsum(Rx,ia)
           # odd number is positive, even is negative
           sgn <- 2*(sum(as.logical(intToBits(i))[1:d]) %% 2) - 1
           adj <- sgn*dfadj*nlevels(ia)/(nlevels(ia)-1)
@@ -359,7 +360,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
       # return crude estimate of the trace
       if(trtol == 0) return(abs(nlev))
 #      on.exit({rm(list=ls()); gc()})
-      DtM1x <- rowsum(ww*demeanlist(x,lmean,weights=w,scale=FALSE), f)
+      DtM1x <- Crowsum(ww*demeanlist(x,lmean,weights=w,scale=FALSE), f)
       # we use absolute tolerance, mctrace wil give us a trtol.
       # we divide by the L2-norm of DtM1x, since we take the
       # inner product with this afterwards
@@ -448,7 +449,7 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
                                     no1list,weights=w, scale=c(TRUE,FALSE)))))
 
     invfun <- function(v) {
-      rowsum(ww*demeanlist(demeanlist(ww*v[f2,],MDX), no2list,
+      Crowsum(ww*demeanlist(demeanlist(ww*v[f2,],MDX), no2list,
                            weights=w, scale=FALSE), f2)
     }
     if(length(restf) > 0) {
@@ -462,13 +463,13 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
     }
   } else {
     invfun <- function(v) {
-      rowsum(ww2*demeanlist(v[f2,], no2list, weights=w), f2)
+      Crowsum(ww2*demeanlist(v[f2,], no2list, weights=w), f2)
     }
     MXfun <- function(v) ww2*demeanlist(v[f1,], restf, weights=w)
   }
 
   invfunX <- function(v) {
-    rowsum(MXfun(v), f1)
+    Crowsum(MXfun(v), f1)
   }
   
   if(robust) {
@@ -515,8 +516,8 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
         # it's one or more clusters, do the Cameron et al detour
         result <- vector('numeric',ncol(Rx))
         for(i in 1:(2^d-1)) {
-          Lb <- rowsum(Lx, cia[[i]])
-          Rb <- rowsum(Rx, cia[[i]])
+          Lb <- Crowsum(Lx, cia[[i]])
+          Rb <- Crowsum(Rx, cia[[i]])
           # odd number is positive, even is negative
           sgn <- 2*(sum(as.logical(intToBits(i))[1:d]) %% 2) - 1
           result <- result + sgn * colSums(Lb * Rb)
@@ -531,12 +532,12 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
       if(trtol == 0) return(-abs(nlev1-nlev2))
 #      on.exit({rm(list=ls()); gc()})
       M1x <- ww*demeanlist(x,lmean,weights=w,scale=FALSE)
-      DtM1x <- rowsum(M1x,f1)
-      FtM1x <- rowsum(M1x,f2)
+      DtM1x <- Crowsum(M1x,f1)
+      FtM1x <- Crowsum(M1x,f2)
       d1 <- colSums(DtM1x^2)
       d2 <- colSums(FtM1x^2)
       v <- cgsolve(invfunX, DtM1x, eps=-trtol/sqrt(d1+d2)/3, name=name)
-      MXv <- rowsum(MXfun(v), f2)
+      MXv <- Crowsum(MXfun(v), f2)
       sol <- cgsolve(invfun, FtM1x, eps=-trtol/sqrt(colSums(MXv^2))/3, name=name)
       -colSums(sol* MXv)
     }
@@ -577,7 +578,7 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01,
   if(length(X)==0) {
       MFX <- fe[-index]
       invfun <- function(x) {
-        rowsum(ww2*demeanlist(x[f,], MFX, weights=w),f)
+        Crowsum(ww2*demeanlist(x[f,], MFX, weights=w),f)
       }
   } else {
 #    M_{F,X} = M_F M_{M_F X}
@@ -585,13 +586,13 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01,
     MFX <- list(structure(factor(rep(1,N)),
                           x=orthonormalize(ww*demeanlist(X,restf,weights=w))))
     invfun <- function(x) {
-      rowsum(ww2*demeanlist(demeanlist(ww*x[f,],MFX)/ww, restf, weights=w), f)
+      Crowsum(ww2*demeanlist(demeanlist(ww*x[f,],MFX)/ww, restf, weights=w), f)
     }
   }
 
 
   Dtheta <- pointest[f]
-  DtM1D <- rowsum(ww2*demeanlist(Dtheta,lmean,weights=w), f)
+  DtM1D <- Crowsum(ww2*demeanlist(Dtheta,lmean,weights=w), f)
   v <- cgsolve(invfun, DtM1D, eps=tol/4/resvar/sqrt(sum(DtM1D^2)), name=name)
   meanpart <- 4*resvar * sum(DtM1D * v)
   if(!biascorrect) return(meanpart/N^2)
@@ -601,7 +602,7 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01,
   #  message('mean part=',meanpart/N^2)
   mytol <- meanpart/10
   trfun <- function(x,trtol) {
-    v <- ww*demeanlist(cgsolve(invfun, rowsum(ww2*demeanlist(x,lmean,weights=w),f),
+    v <- ww*demeanlist(cgsolve(invfun, Crowsum(ww2*demeanlist(x,lmean,weights=w),f),
                             eps=-mytol^2/resvar^2/2,name=name)[f,],lmean,weights=w)
     colSums(v * v)
   }

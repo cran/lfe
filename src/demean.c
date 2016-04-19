@@ -1,6 +1,3 @@
-/*
-  $Id: demean.c 1964 2016-04-10 21:09:45Z sgaure $
-*/
 #include "lfe.h"
 /* Need sprintf */
 #include <stdio.h>  
@@ -123,7 +120,7 @@ static int demean(int N, double *vec, double *weights,int *scale,
   lastiter = 0;
 
   double target=0;
-  if(gkacc) target = 1e-4*neps;
+  target = 1e-4*neps;
   double prevdp=0.0;
   do {
     iter++;
@@ -167,20 +164,8 @@ static int demean(int N, double *vec, double *weights,int *scale,
 
     delta = 0.0;
     for(int i = 0; i < N; i++) delta += (prev2[i]-vec[i])*(prev2[i]-vec[i]);
-
-    // make this a power of two, so we don't have to do integer division
-    // Check convergence rate every now and then
-    // For the purpose of computing time to convergence, we assume convergence is linear, 
-    // i.e. that the decrease in norm since the previous iteration is a constant factor c.
-      // compute delta per iter
     memcpy(prev2,vec,N*sizeof(double));
-      // delta is the square norm improvement since last time
-      // we normalize it to be per iteration
-      // we divide it by the number of iterations to get an improvement per iteration
     delta = sqrt(delta);
-      // then we compute how fast the improvement dimishes. We use this to predict when we're done
-      // for e == 2 without gkacc it should diminish, so that c < 1, but for e > 2 it may
-      // increase, in particular when we do acceleration. Then it is difficult to predict when we will be done
     c = delta/prevdelta;
     /* c is the convergence rate per iteration, at infinity they add up to 1/(1-c).
        This is true for e==2, but also in the ballpark for e>2 we guess.
@@ -201,36 +186,33 @@ static int demean(int N, double *vec, double *weights,int *scale,
       // target should not be smaller than 3 bits of precision in each coordinate
     if(target < N*1e-15) target = N*1e-15;
     now = time(NULL);
+    // should we report?
     if(quiet > 0 && now - last >= quiet && delta > 0.0) {
       int reqiter;
       double eta;
       char buf[256];
-      // Now, use a c which is based on the medium c since the last print
-      if(prevdp == 0.0)
-	c = delta/prevdelta;
-      else
+      double targ; 
+      if(e > 2 && prevdp != 0.0) {
+	// use an average c if more than 2 factors
 	c = pow(delta/prevdp, 1.0/(iter-lastiter));
-      reqiter = log(target/delta)/log(c);
+	targ = (1.0-c)*neps;
+      } else targ=target;
+
+      reqiter = log(targ/delta)/log(c);
       eta = 1.0*(now-last)*reqiter/(iter-lastiter);
-      if(eta < 0) eta = NA_REAL; 
-      if(gkacc&&0) {
-	sprintf(buf,"...centering vec %d iter %d, delta=%.1e(target %.1e)\n",
-		vecnum,iter,delta,target);
-	
-      } else {
-	time_t arriv = now + (time_t) eta;
-	char timbuf[50];
-	struct tm tmarriv;
+      if(eta < 0) eta = 0;
+
+      time_t arriv = now + (time_t) (eta+1.0);
+      char timbuf[50];
+      struct tm tmarriv;
 #ifdef WIN
-	localtime_s(&tmarriv, &arriv);
+      localtime_s(&tmarriv, &arriv);
 #else
-	localtime_r(&arriv,&tmarriv);
+      localtime_r(&arriv,&tmarriv);
 #endif
-	strftime(timbuf, sizeof(timbuf), "%c", &tmarriv);
-	//	  ctime_r(&arriv, timbuf);
-	sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
-		vecnum,iter,1.0-c,delta,target,timbuf);
-      }
+      strftime(timbuf, sizeof(timbuf), "%c", &tmarriv);
+      sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
+	      vecnum,iter,1.0-c,delta,target,timbuf);
       pushmsg(buf,lock);
       lastiter = iter;
       prevdp = delta;
@@ -238,7 +220,7 @@ static int demean(int N, double *vec, double *weights,int *scale,
     }
     
     prevdelta = delta;    
-
+    
 #ifdef NOTHREADS
     R_CheckUserInterrupt();
 #else
@@ -246,7 +228,7 @@ static int demean(int N, double *vec, double *weights,int *scale,
     LOCK(lock); stp = *stop; UNLOCK(lock);
     if(stp != 0) {okconv = 0; break;}
 #endif
-
+    
   } while(delta > target);
   if(weights != NULL && scale[1]) for(int i = 0; i < N; i++) vec[i] = vec[i]/weights[i];
   return(okconv);

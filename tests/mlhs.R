@@ -18,7 +18,7 @@ for(lh in est$lhs) {
 summary(est, lhs='z', robust=TRUE)
 summary(zest <- felm(z ~x+x2+x3|id), robust=TRUE)
 getfe(zest,se=TRUE)
-getfe(est,se=TRUE,lhs=c('w','z'))
+getfe(est,method='cg',se=TRUE,lhs=c('w','z'))
 lhs <- cbind(v,w,y,z)
 rhs <- cbind(x,x2,x3)
 est <- felm(lhs ~rhs|id)

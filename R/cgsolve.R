@@ -1,4 +1,4 @@
-# $Id: cgsolve.R 1943 2016-04-07 23:08:38Z sgaure $
+# $Id: cgsolve.R 1990 2016-04-14 13:48:36Z sgaure $
 # From "A practical termination criterion for the conjugate gradient method", E.F. Kaasschieter
 # BIT 28 (1988), 308-322  (2.6). 
 # return the vector phi_i(x) for i=1:j
@@ -195,7 +195,7 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
     }
 
 
-    done <- sqrt(r2) < eps * delta
+    done <- sqrt(r2) < eps * delta | (k >= N)
 
     if(any(done)) {
 #      message('finished vec ',ilpretty(origcol[done]))
@@ -217,7 +217,7 @@ cgsolve <- function(A, b, eps=1e-3,init=NULL, symmtest=FALSE, name='') {
     }
     r2rms <- sqrt(max(r2))
     minr2 <- min(minr2,r2rms)
-    if(k > N || ( kk > 1000 && r2rms > 100*minr2) || (k > 100 && r2rms > 10000*minr2)) {
+    if(( kk > 1000 && r2rms > 100*minr2) || (k > 100 && r2rms > 10000*minr2)) {
       warning('cgsolve (',name,') seems to diverge, iter=',k,', ||r2||=',r2rms,
               ' returning imprecise solutions')
       res[,origcol[seq_len(ncol(x))]] <- x
