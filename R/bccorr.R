@@ -1,4 +1,4 @@
-# $Id: bccorr.R 1978 2016-04-12 14:30:55Z sgaure $
+# $Id: bccorr.R 2004 2016-04-21 10:31:20Z sgaure $
 narowsum <- function(x, group) {
   opt <- options(warn=-1)
   res <- try(rowsum(x,group), silent=TRUE)
@@ -616,15 +616,13 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01,
 
 
 
-
-
-
 #' Compute the variance of the fixed effect variance estimate
-#' 
-#' With a model like 'y = X beta + D theta + F psi + epsilon', where 'D' and
-#' 'F' are matrices with dummy encoded factors, one application of \pkg{lfe} is
-#' to study the variances 'var(D theta), var(F psi)' and covariances 'cov(D
-#' theta, F psi)' The function \code{\link{fevcov}} computes bias corrected
+#'
+#' @details
+#' With a model like \eqn{y = X\beta + D\theta + F\psi + \epsilon}, where \eqn{D} and
+#' \eqn{F} are matrices with dummy encoded factors, one application of \pkg{lfe} is
+#' to study the variances \eqn{var(D\theta)}, \eqn{var(F\psi)} and covariances
+#' \eqn{cov(D\theta, F\psi)}. The function \code{\link{fevcov}} computes bias corrected
 #' variances and covariances.  However, these variance estimates are still
 #' random variables for which \code{\link{fevcov}} only estimate the
 #' expectation. The function \code{varvars} estimates the variance of these

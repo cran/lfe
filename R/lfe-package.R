@@ -113,7 +113,7 @@
 #' Abowd, J.M., R. Creecy and F. Kramarz (2002) \cite{Computing Person and Firm
 #' Effects Using Linked Longitudinal Employer-Employee Data.} Technical Report
 #' TP-2002-06, U.S. Census Bureau.
-#' \url{http://lehd.did.census.gov/led/library/techpapers/tp-2002-06.pdf}
+#' \url{https://www2.census.gov/ces/tp/tp-2002-06.pdf}
 #' 
 #' Andrews, M., L. Gill, T. Schank and R. Upward (2008) \cite{High wage workers
 #' and low wage firms: negative assortative matching or limited mobility bias?}
@@ -140,7 +140,7 @@
 #' 
 #' Gaure, S. (2014a) \cite{lfe: Linear Group Fixed Effects.} The R Journal,
 #' 5(2):104-117, Dec 2013.
-#' \url{http://journal.r-project.org/archive/2013-2/gaure.pdf}
+#' \url{https://journal.r-project.org/archive/2013/RJ-2013-031/RJ-2013-031.pdf}
 #' 
 #' Gaure, S. (2014b), \cite{Correlation bias correction in two-way
 #' fixed-effects linear regression}, Stat 3(1):379-390, 2014.

@@ -5,7 +5,8 @@
 \title{Compute expectation of a function of the coefficients.}
 \usage{
 nlexpect(est, fun, coefs, ..., tol = getOption("lfe.etol"), lhs = NULL, cv,
-  istats = FALSE, flags = list(verbose = 0), max.eval = 100000L)
+  istats = FALSE, flags = list(verbose = 0), max.eval = 200000L,
+  method = c("cuhre", "suave", "pcubature", "hcubature"))
 }
 \arguments{
 \item{est}{object of class \code{"felm"}, a result of a call to
@@ -32,13 +33,16 @@ routine be included as attributes?}
 \item{flags}{list. Additional flags for the underlying integration routine.}
 
 \item{max.eval}{integer. Maximum number of integral evaluations.}
+
+\item{method}{character. Either \code{"suave"} or \code{"cuhre"} from package
+\pkg{R2Cuba} or \code{"hcubature"} or \code{"pcubature"} from package \pkg{adapt}.}
 }
 \value{
 The function \code{nlexpect} computes and returns the expectation of
 the function \code{fun(beta)}, with \code{beta} a vector of coefficients.
 I.e., if the coefficients \code{beta} are bootstrapped a large number of
 times, \code{nlexpect(est, fun)} should be equal to \code{mean(fun(beta))}.
-Additional diagnostic output from \code{\link[R2Cuba]{cuhre}} is returned in
+Additional diagnostic output from \code{\link[R2Cuba]{suave}} is returned in
 attributes if \code{istats=TRUE}.
 }
 \description{
@@ -84,14 +88,11 @@ the absolute tolerance. Termination occurs when at least one of the
 tolerances is met.
 
 The \code{...} can be used for passing other arguments to the integration
-routine \code{\link[R2Cuba]{cuhre}}.
+routine.
 }
 \note{
 An alternative to this method is to use the \code{bootexpr} argument
 with \code{\link{felm}}, to do a Monte Carlo integration.
-
-This function requires the package \pkg{R2Cuba}, and will fail if it is not
-available.
 }
 \examples{
 
@@ -153,4 +154,3 @@ nlexpect(est, function(x) f(x)-Ef < -abs(Pf), c('x1','x2'))
 \seealso{
 \code{\link{waldtest}}
 }
-

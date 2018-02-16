@@ -78,7 +78,7 @@
 #' \code{felm} for transformations etc, it is possible to run
 #' \code{demeanlist} directly on a matrix or \code{"data.frame"} and do the
 #' OLS "manually", e.g. with something like
-#' \code{beta <- solve(crossprod(demeanlist(mtx,...))) \%*\% (t(x) \%*\% y)}
+#' \code{cx <- demeanlist(x,...); beta <- solve(crossprod(cx), crossprod(cx,y))}
 #' 
 #' In some applications it is known that a single centering iteration is
 #' sufficient. In particular, if \code{length(fl)==1} and there is no
@@ -161,16 +161,15 @@ demeanlist <- function(mtx,fl,icpt=0L,eps=getOption('lfe.eps'),
   # This is just to avoid clutter in case of error messages
   env <- new.env(parent=parent.frame())
   assign('C_demeanlist',C_demeanlist,envir=env)
-  .fl <- eval.parent(bquote(.(ff[['fl']])))
-  assign('.fl', .fl, env)
-  if(randfact && length(.fl) > 2) {
+  assign('.fl',eval.parent(ff[['fl']]), envir=env)
+  .fl <- NULL # avoid check warning
+  ff[['fl']] <- quote(.fl)
+  if(randfact && length(get('.fl',env)) > 2) {
     # This is delayed for the bizarre reason that before we rewrote this code
     # mtx was forced before reordering of fl, so we just keep it that way to avoid
     # changing the test output.
     delayedAssign('..fl',.fl[order(runif(length(.fl)))],env,env)
     ff[['fl']] <- quote(..fl)
-  } else {
-    ff[['fl']] <- quote(.fl)
   }
 
   eval(as.call(c(list(quote(.Call), quote(C_demeanlist)), ff)), env)

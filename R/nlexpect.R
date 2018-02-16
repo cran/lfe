@@ -3,10 +3,6 @@
 # from felm()
 
 
-
-
-
-
 #' Compute expectation of a function of the coefficients.
 #' 
 #' Use integration of the joint distribution of the coefficients to compute the
@@ -50,7 +46,7 @@
 #' tolerances is met.
 #' 
 #' The \code{...} can be used for passing other arguments to the integration
-#' routine \code{\link[R2Cuba]{cuhre}}.
+#' routine.
 #' 
 #' @param est object of class \code{"felm"}, a result of a call to
 #' \code{\link{felm}}.
@@ -67,17 +63,17 @@
 #' routine be included as attributes?
 #' @param flags list. Additional flags for the underlying integration routine.
 #' @param max.eval integer. Maximum number of integral evaluations.
+#' @param method character. Either \code{"suave"} or \code{"cuhre"} from package
+#' \pkg{R2Cuba} or \code{"hcubature"} or \code{"pcubature"} from package \pkg{adapt}.
 #' @return The function \code{nlexpect} computes and returns the expectation of
 #' the function \code{fun(beta)}, with \code{beta} a vector of coefficients.
 #' I.e., if the coefficients \code{beta} are bootstrapped a large number of
 #' times, \code{nlexpect(est, fun)} should be equal to \code{mean(fun(beta))}.
-#' Additional diagnostic output from \code{\link[R2Cuba]{cuhre}} is returned in
+#' Additional diagnostic output from \code{\link[R2Cuba]{suave}} is returned in
 #' attributes if \code{istats=TRUE}.
 #' @note An alternative to this method is to use the \code{bootexpr} argument
 #' with \code{\link{felm}}, to do a Monte Carlo integration.
 #' 
-#' This function requires the package \pkg{R2Cuba}, and will fail if it is not
-#' available.
 #' @seealso \code{\link{waldtest}}
 #' @examples
 #' 
@@ -137,11 +133,30 @@
 #' 
 #' @export nlexpect
 nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
-                     cv,istats=FALSE,flags=list(verbose=0), max.eval=100000L) {
-#  if(!requireNamespace('cubature', quietly=TRUE)) {warning('Package "cubature" not found.'); return(NULL);}
-  if(!requireNamespace('R2Cuba', quietly=TRUE)) {warning('Package "R2Cuba" not found.'); return(NULL);}
+                     cv, istats=FALSE, flags=list(verbose=0), max.eval=200000L,
+                     method=c('cuhre','suave','pcubature','hcubature')) {
+
+  mc <- match.call(expand.dots=FALSE)
+  xargs <- names(mc[['...']])
+  method <- match.arg(method)
+  if(method %in% c('cuhre','suave')) {
+    if(!requireNamespace('R2Cuba', quietly=TRUE)) {
+      warning('Package "R2Cuba" not found.')
+      return(NULL);
+    }
+    adapt <- FALSE
+  } else {
+    adapt <- TRUE
+    if(!requireNamespace('cubature', quietly=TRUE)) {
+      warning('Package "cubature" not found.')
+      return(NULL)
+    }
+  }
+
   if(isTRUE(est$nostats) && missing(cv))
-      stop('This test requires that felm() is run without nostats=TRUE; or specify a cv argument')
+      stop('This test requires that felm() is run without nostats=FALSE; or specify a cv argument')
+
+
   # Find the covariance matrix
   if(missing(cv)) cv <- vcov(est, lhs=lhs)
 
@@ -161,8 +176,13 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
     # make it a function
     fun <- local(function(x, ...) eval(fun,c(as.list(x),list(...))), list(fun=fun))
   } else if(is.function(fun)) {
-    #add a ... formal if it doesn't exist
     fa <- formals(fun)
+#    nomatch <- !(xargs %in% names(fa)[-1])
+#    if(any(nomatch))
+#      warning('arguments ',paste(xargs[nomatch],collapse='/'), 
+#              ' not among arguments in function to integrate')
+
+    #add a ... formal if it doesn't exist
     if(!('.z' %in% names(fa)))
         formals(fun) <- c(fa,alist(.z=))
     if(!('...' %in% names(fa)))
@@ -210,15 +230,34 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
   } else {
     reltol <- abstol <- tol
   }
-  ## ret <- cubature::adaptIntegrate(integrand,rep(-1,K),rep(1,K),...,tol=reltol,absError=abstol,fDim=fdim)
-  ## names(ret$integral) <- names(sv)
-  ## dim(ret$integral) <- dim(sv)
-  ## if(is.array(sv)) dimnames(ret$integral) <- dimnames(sv)
-  ## if(!istats) return(ret$integral)
-  ## names(ret)[match('integral',names(ret))] <- names(as.list(args(structure)))[1]  
-  ret <- R2Cuba::cuhre(K,fdim,integrand,lower=rep(-1,K),...,
-                       upper=rep(1,K),rel.tol=reltol,abs.tol=abstol,
-                       flags=flags, max.eval=max.eval)
+
+  if(adapt) {
+    eps <- 1e-9
+    if(method=='pcubature') {
+      ret <- cubature::pcubature(integrand,rep(-1+eps,K),rep(1-eps,K),...,tol=reltol,
+                                 absError=abstol,fDim=fdim)
+    } else if(method=='hcubature') {
+      ret <- cubature::pcubature(integrand,rep(-1+eps,K),rep(1-eps,K),...,tol=reltol,
+                                 absError=abstol,fDim=fdim)
+    }
+    names(ret$integral) <- names(sv)
+    dim(ret$integral) <- dim(sv)
+    if(is.array(sv)) dimnames(ret$integral) <- dimnames(sv)
+    if(!istats) return(ret$integral)
+    names(ret)[match('integral',names(ret))] <- names(as.list(args(structure)))[1]  
+    return(do.call(structure,ret))
+  }
+
+  if(method == 'cuhre') {
+    ret <- R2Cuba::cuhre(K,fdim,integrand,lower=rep(-1,K),...,
+                         upper=rep(1,K),rel.tol=reltol,abs.tol=abstol,
+                         flags=flags, max.eval=max.eval)
+  } else {
+    ret <- R2Cuba::suave(K,fdim,integrand,...,lower=rep(-1,K),
+                         upper=rep(1,K),rel.tol=reltol,abs.tol=abstol,
+                         flags=flags, max.eval=max.eval)
+  }
+
   names(ret$value) <- names(sv)
   if(is.array(sv)) {
     dim(ret$value) <- dim(sv)

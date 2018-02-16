@@ -110,8 +110,9 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
     mf[['data']] <- bquote(..pdata.coerce..(.(mf[['data']])))
   }
 
-  mf <- eval(mf, dataenv)
-    
+  mfcall <- bquote(evalq(.(mf), .(dataenv)))
+  mf <- eval(mfcall)
+
   if(nrow(mf) == 0) stop('0 (non-NA) cases; no valid data')
 
   rm(dataenv)
@@ -207,6 +208,7 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
     return(paste(attr(f,'xnam'),attr(f,'fnam'), sep=':'))
   })
 
+  hasicpt <- all(sapply(fl,function(f) !is.null(attr(f,'x'))))
   environment(Form) <- formenv
   if(is.null(clustervar)) {
     cluform <- terms(formula(Form, lhs=0, rhs=4))
@@ -271,7 +273,8 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
   if(usewild) form <- wildcard(form, wildnames, re=rewild)
   xterms <- terms(form, data=mf)
   x <- model.matrix(xterms, data=mf, contrasts.arg=contrasts)
-  if(length(fl) > 0) {
+#  if(length(fl) > 0) {
+  if(!hasicpt) {
     x <- delete.icpt(x)    
     icpt <- FALSE
   } else {
@@ -297,11 +300,9 @@ makematrix <- function(mf, contrasts=NULL, pf=parent.frame(),
     ivx <- NULL
   }
 
-  rm(mf) # save some memory
-
   mm <- list(x=x, y=y, ivx=ivx, ivy=ivy, ctrl=ctrl, fl=fl, weights=weights)
   mm$extra <- list(icpt=icpt,xterms=xterms,cluster=cluster,Form=Form,ivform=ivform,
-                   inames=inames,naact=naact)
+                   inames=inames,naact=naact,model=mf,mfcall=mfcall)
   if(onlymm) return(mm)
   mmdemean(mm)
 }
@@ -358,6 +359,8 @@ mmdemean <- function(mm) {
   result$inames <- mm$extra$inames
   result$na.action <- mm$extra$naact
   result$weights <- mm$weights
+  result$model <- mm$extra$model
+  result$mfcall <- mm$extra$mfcall
   result
 }
 
@@ -402,7 +405,7 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
       z$r.residuals <- orig$y
       z$fe <- mm$fl
       z$cfactor <- cfactor
-      z$fitted.values <- orig$y - mm$y
+      z$fitted.values <- orig$y[,colnames(mm$y),drop=FALSE] - mm$y
       z$df.residual <- z$df
       z$residuals=mm$y
       z$clustervar=mm$cluster
@@ -499,8 +502,10 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
   z$residuals <- zresid
 
   if(!onlyse) {
-    z$response <- orig$y
-    z$fitted.values <- zfit 
+    z$response <- orig$y[,colnames(mm$y),drop=FALSE]
+    z$c.fitted.values <- zfit
+    z$fitted.values <- z$response-z$residuals
+#    z$fitted.values <- zfit
     z$cfactor <- compfactor(mm$fl)
     z$fe <- mm$fl
   }
@@ -659,9 +664,9 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
         }
 
         cvcv <- .Call(C_sandwich,1.0,inv,meat)
-        if(psdef) {
+        if(psdef && d > 1) {
           ev <- eigen(cvcv)
-          if(any(ev$values < 0)) {
+          if(any(Im(ev$values) != 0 || ev$values < 0)) {
             warning('Negative eigenvalues set to zero in multiway clustered variance matrix. See felm(...,psdef=FALSE)')
             cvcv <- ev$vectors %*% diag(pmax(ev$values,0)) %*% t(ev$vectors)
           }
@@ -842,6 +847,8 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
 #' \item \code{keepCX} logical. Keep a copy of the centred expanded data matrix
 #' in the return value. As list elements \code{cX} for the explanatory
 #' variables, and \code{cY} for the outcome.
+#'
+#' \item \code{keepModel} logical. Keep a copy of the model frame.
 #' 
 #' \item \code{nostats} logical. Don't include covariance matrices in the
 #' output, just the estimated coefficients and various descriptive information.
@@ -1026,9 +1033,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
 
   knownargs <- c('iv', 'clustervar', 'cmethod', 'keepX', 'nostats',
                  'wildcard', 'kclass', 'fuller', 'keepCX', 'Nboot',
-                 'bootexpr', 'bootcluster','onlyse','psdef')
-  keepX <- TRUE
-  keepCX <- TRUE
+                 'bootexpr', 'bootcluster','onlyse','psdef','keepModel')
   cmethod <- 'cgm'
   iv <- NULL
   clustervar <- NULL
@@ -1042,6 +1047,9 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   bootcluster <- NULL
   deprec <- c('iv', 'clustervar')
   psdef <- TRUE
+  keepX <- FALSE
+  keepCX <- FALSE
+  keepModel <- FALSE
   
   mf <- match.call(expand.dots = TRUE)
 
@@ -1082,8 +1090,10 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   if(!is.null(mm$cluster)) attr(mm$cluster,'method') <- cmethod
   now <- Sys.time()
   if(now  > last + pint) {last <- now; message(date(), ' finished centering model matrix')}
-  z <- felm.mm(mm,nostats,exactDOF,keepX,keepCX,kclass,fuller,onlyse,psdef=psdef)
+  z <- felm.mm(mm,nostats,exactDOF,keepX,keepCX,keepModel,kclass,fuller,onlyse,psdef=psdef)
   z$call <- match.call()
+  z$keepX <- keepX
+  z$keepCX <- keepCX
   if(Nboot > 0) {
     now <- Sys.time()
     if(now > last + pint) {last <- now; message(date(), ' finished estimate, starting bootstrap')}
@@ -1136,7 +1146,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
                     eval.env=bootenv,
                     assign.env=bootenv)
       delayedAssign('est',
-                    felm.mm(mms,bootstat,exactDOF,keepX,keepCX,kclass,fuller,onlyse,psdef=psdef),
+                    felm.mm(mms,bootstat,exactDOF,keepX,keepCX,keepModel,kclass,fuller,onlyse,psdef=psdef),
                     eval.env=bootenv,
                     assign.env=bootenv)
       delayedAssign('beta', coef(est), assign.env=bootenv, eval.env=bootenv)
@@ -1177,7 +1187,7 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
                       assign.env=bootenv)
         
         delayedAssign('ols',
-                      felm.mm(olsmms,bootstat,exactDOF,keepX,keepCX,onlyse=onlyse,psdef=psdef),
+                      felm.mm(olsmms,bootstat,exactDOF,keepX,keepCX,keepModel,onlyse=onlyse,psdef=psdef),
                       eval.env=bootenv,
                       assign.env=bootenv)
         
@@ -1195,13 +1205,14 @@ felm <- function(formula, data, exactDOF=FALSE, subset, na.action,
   z
 }
 
-felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,kclass=NULL,fuller=NULL,onlyse=FALSE,psdef=FALSE) {
+felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,keepModel,kclass=NULL,fuller=NULL,onlyse=FALSE,psdef=FALSE) {
   ivform <- mm$ivform
   if(is.null(ivform)) {
     # no iv, just do the thing
     z <- newols(mm, nostats=nostats[1], exactDOF=exactDOF, onlyse=onlyse,psdef=psdef)
     if(keepX) z$X <- if(is.null(mm$orig)) mm$x else mm$orig$x
     if(keepCX) {z$cX <- mm$x; z$cY <- mm$y}
+    if(keepModel) z$model <- mm$model else z$model <- mm$mfcall
     z$call <- match.call()
     return(z)
   }
@@ -1256,7 +1267,7 @@ felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,kclass=NULL,fuller=NULL,onl
     mm2$x <- mm1$y
     mm2$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
     mm2$orig$y <- cbind(mm$orig$y, mm$orig$ivy)
-    rm(mm)
+#    rm(mm)
     z1 <- newols(mm1, nostats=nost1, onlyse=onlyse,psdef=psdef)
 
     mm2$noinst <- z1$residuals
@@ -1265,6 +1276,7 @@ felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,kclass=NULL,fuller=NULL,onl
     z2 <- newols(mm2, exactDOF=exactDOF, kappa=kappa, nostats=nostats[1], onlyse=onlyse, psdef=psdef)
     if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
     if(keepCX) {z2$cX <- mm2$x; z2$cY <- mm2$y}
+    if(keepModel) z2$model <- mm$model else z2$model <- mm$mfcall
     z2$call <- match.call()
     return(z2)
   }
@@ -1288,7 +1300,6 @@ felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,kclass=NULL,fuller=NULL,onl
   mm1$x <- cbind(mm$x, mm$ivx)
   mm1$orig$y <- mm$orig$ivy
   mm1$orig$x <- cbind(mm$orig$x, mm$orig$ivx)
-
   z1 <- newols(mm1, nostats=nost1, exactDOF=exactDOF, onlyse=onlyse, psdef=psdef)
   if(keepX) z1$X <- if(is.null(mm1$orig)) mm1$x else mm1$orig$x
   if(keepCX) {z1$cX <- mm1$x; z1$cY <- mm1$y}
@@ -1314,7 +1325,7 @@ felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,kclass=NULL,fuller=NULL,onl
   mm2 <- mm[names(mm) %in% c('fl','terms','cluster','numctrl','hasicpt',
                              'na.action','contrasts', 'TSS','weights')]
 
-  mm2$x <- cbind(mm$x, z1$fitted.values)
+  mm2$x <- cbind(mm$x, z1$c.fitted.values)
   setdimnames(mm2$x, list(NULL, c(exlist,fitnames)))
   mm2$y <- mm$y
   if(!is.null(mm$orig)) {
@@ -1322,12 +1333,12 @@ felm.mm <- function(mm,nostats,exactDOF,keepX,keepCX,kclass=NULL,fuller=NULL,onl
     setdimnames(mm2$orig$x, list(NULL, c(exlist,fitnames)))
   }
 
-  rm(mm)  # save some memory
-
+#  rm(mm)  # save some memory
 
   z2 <- newols(mm2, stage1=z1, nostats=nostats[1], exactDOF=exactDOF, kappa=kappa, onlyse=onlyse, psdef=psdef)
   if(keepX) z2$X <- if(is.null(mm2$orig)) mm2$x else mm2$orig$x
   if(keepCX) {z2$cX <- mm2$x; z2$cY <- mm2$y}
+  if(keepModel) z2$model <- mm$model else z2$model <- mm$mfcall
   rm(mm2)
 
   z2$call <- match.call()

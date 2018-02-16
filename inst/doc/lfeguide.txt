@@ -20,6 +20,7 @@ dummy year
 merge
 robust
 test x x2
+wald x-x2 | x2
 subset ife > 2
 subset x <- quantile(x,0.1)
 ----cut----
@@ -84,6 +85,11 @@ The line 'robust' instructs the program to compute robust standard errors
 
 The line 'test x x2' instructs the program to compute a joint significance
 test of the coefficients for x and x2.
+
+The line 'wald x - x2 | x' instruct the program to compute a joint
+Wald test on the hypothesis that x-x2=0 and x=0. I.e. it is more general
+than the 'test' directive, but only a single Wald test is computed for
+each line.
 
 Output from the program is both on standard-output (the covariate estimates)
 as well as to a file 'coef.csv'.

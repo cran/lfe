@@ -19,6 +19,7 @@ $subset = '';
 $ivtest = 0;
 $ivboot = 0;
 $fecorr = 0;
+@waldspec = ();
 while(<>) {
   chomp($_);
   # strip comments
@@ -60,6 +61,9 @@ while(<>) {
       $nofe = 1;
   } elsif($cmd eq 'test') {
       $testvars = '"'. join('","',@line) . '"';
+  } elsif($cmd eq 'wald') {
+      $wspec = join(' ',@line);
+      push(@waldspec,"$wspec")
   } elsif($cmd eq 'ivftest') {
       $ivtest = 1;
   } elsif($cmd eq 'ivboot') {
@@ -305,6 +309,37 @@ print "
   cat('\n')
 ";
 }
+if($#waldspec >= 0) {
+$WSPEC = "list(~" . join(",~",@waldspec) . ")";
+print "
+  waldspec <- $WSPEC
+  message(date(), ' Computing wald tests')
+  for(lh in est\$lhs) {
+   message(\"Wald tests for lhs=\",lh)
+   for(wspec in waldspec) {
+   message(\" Wald test: \", deparse(wspec[-1][[1]]),\" = 0\")
+   W <- waldtest(est, wspec, lhs=lh)
+   message(\"  F=\", 
+       formatC(W['F']), \" on \", W['df1'], \" and \", W['df2'], 
+       \" df, p-value: \", format.pval(W['p.F']))
+   message(\"  chi2=\", 
+       formatC(W['chi2']), \" on \", W['df1'], \" df, p-value: \", format.pval(W['p']))
+
+  }
+  cat('\n')
+  }
+";
+
+}
+print "
+  if(!is.null(est\$stage1) && length(est\$stage1\$lhs) < ncol(est\$stage1\$ivx)) {
+   for(lh in est\$lhs) {
+     S <- lfe:::sargan(est,lhs=lh)
+     if(length(est\$lhs) > 1) oc <- paste(' for outcome ',lh,sep='') else oc <- ''
+     message('  Sargan\\\'s S',oc,':'); print(S)
+   }
+  }
+";
 
 if($ivtest) {
     print "
@@ -331,7 +366,9 @@ if(length(est\$lhs) == 1) {
   se <- do.call(cbind, lapply(est\$STATS, function(s) s[[nse]]))
 }
 cfdat <- data.frame(value=est\$coefficients, se=se, row.names=rownames(est\$coefficients))
+if(nrow(cfdat) > 0) {
 if(dformat == 'dta') {
+  colnames(cfdat) <- gsub('.','_',colnames(cfdat),fixed=TRUE)
   if(oldstata)
     write.dta(cfdat,'coef.dta')
   else
@@ -342,6 +379,7 @@ if(dformat == 'dta') {
   print(cfdat)
   sink(NULL)
   cat(date(),'Coefficients written to coef.csv\\n')
+}
 }
 ";
 
@@ -387,7 +425,7 @@ print "
 # We need to save some memory by ditching the large parts of est
 # (the qr and stuff, keep only what's needed)
 if(!$fecorr) {
-  est <- est[c('fe','residuals','refnames','r.residuals','cfactor','lhs','na.action')]
+  est <- est[c('fe','residuals','refnames','r.residuals','cfactor','lhs','na.action','fitted.values')]
   invisible(gc())
   class(est) <- NULL
 }
@@ -417,6 +455,7 @@ if($fecorr) {
 print "
 lhs <- est\$lhs
 naact <- est\$na.action
+fitted <- est\$fitted.values
 rm(est)
 invisible(gc())
 cat(date(),'Fixed effects found; just doing some bookkeeping now...\\n')
@@ -460,6 +499,8 @@ if($bN > 0) {
 
 print "
   if(dformat == 'dta') {
+     on <- colnames(fr)
+     colnames(fr) <- gsub('.','_',colnames(fr),fixed=TRUE)
      if(TRUE || oldstata)
        write.dta(fr,fn,convert.factors='numeric')
      else {
@@ -467,6 +508,7 @@ print "
        # so we don't use it at the time
        save.dta13(fr,fn,convert.factors=FALSE)
      }
+     colnames(fr) <- on
   } else {
     write.table(fr,file=fn,quote=FALSE,row.names=FALSE)
   }
@@ -504,11 +546,13 @@ for(en in effnam) {
    split(tab[[eff]],ia) <- fr[oo,en]
  }
 }
+tab[['fitted.values']] <- fitted
 class(tab) <- 'data.frame'
 
 cat(date(),'Writing merged data set to fe-merged.',dformat,'\\n')
 rownames(tab) <- 1:length(tab[[1]])
 if(dformat == 'dta') {
+  colnames(tab) <- gsub('.','_',colnames(tab),fixed=TRUE)  
   if(TRUE || oldstata) 
     write.dta(tab,'fe-merged.dta',version=10L, convert.factors='numeric')
   else

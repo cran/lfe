@@ -26,16 +26,18 @@ fixed effect variance.  I.e. for the diagonal returned by
 \code{\link{fevcov}}.
 }
 \description{
-With a model like 'y = X beta + D theta + F psi + epsilon', where 'D' and
-'F' are matrices with dummy encoded factors, one application of \pkg{lfe} is
-to study the variances 'var(D theta), var(F psi)' and covariances 'cov(D
-theta, F psi)' The function \code{\link{fevcov}} computes bias corrected
+Compute the variance of the fixed effect variance estimate
+}
+\details{
+With a model like \eqn{y = X\beta + D\theta + F\psi + \epsilon}, where \eqn{D} and
+\eqn{F} are matrices with dummy encoded factors, one application of \pkg{lfe} is
+to study the variances \eqn{var(D\theta)}, \eqn{var(F\psi)} and covariances
+\eqn{cov(D\theta, F\psi)}. The function \code{\link{fevcov}} computes bias corrected
 variances and covariances.  However, these variance estimates are still
 random variables for which \code{\link{fevcov}} only estimate the
 expectation. The function \code{varvars} estimates the variance of these
 estimates.
-}
-\details{
+
 This function returns valid results only for normally distributed residuals.
 Note that the estimates for the fixed effect variances from
 \code{\link{fevcov}} are not normally distributed, but a sum of chi-square
@@ -103,4 +105,3 @@ fixed-effects linear regression}, Stat 3(1):379-390, 2014.
 \seealso{
 \code{\link{bccorr}} \code{\link{fevcov}}
 }
-

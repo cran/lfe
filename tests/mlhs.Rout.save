@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2016-04-03 r70416) -- "Unsuffered Consequences"
-Copyright (C) 2016 The R Foundation for Statistical Computing
+R Under development (unstable) (2018-02-12 r74246) -- "Unsuffered Consequences"
+Copyright (C) 2018 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -191,17 +191,17 @@ id.8   0.6823  12    1 id   8 0.332
 id.9   0.0886  10    1 id   9 0.348
 id.10 -0.8944   8    1 id  10 0.329
 > getfe(est,method='cg',se=TRUE,lhs=c('w','z'))
-      effect.w effect.z obs comp fe idx  se.w  se.z
-id.1   -0.4992   0.3717   3    1 id   1 0.498 0.603
-id.2   -0.5938  -0.1380  10    1 id   2 0.264 0.370
-id.3    0.4096   0.5680  14    1 id   3 0.242 0.241
-id.4   -0.8767  -0.6153  11    1 id   4 0.293 0.316
-id.5   -0.5680  -0.4806  15    1 id   5 0.227 0.245
-id.6    0.0834   0.2743  12    1 id   6 0.229 0.267
-id.7   -0.8209  -0.4285   5    1 id   7 0.398 0.514
-id.8    0.3533   0.6823  12    1 id   8 0.237 0.344
-id.9    0.0520   0.0886  10    1 id   9 0.270 0.327
-id.10  -0.2485  -0.8944   8    1 id  10 0.287 0.411
+      effect.w effect.z obs comp fe idx    se
+id.1   -0.4992   0.3717   3    1 id   1 0.603
+id.2   -0.5938  -0.1380  10    1 id   2 0.370
+id.3    0.4096   0.5680  14    1 id   3 0.241
+id.4   -0.8767  -0.6153  11    1 id   4 0.316
+id.5   -0.5680  -0.4806  15    1 id   5 0.245
+id.6    0.0834   0.2743  12    1 id   6 0.267
+id.7   -0.8209  -0.4285   5    1 id   7 0.514
+id.8    0.3533   0.6823  12    1 id   8 0.344
+id.9    0.0520   0.0886  10    1 id   9 0.327
+id.10  -0.2485  -0.8944   8    1 id  10 0.411
 > lhs <- cbind(v,w,y,z)
 > rhs <- cbind(x,x2,x3)
 > est <- felm(lhs ~rhs|id)
@@ -231,29 +231,18 @@ F-statistic(proj model): 19.8 on 3 and 87 DF, p-value: 7.16e-10
 
 
 > getfe(est,se=TRUE)
-      effect.lhs.v effect.lhs.w effect.lhs.y effect.lhs.z obs comp fe idx
-id.1        1.3525      -0.4992       0.5918       0.3717   3    1 id   1
-id.2       -0.3961      -0.5938      -0.9955      -0.1380  10    1 id   2
-id.3       -0.0144       0.4096       0.1480       0.5680  14    1 id   3
-id.4       -0.6772      -0.8767      -0.4641      -0.6153  11    1 id   4
-id.5       -0.2684      -0.5680      -0.0593      -0.4806  15    1 id   5
-id.6        0.5941       0.0834       1.1402       0.2743  12    1 id   6
-id.7       -0.1337      -0.8209      -0.7067      -0.4285   5    1 id   7
-id.8        0.4306       0.3533       1.4731       0.6823  12    1 id   8
-id.9       -0.2386       0.0520      -0.3832       0.0886  10    1 id   9
-id.10      -0.9239      -0.2485      -1.6062      -0.8944   8    1 id  10
-      se.lhs.v se.lhs.w se.lhs.y se.lhs.z
-id.1     0.561    0.484    0.568    0.612
-id.2     0.306    0.266    0.345    0.309
-id.3     0.230    0.235    0.265    0.257
-id.4     0.290    0.276    0.271    0.312
-id.5     0.241    0.218    0.241    0.265
-id.6     0.332    0.257    0.232    0.303
-id.7     0.433    0.384    0.413    0.421
-id.8     0.272    0.263    0.243    0.289
-id.9     0.332    0.252    0.278    0.321
-id.10    0.387    0.321    0.346    0.377
+      effect.lhs.v effect.lhs.w effect.lhs.y effect.lhs.z obs comp fe idx    se
+id.1        1.3525      -0.4992       0.5918       0.3717   3    1 id   1 0.612
+id.2       -0.3961      -0.5938      -0.9955      -0.1380  10    1 id   2 0.309
+id.3       -0.0144       0.4096       0.1480       0.5680  14    1 id   3 0.257
+id.4       -0.6772      -0.8767      -0.4641      -0.6153  11    1 id   4 0.312
+id.5       -0.2684      -0.5680      -0.0593      -0.4806  15    1 id   5 0.265
+id.6        0.5941       0.0834       1.1402       0.2743  12    1 id   6 0.303
+id.7       -0.1337      -0.8209      -0.7067      -0.4285   5    1 id   7 0.421
+id.8        0.4306       0.3533       1.4731       0.6823  12    1 id   8 0.289
+id.9       -0.2386       0.0520      -0.3832       0.0886  10    1 id   9 0.321
+id.10      -0.9239      -0.2485      -1.6062      -0.8944   8    1 id  10 0.377
 > 
 > proc.time()
    user  system elapsed 
-   4.12    1.48    4.06 
+   3.53    0.54    4.76 

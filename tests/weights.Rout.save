@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2016-04-03 r70416) -- "Unsuffered Consequences"
+R Under development (unstable) (2016-04-18 r70507) -- "Unsuffered Consequences"
 Copyright (C) 2016 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -255,13 +255,13 @@ F-statistic(proj model):  241 on 1 and 920 DF, p-value: <2e-16
 
 
 > head(sandwich::estfun(est))
-  (Intercept)        x
-1      -6.206 -12.6993
-2       2.935  -0.8885
-3      -1.459   1.3104
-4      -3.232   2.5067
-5     -14.841  -8.0460
-6       0.317   0.1871
+           x
+[1,]  1.3507
+[2,] -0.5427
+[3,]  0.3091
+[4,]  2.4732
+[5,] 15.1678
+[6,] -0.2964
 > 
 > # test getfe:
 > Kid <- nlevels(id)
@@ -321,4 +321,4 @@ Warning messages:
 > 
 > proc.time()
    user  system elapsed 
-  4.500   1.225   4.471 
+  5.971   1.170   6.031 

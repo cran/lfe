@@ -207,8 +207,8 @@ condfstat <- function(object, type='default', quantiles=0.0, bN=100L) {
   keep <- !(colnames(st1$ivx) %in% '(Intercept)')
   if(all(keep)) ivx <- st1$ivx else ivx <- st1$ivx[,keep, drop=FALSE]
   inames <- colnames(ivx)
-  y <- cbind(st1$ivy, ivx, st1$fitted.values, est$c.response)
-  fitnames <- makefitnames(colnames(st1$fitted.values))
+  y <- cbind(st1$ivy, ivx, st1$c.fitted.values, est$c.response)
+  fitnames <- makefitnames(colnames(st1$c.fitted.values))
   setdimnames(y, list(NULL, c(colnames(st1$ivy), inames, fitnames, colnames(est$c.response))))
   mm <- list(y=y, x=st1$centred.exo)
   tvars <- newols(mm, nostats=TRUE)$residuals

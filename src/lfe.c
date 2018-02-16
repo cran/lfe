@@ -1,5 +1,5 @@
 /*
- $Id: lfe.c 1991 2016-04-14 15:56:45Z sgaure $
+ $Id: lfe.c 2020 2016-04-27 05:13:51Z sgaure $
 */
 #include "lfe.h"
 SEXP MY_threads(SEXP rt) {
@@ -18,7 +18,6 @@ static R_CallMethodDef callMethods[] = {
   {"sandwich", (DL_FUNC) &MY_sandwich, 3},
   {"piproduct", (DL_FUNC) &MY_piproduct, 2},
   {"dsyrk", (DL_FUNC) &MY_dsyrk, 4},
-  {"dsyr2k", (DL_FUNC) &MY_dsyr2k, 5},
   {"address", (DL_FUNC) &MY_address, 1},
   {"named", (DL_FUNC) &MY_named, 2},
   {"rowsum", (DL_FUNC) &Crowsum, 3},
@@ -31,6 +30,8 @@ static R_CallMethodDef callMethods[] = {
 void attribute_visible R_init_lfe(DllInfo *info) {
   /* register our routines */
   (void) R_registerRoutines(info,NULL,callMethods,NULL,NULL);
+  (void) R_useDynamicSymbols(info, FALSE);
+  (void) R_forceSymbols(info, TRUE);
   (void) R_PreserveObject(df_string=mkString("data.frame"));
   LFE_GLOBAL_THREADS=1;
 }

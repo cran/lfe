@@ -97,7 +97,7 @@ are present directly without having to use the formula-interface to
 \code{felm} for transformations etc, it is possible to run
 \code{demeanlist} directly on a matrix or \code{"data.frame"} and do the
 OLS "manually", e.g. with something like
-\code{beta <- solve(crossprod(demeanlist(mtx,...))) \%*\% (t(x) \%*\% y)}
+\code{cx <- demeanlist(x,...); beta <- solve(crossprod(cx), crossprod(cx,y))}
 
 In some applications it is known that a single centering iteration is
 sufficient. In particular, if \code{length(fl)==1} and there is no
@@ -135,4 +135,3 @@ head(data.frame(mtx0,fl))
 lapply(fl, function(f) apply(mtx0,2,tapply,f,mean))
 options(oldopts)
 }
-

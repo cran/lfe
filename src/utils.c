@@ -156,42 +156,6 @@ SEXP MY_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
 }
 
 
-// perform C <- beta*C + alpha * (A'B + B'A)
-SEXP MY_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB) {
-  double beta = REAL(AS_NUMERIC(inbeta))[0];
-  double alpha = REAL(AS_NUMERIC(inalpha))[0];
-  if(!isMatrix(inC)) error("C must be a matrix");
-  if(!isMatrix(inA)) error("A must be a matrix");
-  if(!isMatrix(inB)) error("B must be a matrix");
-
-  if(ncols(inC) != nrows(inC)) {
-    error("C must be a square matrix, it is %d x %d",nrows(inC), ncols(inC));
-  }
-  int N = nrows(inC);
-  double *C = REAL(inC);
-  if(ncols(inA) != ncols(inC)) {
-    error("A (%d x %d) must have the same number of columns as C (%d x %d)",nrows(inA),ncols(inA),nrows(inC),nrows(inC));
-  }
-  if(nrows(inA) != nrows(inB)) {
-    error("A (%d x %d) must have the same number of rows as B (%d x %d)",nrows(inA), ncols(inA), nrows(inB), ncols(inB));
-  }
-  int K = nrows(inA);
-  
-  double *A = REAL(inA);
-  double *B = REAL(inB);
-  F77_CALL(dsyr2k)("U","T",&N, &K, &alpha, A, &K, B, &K, &beta, C, &N);
-  // fill in the lower triangular part
-  for(mybigint_t row=0; row < N; row++) {
-    for(mybigint_t col=0; col < row; col++) {
-      C[col*N + row] = C[row*N+col];
-    }
-  }
-  return R_NilValue;
-}
-
-
-
-
 // debugging memory copy
 SEXP MY_address(SEXP x) {
   char chr[30];

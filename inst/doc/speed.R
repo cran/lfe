@@ -39,7 +39,7 @@ system.time(est <- felm(y ~ x | f1 + f2))
 system.time(alpha <- getfe(est))
 nlevels(est[['cfactor']])
 
-## ----cache=TRUE, tidy=FALSE----------------------------------------------
+## ----tidy=FALSE----------------------------------------------------------
 library(igraph)
 mkgraph <- function(f1,f2)
   graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)

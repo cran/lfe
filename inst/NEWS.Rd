@@ -1,5 +1,15 @@
 \name{NEWS}
 \title{lfe news}
+\section{Changes in version 2.6}{
+\itemize{
+  \item If running with robust or clustered standard errors,
+  \code{getfe} now adds a column 'se' which is a copy of the
+  'clusteredse' or 'robustse'. This to ensure compatibility with package
+  \pkg{broom}.
+
+  \item Added a routine \code{sargan()} to compute Sargan's S.
+}
+}
 \section{Changes in version 2.5}{
   \itemize{
   \item \code{demeanlist()} will now do the transformation in place if

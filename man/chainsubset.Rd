@@ -45,4 +45,3 @@ a <- 2; sum(eval(ss2, dat))
 ss3 <- chainsubset( x < y, tapply(x,id,function(.xx) {sum(.xx > 1/2) > length(.xx)/5} )[id])
  sum(eval(ss3,dat))
 }
-

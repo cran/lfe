@@ -154,6 +154,9 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
     }
   }
 
+  X <- model.matrix(obj,centred=NA)
+  cX <- attr(X,'cX')
+
   for(i in 1:blks) {
     if(robust) {
       # robust residuals, variance is each squared residual
@@ -175,21 +178,21 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
       rsamp <- lapply(1:vpb, function(i) sample(smpdraw, replace=TRUE))
     }
     if(!is.null(w)) rsamp <- lapply(rsamp, function(x) x/w)
-    if(length(obj$cX) > 0) {
+    if(length(cX) > 0) {
       newr <- lapply(rsamp, function(rs) {
         newy <- predy + rs
-        newbeta <- obj$inv %*% crossprod(obj$cX, newy)
+        newbeta <- obj$inv %*% crossprod(cX, newy)
         newbeta[is.na(newbeta)] <- 0
-        as.vector(newy - obj$X %*% newbeta)
+        as.vector(newy - X %*% newbeta)
       })
     } else {
       newr <- lapply(rsamp, function(rs) as.vector(predy) + rs)
     }
-
-    v <- kaczmarz(obj$fe, demeanlist(newr, obj$fe, eps=eps, threads=threads,
+    rm(rsamp)
+    v <- kaczmarz(obj$fe, demeanlist(unnamed(newr), obj$fe, eps=eps, threads=threads,
                                      means=TRUE, weights=w),
                   eps=eps, threads=threads)
-    rm(rsamp,newr)
+    rm(newr)
     efv <- lapply(v,ef,addnames=FALSE)
     vsum <- vsum + Reduce('+',efv)
     vsq <- vsq + Reduce('+',Map(function(i) i^2, efv))
@@ -205,8 +208,10 @@ btrap <- function(alpha,obj,N=100,ef=NULL,eps=getOption('lfe.eps'),
       sename <- 'clusterse'
   else
       sename <- 'se'
-  if(!is.null(lhs)) sename <- paste(sename,lhs,sep='.')
+  fSEname <- SEname <- 'se'
+  fsename <- sename
+  if(!is.null(lhs)) {fsename <- paste(sename,lhs,sep='.'); fSEname <- paste(SEname,lhs,sep='.');}
   alpha[,sename] <- sqrt(vsq/newN - (vsum/newN)**2)/(1-0.75/newN-7/32/newN**2-9/128/newN**3)
-
+  if(sename != 'se') alpha[,fSEname] <- alpha[,fsename]
   return(structure(alpha,sename=sename))
 }

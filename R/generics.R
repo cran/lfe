@@ -1,4 +1,3 @@
-# $Id: generics.R 1947 2016-04-08 07:45:56Z sgaure $
 #' @method print felm
 #' @export
 print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
@@ -35,6 +34,30 @@ coef.felm <- function(object, ..., lhs=NULL) {
         stop('Please specify lhs as one of ',paste(object$lhs, collapse=','))
     object$coefficients[,lhs,drop=FALSE]
   }
+}
+
+#' Compute Sargan's S
+#'
+#' @param object and object type '"felm"', the return value from \code{\link{felm}}.
+#' @param lhs in case of multiple left hand sides, specify the name of the left 
+#' hand side for which you want to compute Sargan's S.
+#' @param ... Not used at the moment.
+#' @return \code{sargan} returns a numeric, the Sargan's S. The Basmann statistic is
+#' returned in the '"basmann"' attribute.
+#' @export
+sargan <- function(object, ..., lhs=object$lhs[1]) {
+    # Sargan's S.
+    # Let u be the sample residuals from the 2. stage. Regress these on the instruments
+    # This yields a new set of residuals e.
+    # Sargan's S is S = N * (1-sum e^2/sum u^2)
+  if(any(!(lhs %in% colnames(object$coefficients))))
+    stop('Please specify lhs as one of ',paste(object$lhs, collapse=','))
+  resid <- object$residuals[,lhs,drop=FALSE]
+  mm <- list(y=resid,x=object$stage1$ivx)
+  ols <- newols(mm,nostats=TRUE)
+  if(is.null(object$weights)) w <- 1 else w <- object$weights^2
+  S <- object$N * (1 - sum(w*ols$residuals^2)/sum(w*resid^2))
+  return(structure(S,basmann=S*(object$N-length(ncol(mm$x)))/(object$N-S)))
 }
 
 #' @method residuals felm
@@ -108,7 +131,7 @@ estfun.felm <- function(x, ...) {
 
 #' @method weights felm
 #' @export
-weights.felm <- function(object,...) object$weights^2
+weights.felm <- function(object,...) if(is.null(object$weights)) NULL else object$weights^2
 
 #' @method xtable summary.felm
 #' @export
@@ -197,9 +220,49 @@ print.summary.felm <- function(x,digits=max(3L,getOption('digits')-3L),...) {
 
 
 
+#' @method model.frame felm
+#' @inheritParams stats::model.frame
+#' @export
+model.frame.felm <- function(formula, ...) {
+  if(is.call(formula$model))
+      eval(formula$model)
+  else
+      formula$model
+}
 
+#' @method model.matrix felm
+#' @inheritParams stats::model.matrix
+#' @export
+model.matrix.felm <- function(object, centred=TRUE, ...) {
+  if(is.na(centred)) cent <- nocent <- TRUE
+  else if(centred) {cent <- TRUE; nocent <- FALSE}
+  else {cent <- FALSE; nocent <- TRUE}
+  
+  if((cent && is.null(object$cX) && is.null(object$X)) || (nocent && is.null(object$X))) {
+    F <- as.Formula(object$call[['formula']])
+    len <- length(F)
+    f1 <- formula(F,lhs=0,rhs=1)
+    mf <- model.frame(object)
+    x <- model.matrix(f1,mf)
+    if(!object$hasicpt) x <- delete.icpt(x)
 
-
+    if(len[[2]] >= 5) {
+      f5 <- formula(F,lhs=0,rhs=5)
+      # project out the control variables in f5
+      x <- newols(list(y=x, x=delete.icpt(model.matrix(f5,mf)), weights=object$weights), nostats=TRUE)
+    } 
+  } else
+      x <- object$X
+  
+  if(cent) {
+      if(is.null(object$cX))
+          cX <- demeanlist(x,object$fe,weights=object$weights)
+      else
+          cX <- object$cX
+    }
+  if(nocent) return(structure(x,cX=if(cent) cX else NULL))
+  return(cX)
+}
 
 #' Summarize felm model fits
 #' 
@@ -207,7 +270,6 @@ print.summary.felm <- function(x,digits=max(3L,getOption('digits')-3L),...) {
 #' 
 #' 
 #' @method summary felm
-#' @name summary
 #' @param object an object of class \code{"felm"}, a result of a call to
 #' \code{felm}.
 #' @param ... further arguments passed to or from other methods.

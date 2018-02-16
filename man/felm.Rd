@@ -55,6 +55,8 @@ for proper limited mobility bias correction.
 in the return value. As list elements \code{cX} for the explanatory
 variables, and \code{cY} for the outcome.
 
+\item \code{keepModel} logical. Keep a copy of the model frame.
+
 \item \code{nostats} logical. Don't include covariance matrices in the
 output, just the estimated coefficients and various descriptive information.
 For IV, \code{nostats} can be a logical vector of length 2, with the last
@@ -308,4 +310,3 @@ of Business & Economic Statistics (to appear).
 \code{\link{getfe}} \code{\link{summary.felm}}
 \code{\link{condfstat}} \code{\link{waldtest}}
 }
-

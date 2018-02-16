@@ -1,6 +1,6 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
-AC_PREREQ([2.59])
+AC_PREREQ([2.67])
 AC_INIT(lfe, {version} , frisch@gaure.no)
 AC_CONFIG_SRCDIR([src/lfe.c])
 AC_CONFIG_HEADERS([src/config.h])
@@ -14,12 +14,12 @@ AC_ARG_ENABLE([threads],
 
 AC_ARG_ENABLE([huge],
 	[AS_HELP_STRING([--enable-huge],[use 64 bit integers])],
-	[ AC_DEFINE([HUGE_INT], [1])],
+	[AC_DEFINE([HUGE_INT], [1])],
 	[])
 
 dnl local debug 
 AC_ARG_ENABLE([pedantry],,
-	[DFLAGS='-Wall -Wextra -Wpedantic -Werror'],
+	[DFLAGS='-Wall -Wextra -Wpedantic'],
 	[])
 
 AC_SUBST(DFLAGS)
@@ -32,14 +32,14 @@ AC_PROG_AWK
 
 # Checks for libraries.
 
-if test "$do_threads" = "yes"; then
-  ACX_PTHREAD([], [
-  AC_MSG_WARN([No threads on this architecture])
-  AC_DEFINE([NOTHREADS], [1])
-  do_threads="no"])
-else
-  AC_DEFINE([NOTHREADS], [1])
-fi
+dnl if test "$do_threads" = "yes"; then
+dnl  ACX_PTHREAD([], [
+dnl  AC_MSG_WARN([No threads on this architecture])
+dnl  AC_DEFINE([NOTHREADS], [1])
+dnl  do_threads="no"])
+dnl else
+dnl  AC_DEFINE([NOTHREADS], [1])
+dnl fi
 AC_SUBST(PTHREAD_CFLAGS)
 AC_SUBST(PTHREAD_LIBS)
 # Checks for header files.

@@ -10,7 +10,7 @@ citEntry(entry="article",
          number="2",
          note="User documentation of the 'lfe' package",
          month="Dec",
-         url="http://journal.r-project.org/archive/2013-2/gaure.pdf",
+         url="https://journal.r-project.org/archive/2013/RJ-2013-031/RJ-2013-031.pdf",
 	 textVersion="S. Gaure. lfe: Linear group fixed effects. The R Journal, 5(2):104-117, Dec 2013"
 )
 
@@ -51,7 +51,7 @@ citEntry(entry='manual',
 	title = "{lfe}: Linear Group Fixed Effects",
 	author = as.person("Simen Gaure"),
 	year = year,
-         url = "http://cran.r-project.org/package=lfe",
+        url = "https://CRAN.R-project.org/package=lfe",
 	textVersion = paste('S. Gaure. lfe: Linear group fixed effects. R package version ',meta$Version, ', ', year,sep='')
 )
 

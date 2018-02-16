@@ -1,5 +1,5 @@
 /*
- $Id: lfe.h 1991 2016-04-14 15:56:45Z sgaure $
+ $Id: lfe.h 2020 2016-04-27 05:13:51Z sgaure $
 */
 
 #include "config.h"
@@ -135,7 +135,6 @@ SEXP MY_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta);
 SEXP MY_piproduct(SEXP inX, SEXP inY);
 SEXP MY_setdimnames(SEXP obj, SEXP nm);
 SEXP MY_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA);
-SEXP MY_dsyr2k(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA, SEXP inB);
 SEXP MY_sandwich(SEXP inalpha, SEXP inbread, SEXP inmeat);
 SEXP MY_address(SEXP x);
 SEXP MY_named(SEXP x, SEXP n);

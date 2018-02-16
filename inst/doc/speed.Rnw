@@ -140,7 +140,7 @@ intuitive relations between dummy variables.
 One could speculate that convergence is related to how tightly
 connected the graph is, one such measure is the diameter of the graph, or
 the set of lengths of shortest paths.
-<<cache=TRUE, tidy=FALSE>>=
+<<tidy=FALSE>>=
 library(igraph)
 mkgraph <- function(f1,f2)
   graph.edgelist(cbind(paste('f1',f1),paste('f2',f2)), directed=FALSE)

@@ -21,20 +21,19 @@ setoption <- function(...) {
 }
 
 .onLoad <- function(libname,pkgname) {
-  setoption(usecg=FALSE, eps=1e-8, pint=1800L, accel=1L, bootmem=500, etol=c(1e-2,0))
+  setoption(usecg=FALSE, eps=1e-8, pint=1800L, accel=1L, bootmem=500, etol=c(1e-2,1e-12))
 
   if(is.null(cr <- getOption('lfe.threads'))) {
     cr <- as.integer(Sys.getenv('LFE_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_NUM_THREADS'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('OMP_THREAD_LIMIT'))
     if(is.na(cr)) cr <- as.integer(Sys.getenv('NUMBER_OF_PROCESSORS'))
-    if(is.na(cr)) cr <- numcores()
+    if(is.na(cr)) cr <- parallel::detectCores(all.tests=TRUE)
     if(is.na(cr) || cr < 1) {
       cr <- 1
     }
     options(lfe.threads=cr)
   }
-#  .Call(C_threads,cr)
 }
 
 .onUnload <- function(libpath) {
@@ -65,19 +64,20 @@ mycbind <- local(function(...) {
 }, list(..cbind..=..cbind..))
 rm(rv,RV,mv,..cbind..)
 
-numcores <- function() {
-  "This function is snatched from package 'multicore'"
-  systems <- list(darwin = "/usr/sbin/sysctl -n hw.ncpu 2>/dev/null",
-                  freebsd = "/sbin/sysctl -n hw.ncpu 2>/dev/null",
-                  linux = "grep processor /proc/cpuinfo 2>/dev/null|wc -l",
-                  irix = c("hinv |grep Processors|sed 's: .*::'", "hinv|grep '^Processor '|wc -l"),
-                  solaris = "/usr/sbin/psrinfo -v|grep 'Status of.*processor'|wc -l")
-  for (i in seq(systems)) if (length(grep(paste("^",
-                                                names(systems)[i], sep = ""), R.version$os)))
-    for (cmd in systems[i]) {
-      a <- gsub("^ +", "", system(cmd, TRUE)[1])
-      if (length(grep("^[1-9]", a)))
-        return(as.integer(a))
-    }
-  NA
-}
+
+## numcores <- function() {
+##   "This function is snatched from package 'multicore'"
+##   systems <- list(darwin = "/usr/sbin/sysctl -n hw.ncpu 2>/dev/null",
+##                   freebsd = "/sbin/sysctl -n hw.ncpu 2>/dev/null",
+##                   linux = "grep processor /proc/cpuinfo 2>/dev/null|wc -l",
+##                   irix = c("hinv |grep Processors|sed 's: .*::'", "hinv|grep '^Processor '|wc -l"),
+##                   solaris = "/usr/sbin/psrinfo -v|grep 'Status of.*processor'|wc -l")
+##   for (i in seq(systems)) if (length(grep(paste("^",
+##                                                 names(systems)[i], sep = ""), R.version$os)))
+##     for (cmd in systems[i]) {
+##       a <- gsub("^ +", "", system(cmd, TRUE)[1])
+##       if (length(grep("^[1-9]", a)))
+##         return(as.integer(a))
+##     }
+##   NA
+## }

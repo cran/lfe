@@ -192,11 +192,11 @@ static int demean(int N, double *vec, double *weights,int *scale,
       double eta;
       char buf[256];
       double targ; 
-      if(e > 2 && prevdp != 0.0) {
-	// use an average c if more than 2 factors
+      if(prevdp != 0.0) {
+	// use an average c
 	c = pow(delta/prevdp, 1.0/(iter-lastiter));
 	targ = (1.0-c)*neps;
-      } else targ=target;
+      } else targ = target;
 
       reqiter = log(targ/delta)/log(c);
       eta = 1.0*(now-last)*reqiter/(iter-lastiter);
@@ -212,7 +212,7 @@ static int demean(int N, double *vec, double *weights,int *scale,
 #endif
       strftime(timbuf, sizeof(timbuf), "%c", &tmarriv);
       sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
-	      vecnum,iter,1.0-c,delta,target,timbuf);
+	      vecnum,iter,1.0-c,delta,targ,timbuf);
       pushmsg(buf,lock);
       lastiter = iter;
       prevdp = delta;
@@ -613,7 +613,7 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       /* It's a vector */
       SEXP resvec;
       vectors[cnt] = REAL(elt);
-      if(NAMED(vlist) && NAMED(elt) == 0 && !domeans) {
+      if(NAMED(vlist) == 0 && NAMED(elt) == 0 && !domeans) {
 	SET_VECTOR_ELT(reslist,i,elt);
 	target[cnt] = vectors[cnt];
       } else {

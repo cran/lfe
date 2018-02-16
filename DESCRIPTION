@@ -1,26 +1,25 @@
 Package: lfe
-Version: 2.5-1998
-Date: 2016-04-18
+Version: 2.6-2291
+Date: 2018-02-14
 Title: Linear Group Fixed Effects
 Author: Simen Gaure, Ragnar Frisch Centre for Economic Research
 Maintainer: Simen Gaure <Simen.Gaure@frisch.uio.no>
-Copyright: 2011-2016, Simen Gaure
+Copyright: 2011-2018, Simen Gaure
 Depends: R (>= 2.15.2), Matrix (>= 1.1-2)
-Imports: Formula, xtable, compiler, utils, methods, sandwich
-Suggests: knitr, igraph, plm, R2Cuba, numDeriv
+Imports: Formula, xtable, compiler, utils, methods, sandwich, parallel
+Suggests: knitr, digest, igraph, plm, R2Cuba, cubature, numDeriv
 VignetteBuilder: knitr
 ByteCompile: yes
-Description: Transforms away factors with many levels prior to doing an OLS.
-    Useful for estimating linear models with multiple group fixed effects, and for
-    estimating linear models which uses factors with many levels as pure control
-    variables. Includes support for instrumental variables, conditional F statistics
-    for weak instruments, robust and multi-way clustered standard errors, as well as
-    limited mobility bias correction.
+Description: Transforms away factors with many levels prior to doing an OLS. 
+  Useful for estimating linear models with multiple group fixed effects, and for
+  estimating linear models which uses factors with many levels as pure control variables.
+  Includes support for instrumental variables, conditional F statistics for weak instruments,
+  robust and multi-way clustered standard errors, as well as limited mobility bias correction.
 License: Artistic-2.0
 Classification/JEL: C13, C23, C60
 Classification/MSC: 62J05, 65F10, 65F50
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1
 NeedsCompilation: yes
-Packaged: 2016-04-18 09:20:05 UTC; sgaure
+Packaged: 2018-02-16 11:49:42 UTC; sgaure
 Repository: CRAN
-Date/Publication: 2016-04-19 00:34:26
+Date/Publication: 2018-02-16 17:52:51 UTC
