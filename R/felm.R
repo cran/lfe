@@ -666,10 +666,16 @@ newols <- function(mm, stage1=NULL, pf=parent.frame(), nostats=FALSE, exactDOF=F
         cvcv <- .Call(C_sandwich,1.0,inv,meat)
         if(psdef && d > 1) {
           ev <- eigen(cvcv)
-          if(any(Im(ev$values) != 0 || ev$values < 0)) {
+          badev <- Im(ev$values) != 0 | Re(ev$values) < 0
+          if(any(badev)) {
             warning('Negative eigenvalues set to zero in multiway clustered variance matrix. See felm(...,psdef=FALSE)')
-            cvcv <- ev$vectors %*% diag(pmax(ev$values,0)) %*% t(ev$vectors)
+            ev$values[badev] <- 0
+            cvcv <- Re(ev$vectors %*% diag(ev$values) %*% t(ev$vectors))
           }
+#          if(any(Im(ev$values) != 0 | Re(ev$values) < 0)) {
+#            warning('Negative eigenvalues set to zero in multiway clustered variance matrix. See felm(...,psdef=FALSE)')
+#            cvcv <- ev$vectors %*% diag(pmax(ev$values,0)) %*% t(ev$vectors)
+#          }
           rm(ev)
         }
         setdimnames(cvcv, vcvnames)

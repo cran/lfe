@@ -10,7 +10,7 @@ SEXP MY_threads(SEXP rt) {
 static R_CallMethodDef callMethods[] = {
   {"conncomp", (DL_FUNC) &MY_conncomp, 1},
   {"wwcomp", (DL_FUNC) &MY_wwcomp, 1},
-  {"demeanlist", (DL_FUNC) &MY_demeanlist, 10},
+  {"demeanlist", (DL_FUNC) &MY_demeanlist, 11},
   {"kaczmarz", (DL_FUNC) &MY_kaczmarz, 5},
   {"setdimnames", (DL_FUNC) &MY_setdimnames, 2},
   {"scalecols", (DL_FUNC) &MY_scalecols, 2},
@@ -21,7 +21,6 @@ static R_CallMethodDef callMethods[] = {
   {"address", (DL_FUNC) &MY_address, 1},
   {"named", (DL_FUNC) &MY_named, 2},
   {"rowsum", (DL_FUNC) &Crowsum, 3},
-  //  {"setnamed", (DL_FUNC) &MY_setnamed, 2},
   //  {"ppf", (DL_FUNC) &MY_ppf, 2},
   //  {"threads", (DL_FUNC) &MY_threads, 1},
   {NULL, NULL, 0}

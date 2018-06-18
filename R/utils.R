@@ -477,7 +477,7 @@ getcomp <- function(est, alpha=NULL) {
 
 #' Chain subset conditions 
 #'
-#' @param ... Logical conditions to be chained.
+#' @param ... Logical conditions to be chained. 
 #' @param out.vars character. Variables not in data.frame, only needed if you use variables which
 #' are not in the frame.  If \code{out.vars} is not specified, it is assumed to match all variables
 #' starting with a dot ('.').
@@ -488,51 +488,64 @@ getcomp <- function(est, alpha=NULL) {
 #' argument filters further.
 #' For independent conditions this will be the same as and'ing them. I.e.
 #' \code{chainsubset(x < 0 , y < 0)} will yield  the same subset as \code{(x < 0) & (y < 0)}.
-#' However, for e.g. aggregate filters like \code{chainsubset(x < mean(x), y < mean(y))}
-#' we first find all the observations with \code{x < mean(x)}, then among these we
-#' find the ones with \code{y < mean(y)}.  The \code{mean(y)} is now conditional on
-#' \code{x < mean(x)}.
+#' However, for aggregate filters like \code{chainsubset(x < mean(y), x > mean(y))}
+#' we first find all the observations with \code{x < mean(y)}, then among these we
+#' find the ones with \code{x > mean(y)}.  The last \code{mean(y)} is now conditional on
+#' \code{x < mean(y)}.
 #' 
 #' @examples
+#' set.seed(48)
 #' N <- 10000
-#' dat <- data.frame(y=rnorm(N), x=rnorm(N),id=factor(sample(N/100,N,replace=TRUE)))
+#' dat <- data.frame(y=rnorm(N), x=rnorm(N))
 #' # It's not the same as and'ing the conditions:
-#' ss <- chainsubset(x < mean(y), y < 3*mean(x))
-#' sum(eval(ss,dat))
-#' sum(evalq(x < mean(y) & y < 3*mean(x), dat))
-#' ss2 <- chainsubset(x < mean(y), y < a*mean(x), out.vars='a')
-#' a <- 3; sum(eval(ss2, dat))
-#' a <- 2; sum(eval(ss2, dat))
-#' # Among observations with x < y, find entire id's with more than
-#' # one fifth of their x's larger than 1/2
-#' ss3 <- chainsubset( x < y, tapply(x,id,function(.xx) {sum(.xx > 1/2) > length(.xx)/5} )[id])
-#'  sum(eval(ss3,dat))
+#' felm(y ~ x,data=dat,subset=chainsubset(x < mean(y), y < 2*mean(x)))
+#' felm(y ~ x,data=dat,subset=chainsubset(y < 2*mean(x), x < mean(y)))
+#' felm(y ~ x,data=dat,subset=(x < mean(y)) & (y < 2*mean(x)))
+#' lm(y ~ x, data=dat, subset=chainsubset(x < mean(y), x > mean(y)))
+#' @note
+#' Some trickery is done to make this work directly in the subset argument of functions like
+#' \code{felm()} and \code{lm()}. It might possibly fail with an error message in some situations.
+#' If this happens, it should be done in two steps: \code{ss <- eval(chainsubset(...),data); 
+#' lm(...,data=data, subset=ss)}. In particular, the arguments are taken literally, 
+#' constructions like \code{function(...) {chainsubset(...)}} or \code{a <- quote(x < y); chainsubset(a)} do
+#' not work, but \code{do.call(chainsubset,list(a))} does.
 #' @export
 chainsubset <- function(..., out.vars) {
+  if(sys.parent() != 0) {
+    cl <- sys.call(sys.parent())
+    mc <- match.call(expand.dots=TRUE)
+    if(cl[[1]] == quote(eval)) {
+      # we are called from eval, probably inside lm. let's replace it with a evalq and a direct call, then
+      # evaluation of the result
+      ecaller <- parent.frame(3)
+      cl[[1]] <- quote(evalq)
+      cl[[2]] <- match.call()
+      cl[[2]] <- eval(cl,ecaller)
+      return(eval(cl,ecaller))
+    }
+  }
+
   args <- as.list(match.call(expand.dots=TRUE))[-1]
   args[['out.vars']] <- NULL
-  # We will reduce the arguments. The first argument is
-  # converted to a factor, which is then used to index the variables
-  # in the next element
   if(length(args) < 1) return(NULL)
   if(length(args) == 1) return(structure(args[[1]],filter=args))
-  miss <- missing(out.vars)
   group <- list(as.name('{'))
+  miss <- missing(out.vars)
+  R <- as.name(sprintf('R%x',RR <- sample(.Machine$integer.max,1)))
+  FF <- as.name(sprintf('F%x',RR))
   structure(
-      bquote({
-        .first <- (.(args[[1]]))
-        .R <- logical(length(.first))
-        .R[.(Reduce(function(f1,f2) {
+      bquote(local({
+        .(R) <- logical(length(.(FF) <- .(args[[1]])))
+        .(R)[.(Reduce(function(f1,f2) {
           nm <- all.vars(f2)
-          if(miss)
-              nm <- grep('^\\.',nm,value=TRUE,invert=TRUE)
-          else
-              nm <- nm[!(nm %in% out.vars)]
-          recod <- as.call(c(group,
-                             lapply(nm, function(n) bquote(.(as.name(n)) <- .(as.name(n))[.f, drop=TRUE]))))
-          bquote({.f <- .(f1); local({.(recod); .f[.(f2)]})})
-        }, args[-1],init=quote(which(.first))))] <- TRUE
-        .R
-      }),
+          nm <- lapply(if(miss)
+                         grep('^\\.',nm,value=TRUE,invert=TRUE)
+                       else
+                         nm[!(nm %in% out.vars)],as.name)
+          recod <- as.call(c(group, lapply(nm, function(n) bquote(.(n) <- .(n)[.(FF), drop=TRUE]))))
+          bquote({.(FF) <- .(f1); local({.(recod); .(FF)[.(f2)]})})
+        }, args[-1],init=bquote(base::which(.(FF)))))] <- TRUE
+        .(R)
+      })),
       filter=args)
 }

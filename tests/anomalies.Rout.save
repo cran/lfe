@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2018-02-12 r74246) -- "Unsuffered Consequences"
+R Under development (unstable) (2018-06-11 r74889) -- "Unsuffered Consequences"
 Copyright (C) 2018 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -491,6 +491,56 @@ iid F 0.148
 attr(,"df1")
 [1] 2
 > 
+> # inplace test and NA
+> foo <- as.numeric(1:6)
+> fl <- list(factor(c('r','g','g','r','g','b')),factor(c('b','b','r','g','b','g')))
+> a <- demeanlist(unnamed(foo), fl)
+> round(foo,6)
+[1]  0.0 -1.5  0.0  0.0  1.5  0.0
+> foo <- rnorm(6)
+> foo[3] <- NaN
+> demeanlist(foo,fl)
+[1] NaN NaN NaN NaN NaN NaN
+> round(demeanlist(foo,fl,na.rm=TRUE),3)
+[1]  0.000  0.954  0.000 -0.954  0.000
+attr(,"na.rm")
+[1] 3
+> foo <- list(vec=runif(6),mat=matrix(runif(18),6))
+> foo$vec[4] = NaN
+> foo$mat[3,2] = NaN
+> lapply(demeanlist(foo,fl),round,3)
+$vec
+[1] NaN NaN NaN NaN NaN NaN
+
+$mat
+       [,1] [,2]   [,3]
+[1,]  0.000  NaN  0.000
+[2,] -0.049  NaN -0.132
+[3,]  0.000  NaN  0.000
+[4,]  0.000  NaN  0.000
+[5,]  0.049  NaN  0.132
+[6,]  0.000  NaN  0.000
+
+> a <- demeanlist(foo,fl,na.rm=TRUE)
+> attributes(a)
+$names
+[1] "vec" "mat"
+
+$na.rm
+[1] 3 4
+
+> lapply(a,round,3)
+$vec
+[1]  0.000 -0.035  0.035  0.000
+
+$mat
+       [,1]   [,2]   [,3]
+[1,]  0.000  0.000  0.000
+[2,] -0.049  0.014 -0.132
+[3,]  0.049 -0.014  0.132
+[4,]  0.000  0.000  0.000
+
+> 
 > # autoload plm:
 > if(require('plm', quietly=TRUE)) {
 +   data("EmplUK", package = "plm")
@@ -509,6 +559,8 @@ Loading required namespace: plm
       output      capital lag(wage, 1) 
       0.0613       0.9570      -0.1073 
 > 
+> 
+> 
 > proc.time()
    user  system elapsed 
-   2.84    1.34    2.97 
+   4.65    5.09    3.41 

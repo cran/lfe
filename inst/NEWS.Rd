@@ -1,5 +1,17 @@
 \name{NEWS}
 \title{lfe news}
+\section{Changes in version 2.7}{
+  \itemize{
+    \item Added a \code{na.rm} argument to \code{demeanlist} to remove
+    rows with NAs in the input data prior to centering. Previously these were silently set to 0.
+
+    \item A bug in the negative Eigenvalue adjustment for multiway
+    clustering has been fixed.
+
+    \item Dependence on package \pkg{R2Cuba} has been removed because
+    that package is orphaned and will be removed from CRAN.
+  }
+}
 \section{Changes in version 2.6}{
 \itemize{
   \item If running with robust or clustered standard errors,

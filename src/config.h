@@ -1,7 +1,7 @@
 /* src/config.h.  Generated from config.h.in by configure.  */
-/* #undef HAVE_SEM */
+#define HAVE_SEM 1
 /* #undef NOTHREADS */
 /* #undef HUGE_INT */
-/* #undef HAVE_THREADNAME */
+#define HAVE_THREADNAME 1
 
 

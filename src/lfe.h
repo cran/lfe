@@ -129,7 +129,7 @@ SEXP MY_wwcomp(SEXP flist);
 SEXP MY_conncomp(SEXP flist);
 SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 		   SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans,
-		   SEXP weights, SEXP Rscale);
+		   SEXP weights, SEXP Rscale, SEXP attrs);
 SEXP MY_scalecols(SEXP mat, SEXP vec);
 SEXP MY_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta);
 SEXP MY_piproduct(SEXP inX, SEXP inY);

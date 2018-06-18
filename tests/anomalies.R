@@ -45,6 +45,23 @@ condfstat(est2, type=NULL)
 est0 <- felm( y ~ 1|0|(Q~z1))
 condfstat(est0)
 
+# inplace test and NA
+foo <- as.numeric(1:6)
+fl <- list(factor(c('r','g','g','r','g','b')),factor(c('b','b','r','g','b','g')))
+a <- demeanlist(unnamed(foo), fl)
+round(foo,6)
+foo <- rnorm(6)
+foo[3] <- NaN
+demeanlist(foo,fl)
+round(demeanlist(foo,fl,na.rm=TRUE),3)
+foo <- list(vec=runif(6),mat=matrix(runif(18),6))
+foo$vec[4] = NaN
+foo$mat[3,2] = NaN
+lapply(demeanlist(foo,fl),round,3)
+a <- demeanlist(foo,fl,na.rm=TRUE)
+attributes(a)
+lapply(a,round,3)
+
 # autoload plm:
 if(require('plm', quietly=TRUE)) {
   data("EmplUK", package = "plm")
@@ -52,3 +69,5 @@ if(require('plm', quietly=TRUE)) {
   detach('package:plm', unload=TRUE)
   print(felm(emp~output+capital + lag(wage,1)|firm, data=Em))
 }
+
+

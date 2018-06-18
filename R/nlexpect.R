@@ -27,7 +27,8 @@
 #' expectations is computed, like \code{quote(c(a*b, a^3-b))}. However, if the
 #' expressions contain different variables, like \code{quote(c(a*b, d*e))}, a
 #' quite compute intensive 4-dimensional integral will be computed, compared to
-#' two cheap 2-dimensional integrals if you do them separately.
+#' two cheap 2-dimensional integrals if you do them separately. There is nothing to gain
+#' from using vector-valued functions compared to multiple calls to \code{nlexpect()}.
 #' 
 #' You may of course also integrate inequalites like \code{quote(abs(x1-0.2) >
 #' 0.2)} to simulate the probability from t-tests or Wald-tests. See the
@@ -37,7 +38,15 @@
 #' one already.  It will also be passed an argument \code{.z} which contains
 #' the actual coefficients in normalized coordinates, i.e. if \code{ch} is the
 #' Cholesky decomposition of the covariance matrix, and \code{pt} are the point
-#' estimates, the coefficients will be \code{pt + ch \%*\% .s}
+#' estimates, the coefficients will be \code{pt + ch \%*\% .s}. The first argument
+#' is a vector with names corresponding to the coefficients.
+#'
+#' If you specify \code{vectorized=TRUE}, your function will be passed a list with vectors
+#' in its first argument. The function must
+#' be able to handle a list, and must return a vector of the same length as the vectors
+#' in the list.  If you pass an expression like \code{x < y}, each variable will be a vector.
+#' If your function is vector valued, it must return a matrix where each
+#' column is the values.
 #' 
 #' The \code{tol} argument specifies both the relative tolerance and the
 #' absolute tolerance. If these should not be the same, specify \code{tol} as a
@@ -55,22 +64,23 @@
 #' @param coefs character. Names of coefficients to test. Only needed if
 #' \code{fun} is a function.
 #' @param ... other arguments passed to fun or the integration routine.
-#' @param tol numeric. Tolerance for the computed probability.
+#' @param tol numeric. Tolerance for the computed integral.
 #' @param lhs character. Name of the left hand side, if \code{est} has more
 #' than one.
 #' @param cv Covariance matrix to use in place of \code{vcov(est)}
 #' @param istats logical. Should convergence information from the integration
 #' routine be included as attributes?
-#' @param flags list. Additional flags for the underlying integration routine.
+#' @param flags list. Additional flags for the underlying integration routine. Not used after the
+#' package \pkg{R2Cuba} disappeared.
 #' @param max.eval integer. Maximum number of integral evaluations.
-#' @param method character. Either \code{"suave"} or \code{"cuhre"} from package
-#' \pkg{R2Cuba} or \code{"hcubature"} or \code{"pcubature"} from package \pkg{adapt}.
+#' @param method character. Either \code{"hcubature"} (default) or \code{"pcubature"} from package \pkg{cubature}. 
+#' The documentation there says that \code{"pcubature"} is good for smooth integrands of low dimensions.
+#' @param vectorize logical. Use vectorized function evaluation from package \pkg{cubature}. This can speed
+#' up integration significantly.
 #' @return The function \code{nlexpect} computes and returns the expectation of
 #' the function \code{fun(beta)}, with \code{beta} a vector of coefficients.
 #' I.e., if the coefficients \code{beta} are bootstrapped a large number of
 #' times, \code{nlexpect(est, fun)} should be equal to \code{mean(fun(beta))}.
-#' Additional diagnostic output from \code{\link[R2Cuba]{suave}} is returned in
-#' attributes if \code{istats=TRUE}.
 #' @note An alternative to this method is to use the \code{bootexpr} argument
 #' with \code{\link{felm}}, to do a Monte Carlo integration.
 #' 
@@ -99,23 +109,14 @@
 #' nlexpect(est, (x1-pt1)^2 > pt1^2)
 #' # which of course is the same as
 #' 2*nlexpect(est, x1 < 0)
-#' 
+#'
+#' # Here's a multivalued, vectorized example
+#' nlexpect(est, rbind(a=x1*x2 < pt1, b=x1*x2 > 0), vectorized=TRUE)
 #' \donttest{
-#' # then a joint test. Here we find the probability that
-#' # we are further from origo than the point estimates, measured
-#' # in a variance normalized coordinate system.
-#' waldtest(est, ~ x1 | x2)['p.F']
-#' #inverse cholesky
-#' ich <- solve(t(chol(vcov(est)[c('x1','x2'), c('x1','x2')])))
-#' # convert to normalized coordinates
-#' nz <- sum((ich %*% c(pt1,pt2))^2)
-#' # find probability that we're further away
-#' nlexpect(est, sum((ich %*% c(x1-pt1,x2-pt2))^2) > nz)
-#' # or use the .z argument provided automatically
-#' nlexpect(est, sum(.z^2) > nz, coefs=c('x1','x2'))
 #' 
 #' # Non-linear test:
 #' f <- function(x) c(poly=x[['x1']]*(6*x[['x1']]-x[['x2']]^2))
+#' # This is the linearized test:
 #' waldtest(est, f)['p.F']
 #' # In general, for a function f, the non-linear Wald test is something like
 #' # the following:
@@ -123,38 +124,41 @@
 #' Ef <- nlexpect(est, f, coefs=c('x1','x2'))
 #' # point value of function
 #' Pf <- f(c(pt1,pt2))
-#' # similar to a Wald test:
-#' nlexpect(est, function(x) (f(x)-Ef)^2 > Pf^2, c('x1','x2'))
+#' # similar to a Wald test, but non-linear:
+#' nlexpect(est, function(x) (f(x)-Ef)^2 > Pf^2, c('x1','x2'), vectorize=TRUE)
 #' # one-sided
-#' nlexpect(est, function(x) f(x)-Ef > abs(Pf), c('x1','x2'))
+#' nlexpect(est, function(x) f(x)-Ef > abs(Pf), c('x1','x2'), vectorize=TRUE)
 #' # other sided
-#' nlexpect(est, function(x) f(x)-Ef < -abs(Pf), c('x1','x2'))
+#' nlexpect(est, function(x) f(x)-Ef < -abs(Pf), c('x1','x2'), vectorize=TRUE)
 #' }
 #' 
 #' @export nlexpect
 nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
                      cv, istats=FALSE, flags=list(verbose=0), max.eval=200000L,
-                     method=c('cuhre','suave','pcubature','hcubature')) {
+                     method=c('hcubature','pcubature','cuhre','suave'),vectorize=FALSE) {
 
   mc <- match.call(expand.dots=FALSE)
   xargs <- names(mc[['...']])
   method <- match.arg(method)
   if(method %in% c('cuhre','suave')) {
-    if(!requireNamespace('R2Cuba', quietly=TRUE)) {
-      warning('Package "R2Cuba" not found.')
-      return(NULL);
-    }
-    adapt <- FALSE
+    stop('Methods cuhre and suave no longer supported because package R2Cuba has gone extinct.')
+#    if(!requireNamespace('R2Cuba', quietly=TRUE)) {
+#      warning('Package "R2Cuba" not found.')
+#      return(NULL);
+#    }
+#    adapt <- FALSE
+#    R2ig <- switch(method, cuhre=R2Cuba::cuhre, suave=R2Cuba::suave)
   } else {
-    adapt <- TRUE
     if(!requireNamespace('cubature', quietly=TRUE)) {
       warning('Package "cubature" not found.')
       return(NULL)
     }
+    adapt <- TRUE
+    adaptig <- switch(method,hcubature=cubature::hcubature,pcubature=cubature::pcubature)
   }
 
   if(isTRUE(est$nostats) && missing(cv))
-      stop('This test requires that felm() is run without nostats=FALSE; or specify a cv argument')
+      stop('This test requires that felm() is run without nostats=TRUE; or specify a cv argument')
 
 
   # Find the covariance matrix
@@ -194,8 +198,8 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
   # Find the coefficients
   cf <- drop(coef(est, lhs=lhs))[coefs]
   # and the Cholesky
-  ch <- t(chol(cv[coefs,coefs,drop=FALSE]))
-
+  ch <- chol(cv[coefs,coefs,drop=FALSE])
+  tch <- t(ch)
   # Now, we need to integrate fun(x) > 0 over the joint distribution of the parameters
   # We do this as follows. We integrate over a standard hypercube (-1,1) x (-1,1) x ...
   # adaptIntegrate can't take infinite limits.
@@ -206,23 +210,41 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
   # We transform the integration variables with the covariance matrix to feed fun(),
   # then integrate fun(x) > 0 with the multivariate normal distribution.
   # we use the package cubature for the integration.
-  
-  integrand <- function(x, ...) {
-    x2 <- x^2L
-    jac <- prod((1+x2)/((1-x2)^2L))
-    z <- x/(1-x2)
-    # z is the standard normal (t really) multivariate
-#    dens <- prod(dnorm(z))
-    dens <- prod(dt(z,est$df))
-    beta <- drop(cf + ch %*% z)
-    names(beta) <- coefs
-    ret <- fun(beta, .z=z, ...)*jac*dens
-    if(anyNA(ret)) stop('Function value is NA for beta: ',format(beta),' ',x)
-    ret
-  }
-
   K <- length(cf)
-  sv <- fun(cf, .z=rep(0,K), ...)
+  
+  if(!vectorize) {
+    integrand <- function(x, ...) {
+      x2 <- x^2L
+      jac <- prod((1+x2)/((1-x2)^2L))
+      z <- x/(1-x2)
+      # z is the standard normal (t really) multivariate
+      #    dens <- prod(dnorm(z))
+      dens <- prod(dt(z,est$df))
+      beta <- drop(cf + tch %*% z)
+      names(beta) <- coefs
+      ret <- fun(beta, .z=z, ...)*jac*dens
+      if(anyNA(ret)) stop('Function value is NA for argument: ',sprintf('%.2e ',beta))
+      ret
+    }
+    sv <- fun(cf, .z=rep(0,K), ...)
+  } else {
+    integrand <- function(x, ...) {
+      x2 <- x^2L
+      jac <- apply(x2,2,function(xx) prod((1+xx)/((1-xx)^2L)))
+      z <- x/(1-x2)
+      dens <- apply(z,2,function(zz) prod(dt(zz,est$df)))
+      beta <- tch %*% z + cf
+      lbeta <- vector('list',K)
+      for(i in 1:nrow(beta)) lbeta[[i]] <- beta[i,]
+      names(lbeta) <- coefs
+      ret <- fun(lbeta, .z=z, ...)*jac*dens
+      if(anyNA(ret)) stop('Function value is NA for argument: ',sprintf('%.2e ',beta))
+      if(is.matrix(ret) && ncol(ret)==ncol(x)) ret else matrix(ret,ncol=ncol(x))
+    }
+    sv <- fun(as.list(cf), .z=matrix(0,K), ...)
+  }
+  
+
   fdim <- length(sv)
   if(length(tol) == 2) {
     reltol <- tol[1]
@@ -231,40 +253,29 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
     reltol <- abstol <- tol
   }
 
-  if(adapt) {
-    eps <- 1e-9
-    if(method=='pcubature') {
-      ret <- cubature::pcubature(integrand,rep(-1+eps,K),rep(1-eps,K),...,tol=reltol,
-                                 absError=abstol,fDim=fdim)
-    } else if(method=='hcubature') {
-      ret <- cubature::pcubature(integrand,rep(-1+eps,K),rep(1-eps,K),...,tol=reltol,
-                                 absError=abstol,fDim=fdim)
-    }
-    names(ret$integral) <- names(sv)
-    dim(ret$integral) <- dim(sv)
-    if(is.array(sv)) dimnames(ret$integral) <- dimnames(sv)
-    if(!istats) return(ret$integral)
-    names(ret)[match('integral',names(ret))] <- names(as.list(args(structure)))[1]  
-    return(do.call(structure,ret))
-  }
-
-  if(method == 'cuhre') {
-    ret <- R2Cuba::cuhre(K,fdim,integrand,lower=rep(-1,K),...,
-                         upper=rep(1,K),rel.tol=reltol,abs.tol=abstol,
-                         flags=flags, max.eval=max.eval)
-  } else {
-    ret <- R2Cuba::suave(K,fdim,integrand,...,lower=rep(-1,K),
-                         upper=rep(1,K),rel.tol=reltol,abs.tol=abstol,
-                         flags=flags, max.eval=max.eval)
-  }
-
-  names(ret$value) <- names(sv)
+  eps <- 1e-9
+  ret <- adaptig(integrand,rep(-1+eps,K),rep(1-eps,K),...,tol=reltol,
+                 absError=abstol,fDim=fdim,maxEval=max.eval,vectorInterface=vectorize)
+  names(ret$integral) <- names(sv)
   if(is.array(sv)) {
-    dim(ret$value) <- dim(sv)
-    dimnames(ret$value) <- dimnames(sv)
+    dim(ret$integral) <- dim(sv)
+    dimnames(ret$integral) <- dimnames(sv)
   }
-  if(ret$ifail != 0) warning('integration failed with: "',ret$message, '", use istats=TRUE to see details')
-  if(!istats) return(ret$value)
-  names(ret)[match('value',names(ret))] <- names(as.list(args(structure)))[1]
-  do.call(structure,ret)
+  if(!istats) return(ret$integral)
+  
+  names(ret)[match('integral',names(ret))] <- names(as.list(args(structure)))[1]  
+  return(do.call(structure,ret))
+
+#  ret <- R2ig(K,fdim,integrand,lower=rep(-1,K),...,
+#              upper=rep(1,K),rel.tol=reltol,abs.tol=abstol,
+#              flags=flags, max.eval=max.eval)
+#  names(ret$value) <- names(sv)
+#  if(is.array(sv)) {
+#    dim(ret$value) <- dim(sv)
+#    dimnames(ret$value) <- dimnames(sv)
+#  }
+#  if(ret$ifail != 0) warning('integration failed with: "',ret$message, '", use istats=TRUE to see details')
+#  if(!istats) return(ret$value)
+#  names(ret)[match('value',names(ret))] <- names(as.list(args(structure)))[1]
+#  do.call(structure,ret)
 }

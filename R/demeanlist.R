@@ -4,7 +4,9 @@
 #'  Uses the method of alternating projections to centre
 #'  a (model) matrix on multiple groups, as specified by a list of factors.
 #'  This function is called by \code{\link{felm}}, but it has been
-#'  made available as standalone in case it's needed.
+#'  made available as standalone in case it's needed. In particular, if
+#' one does not need transformations provided by R-formulas but have the covariates present
+#' as a matrix or a data.frame, a substantial amount of time can be saved in the centering.
 #' @export
 #\usage{
 #demeanlist(mtx, fl, icpt=0, eps=getOption('lfe.eps'),
@@ -35,6 +37,12 @@
 #' but without the extra copy.
 #' @param weights numeric. For weighted demeaning.
 #' @param scale logical. Specify scaling for weighted demeaning.
+#' @param na.rm logical which indicates what should happen when the data 
+#' contain \code{NA}s. If TRUE, rows in the input \code{mtx} are removed
+#' prior to centering. If FALSE, they are kept, leading to entire groups becoming NA
+#' in the output. 
+#' @param attrs list. List of attributes which should be attached to the output. 
+#' Used internally.
 #'
 #' @details
 #' For each column \code{y} in \code{mtx}, the equivalent of the
@@ -100,7 +108,11 @@
 #' 
 #' If \code{mtx} is a \code{'data.frame'}, a \code{'data.frame'} 
 #' with the same names is returned; the \code{icpt} argument is ignored.
-
+#' 
+#' If \code{na.rm} is specified, the return value has an attribute \code{'na.rm'} with a vector of
+#' row numbers which has been removed. In case the input is a matrix or list, the same rows
+#' are removed from all of them. Note that removing NAs incurs a copy of the input, so if
+#' memory usage is an issue and many runs are done, one might consider removing NAs from the data set entirely.
 #' @note
 #' The \code{accel} argument enables Gearhart-Koshy acceleration as
 #' described in Theorem 3.16 by Bauschke, Deutsch, Hundal and Park in "Accelerating the
@@ -110,7 +122,9 @@
 #' \code{demeanlist} will use an in place transform to save memory, provided the \code{mtx}
 #' argument is unnamed. Thus, as always in R, you shouldn't use temporary variables
 #' like \code{tmp <- fun(x[v,]); bar <- demeanlist(tmp,...); rm(tmp)}, it will be much better to
-#' do \code{bar <- demeanlist(fun(x[v,]),...)}
+#' do \code{bar <- demeanlist(fun(x[v,]),...)}. However, demeanlist allows a construction like
+#' \code{bar <- demeanlist(unnamed(tmp),...)} which will use an in place transformation, i.e. tmp
+#' will be modified, quite contrary to the usual semantics of R.
 #' 
 #' @examples
 #' oldopts <- options(lfe.threads=1)
@@ -133,7 +147,9 @@ demeanlist <- function(mtx,fl,icpt=0L,eps=getOption('lfe.eps'),
                        randfact=TRUE,
                        means=FALSE,
                        weights=NULL,
-                       scale=TRUE) {
+                       scale=TRUE,
+                       na.rm=FALSE,
+                       attrs=NULL) {
 
   if(length(fl) == 0) {
     if(means) {
@@ -153,7 +169,7 @@ demeanlist <- function(mtx,fl,icpt=0L,eps=getOption('lfe.eps'),
   mf <- match.call()
   ff <- formals(sys.function())
   # This is the argument sent to C_demeanlist, in this order:
-  ff <- ff[match(c("mtx","fl","icpt","eps","threads","progress","accel","means","weights","scale"),
+  ff <- ff[match(c("mtx","fl","icpt","eps","threads","progress","accel","means","weights","scale","attrs"),
              names(ff), 0L)]
   m <- names(ff)[names(ff) %in% names(mf)]
   ff[m] <- mf[m]
@@ -161,6 +177,7 @@ demeanlist <- function(mtx,fl,icpt=0L,eps=getOption('lfe.eps'),
   # This is just to avoid clutter in case of error messages
   env <- new.env(parent=parent.frame())
   assign('C_demeanlist',C_demeanlist,envir=env)
+  assign('unnamed',unnamed,envir=env)
   assign('.fl',eval.parent(ff[['fl']]), envir=env)
   .fl <- NULL # avoid check warning
   ff[['fl']] <- quote(.fl)
@@ -172,6 +189,47 @@ demeanlist <- function(mtx,fl,icpt=0L,eps=getOption('lfe.eps'),
     ff[['fl']] <- quote(..fl)
   }
 
+  # Then some NA-handling, at the request of David Hugh-Jones, June 11, 2018
+  badrows <- NULL
+  delist <- FALSE
+  isDT <- FALSE
+  if(isTRUE(na.rm)) {
+    # we need to touch and copy the mtx and fl
+    # mtx is either a vector, a matrix or a list (data.frame/data.table) of such
+    mtx <- eval.parent(ff[['mtx']])
+    if(!is.list(mtx)) {mtx <- list(mtx); delist <- TRUE}
+    # find bad rows in any of the elements of mtx
+    badrows <- NULL
+    for(i in seq_along(mtx)) {
+      object <- mtx[[i]]
+      d <- dim(object)
+      if (length(d) > 2L)  next
+      bad <- seq_along(object)[is.na(object)]
+      if (length(bad) == 0L) next
+      if (length(d)) {
+        bad <- unique(((bad - 1)%%d[1L]) + 1L)
+      } 
+      badrows <- union(badrows,bad)
+    }
+    if(length(badrows) > 0) {
+      isDF <- is.data.frame(mtx)
+      newmtx <- lapply(mtx,function(m) if(length(dim(m)) > 1) m[-badrows,,drop=FALSE] else m[-badrows])
+      rm(mtx)
+      if(isDF) newmtx <- as.data.frame(newmtx)
+      if(delist) newmtx <- newmtx[[1]]
+      fl <- eval(ff[['fl']],env)
+      N <- length(fl[[1]])
+      newfl <- lapply(fl, function(f) factor(f[-badrows]))
+      assign('.mtx',newmtx,envir=env)
+      assign('.fl',newfl,envir=env)
+      ff[['fl']] <- quote(.fl)
+      rm(newfl)
+      ff[['attrs']] <- c(ff[['attrs']],list(na.rm=sort(badrows)))
+    } else {
+      assign('.mtx',mtx,envir=env)
+    }
+    ff[['mtx']] <- quote(unnamed(.mtx))
+  }
   eval(as.call(c(list(quote(.Call), quote(C_demeanlist)), ff)), env)
 }
 

@@ -173,7 +173,7 @@ SEXP MY_named(SEXP x, SEXP n) {
     UNPROTECT(1);
     return(res);
   }
-  // set named status
+  // set named status. Use this at your own peril. Seriously. Things may ...
   SET_NAMED(x,INTEGER(n)[0]);
   return(x);
 }

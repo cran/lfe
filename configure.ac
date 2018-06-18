@@ -32,14 +32,14 @@ AC_PROG_AWK
 
 # Checks for libraries.
 
-dnl if test "$do_threads" = "yes"; then
-dnl  ACX_PTHREAD([], [
-dnl  AC_MSG_WARN([No threads on this architecture])
-dnl  AC_DEFINE([NOTHREADS], [1])
-dnl  do_threads="no"])
-dnl else
-dnl  AC_DEFINE([NOTHREADS], [1])
-dnl fi
+if test "$do_threads" = "yes"; then
+  AX_PTHREAD([], [
+  AC_MSG_WARN([No threads on this architecture])
+  AC_DEFINE([NOTHREADS], [1])
+  do_threads="no"])
+else
+  AC_DEFINE([NOTHREADS], [1])
+fi
 AC_SUBST(PTHREAD_CFLAGS)
 AC_SUBST(PTHREAD_LIBS)
 # Checks for header files.
@@ -82,7 +82,7 @@ AC_MSG_RESULT(no)
 )
 
 # check for capability of setting thread name
-AC_SEARCH_LIBS([pthread_setname_np], [], AC_DEFINE([HAVE_THREADNAME]))
+AC_SEARCH_LIBS([pthread_setname_np], [], AC_DEFINE([HAVE_THREADNAME]), [], [-pthread])
 AC_SUBST(HAVE_THREADNAME)
 fi
 

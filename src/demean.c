@@ -96,9 +96,9 @@ static int demean(int N, double *vec, double *weights,int *scale,
   int lastiter;
 
   // zero out NaNs
-  for(int i = 0; i < N; i++) {
-    if(isnan(vec[i])) vec[i]=0.0;
-  }
+  //  for(int i = 0; i < N; i++) {
+  //    if(isnan(vec[i])) vec[i]=0.0;
+  //  }
   if(weights != NULL && scale[0]) for(int i = 0; i < N; i++) vec[i] = vec[i]*weights[i];
 
   centre(vec, N, factors, e, means, weights);
@@ -486,7 +486,7 @@ static int demeanlist(double **vp, int N, int K, double **res, double *weights,i
 
 SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 		   SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans,
-		   SEXP Rweights, SEXP Rscale) {
+		   SEXP Rweights, SEXP Rscale, SEXP attrs) {
   int numvec;
   int numfac;
   int cnt;
@@ -508,15 +508,17 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   int protectcount=0;
   int scale[2];
   int wraplist = 0;
+
   // Find the length of the data
   // We are never called with length(flist) == 0
-  //  if(NAMED(vlist) == 0) Rprintf("inplace\n");
+  //  if(NAMED(vlist) == 0) Rprintf("inplace %p\n",vlist); else Rprintf("out of place %p\n",vlist);
   PROTECT(flist = AS_LIST(flist));  protectcount++;
   if(LENGTH(flist) == 0) {
     warning("demeanlist called with length(fl)==0, internal error?");
     N = 0;
-  } else 
+  } else {
     N = LENGTH(VECTOR_ELT(flist,0));
+  }
 
   if(LENGTH(Rscale) == 1) {
     scale[0] = LOGICAL(AS_LOGICAL(Rscale))[0];
@@ -525,7 +527,7 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     scale[0] = LOGICAL(AS_LOGICAL(Rscale))[0];
     scale[1] = LOGICAL(AS_LOGICAL(Rscale))[1];
   } else {
-    error("scale must have length > 2");
+    error("scale must have length > 0");
   }
   domeans = LOGICAL(AS_LOGICAL(Rmeans))[0];
   vicpt = INTEGER(PROTECT(AS_INTEGER(Ricpt)));protectcount++;
@@ -560,6 +562,7 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     wraplist = 1;
   }
   PROTECT(vlist = AS_LIST(vlist)); protectcount++;
+
   listlen = LENGTH(vlist); 
   if(icptlen != 1 && icptlen != listlen)
     error("Length of icpt (%d) should be 1 or the number of arguments (%d)", icptlen, listlen);
@@ -605,6 +608,7 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   for(i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
     if(isNull(elt)) continue;
+
     if(!isReal(elt)) {
       PROTECT(elt = coerceVector(elt, REALSXP)); protectcount++;
     }
@@ -613,7 +617,8 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       /* It's a vector */
       SEXP resvec;
       vectors[cnt] = REAL(elt);
-      if(NAMED(vlist) == 0 && NAMED(elt) == 0 && !domeans) {
+      if( NO_REFERENCES(elt) && NO_REFERENCES(vlist) && !domeans) {
+	// in place centering
 	SET_VECTOR_ELT(reslist,i,elt);
 	target[cnt] = vectors[cnt];
       } else {
@@ -634,7 +639,8 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       if(icptlen != 1) icpt = vicpt[i]-1;
       if(icpt >= 0 && icpt < cols) rcols--;
       
-      if(NAMED(vlist) == 0 && NAMED(elt) == 0 && rcols == cols && !domeans) {
+      if(NO_REFERENCES(vlist) && NO_REFERENCES(elt) && rcols == cols && !domeans) {
+	// in place centering
 	SET_VECTOR_ELT(reslist,i,elt);
 	for(int j=0; j < cols; j++) {
 	  vectors[cnt] = target[cnt] = REAL(elt) + j*(mybigint_t)N;
@@ -662,10 +668,7 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 
   /* Then do stuff */
 
-  PROTECT(badconv = allocVector(INTSXP,1));
-  setAttrib(reslist,install("badconv"),badconv);
-  UNPROTECT(1);
-
+  PROTECT(badconv = allocVector(INTSXP,1));protectcount++;
   INTEGER(badconv)[0] = demeanlist(vectors,N,numvec,target,weights,scale,
 				   factors,numfac,
 				   eps,cores,INTEGER(AS_INTEGER(quiet))[0],
@@ -684,10 +687,20 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       }
     }
   }
+  SEXP ret = reslist;
+  if(wraplist) ret = VECTOR_ELT(reslist,0);
+  if(INTEGER(badconv)[0] > 0) setAttrib(ret,install("badconv"),badconv);
+  // Now, there may be more attributes to set
+  if(!isNull(attrs) && LENGTH(attrs) > 0) {
+    SEXP nm = GET_NAMES(attrs);
+    for(int i = 0; i < LENGTH(attrs); i++) {
+      setAttrib(ret, installChar(STRING_ELT(nm,i)), VECTOR_ELT(attrs,i));
+    }
+  }
+
   /* unprotect things */
   UNPROTECT(protectcount);
-  
-  if(wraplist) return(VECTOR_ELT(reslist,0));
-  return(reslist);
+
+  return ret;
 }
 
