@@ -38,10 +38,10 @@ typedef struct {
 } PTARG;
 
 
-
 /*
   Centre on all factors in succession.  Vector v. In place.
  */
+
 
 static R_INLINE void centre(double *v, int N, 
 			    FACTOR *factors[], int e, double *means,
@@ -52,21 +52,25 @@ static R_INLINE void centre(double *v, int N,
     FACTOR *f = factors[i];
     const int *gp = f->group;
     const int hx = (f->x != NULL);
-    int j=0;
 
     /* compute means */
     memset(means,0,sizeof(double)* f->nlevels);
-    for(j = 0; j < N; j++) {
+    for(int j = 0; j < N; j++) {
       double w = hw ? (hx ? f->x[j]*weights[j] : weights[j]) : (hx ? f->x[j] : 1.0);
       if(gp[j] > 0) means[gp[j]-1] += v[j]*w;
     }
-
-    for(j = 0; j < f->nlevels; j++) {
+#ifdef USEOMP
+    #pragma omp parallel for
+#endif
+    for(int j = 0; j < f->nlevels; j++) {
       means[j] *= f->invgpsize[j];
     }
 
     /* subtract means */
-    for(j = 0; j < N; j++) {
+#ifdef USEOMP
+    #pragma omp parallel for
+#endif
+    for(int j = 0; j < N; j++) {
       double w = hw ? (hx ? f->x[j]*weights[j] : weights[j]) : (hx ? f->x[j] : 1.0);
       if(gp[j] > 0) v[j] -= means[gp[j]-1]*w;
     }
@@ -273,9 +277,11 @@ static void *demeanlist_thr(void *varg) {
     UNLOCK(arg->lock);
     if(vecnum >= arg->K) break;
 #ifdef HAVE_THREADNAME
+#ifndef USEOMP
     char thrname[16];
     snprintf(thrname,16, "Ct %d/%d",vecnum+1, arg->K);
     STNAME(thrname);
+#endif
 #endif
     // If in place, res is pointing to v, otherwise we copy v to res
     if(arg->res[vecnum] != arg->v[vecnum]) memcpy(arg->res[vecnum],arg->v[vecnum],arg->N*sizeof(double));
@@ -534,8 +540,12 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   icptlen = LENGTH(Ricpt);
   icpt = vicpt[0] - 1; /* convert from 1-based to zero-based */
   eps = REAL(AS_NUMERIC(Reps))[0];
+#ifdef USEOMP
+  cores = 1;
+#else
   cores = INTEGER(AS_INTEGER(scores))[0];
   if(cores < 1) cores = 1;
+#endif
   if(!isNull(Rweights)) {
     if(LENGTH(Rweights) != N) error("Length of weights (%d) must equal length of data (%d)",
 				    LENGTH(Rweights),N);
@@ -692,7 +702,7 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   if(INTEGER(badconv)[0] > 0) setAttrib(ret,install("badconv"),badconv);
   // Now, there may be more attributes to set
   if(!isNull(attrs) && LENGTH(attrs) > 0) {
-    SEXP nm = GET_NAMES(attrs);
+    SEXP nm = PROTECT(GET_NAMES(attrs)); protectcount++;
     for(int i = 0; i < LENGTH(attrs); i++) {
       setAttrib(ret, installChar(STRING_ELT(nm,i)), VECTOR_ELT(attrs,i));
     }

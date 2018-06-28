@@ -1,13 +1,13 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ([2.67])
-AC_INIT(lfe, {version} , frisch@gaure.no)
+AC_INIT([lfe])
 AC_CONFIG_SRCDIR([src/lfe.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_AUX_DIR([build/autoconf])
 AC_CONFIG_FILES([src/Makevars])
 
-AC_LANG(C)
+dnl AC_LANG(C)
 AC_ARG_ENABLE([threads],
         [AS_HELP_STRING([--disable-threads],[do not use threads])],
         [do_threads=$enableval],[do_threads=yes])
@@ -28,7 +28,6 @@ CC=`${R_HOME}/bin/R CMD config CC`
 
 # Checks for programs.
 AC_PROG_CC
-AC_PROG_AWK
 
 # Checks for libraries.
 

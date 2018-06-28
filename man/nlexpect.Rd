@@ -126,15 +126,19 @@ nlexpect(est, tcrossprod(as.matrix(c(x1-pt1,x2-pt2))))
 waldtest(est, ~x1)['p.F']
 # the same with nlexpect, i.e. probability for observing abs(x1)>abs(pt1) conditional
 # on E(x1) = 0.
-nlexpect(est, (x1-pt1)^2 > pt1^2)
-# which of course is the same as
-2*nlexpect(est, x1 < 0)
+nlexpect(est, (x1-pt1)^2 > pt1^2, tol=1e-7, vectorize=TRUE)
+# which is the same as
+2*nlexpect(est, x1*sign(pt1) < 0)
 
 # Here's a multivalued, vectorized example
 nlexpect(est, rbind(a=x1*x2 < pt1, b=x1*x2 > 0), vectorized=TRUE)
 \donttest{
 
 # Non-linear test:
+
+# A simple one, what's the probability that product x1*x2 is between 0 and |E(x1)|?
+nlexpect(est, x1*x2 > 0 & x1*x2 < abs(pt1), vectorized=TRUE)
+# Then a more complicated one with the expected value of a polynomal in the coefficients
 f <- function(x) c(poly=x[['x1']]*(6*x[['x1']]-x[['x2']]^2))
 # This is the linearized test:
 waldtest(est, f)['p.F']

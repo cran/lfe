@@ -2,5 +2,3 @@
 #undef NOTHREADS
 #undef HUGE_INT
 #undef HAVE_THREADNAME
-
-

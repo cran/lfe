@@ -106,15 +106,19 @@
 #' waldtest(est, ~x1)['p.F']
 #' # the same with nlexpect, i.e. probability for observing abs(x1)>abs(pt1) conditional
 #' # on E(x1) = 0.
-#' nlexpect(est, (x1-pt1)^2 > pt1^2)
-#' # which of course is the same as
-#' 2*nlexpect(est, x1 < 0)
+#' nlexpect(est, (x1-pt1)^2 > pt1^2, tol=1e-7, vectorize=TRUE)
+#' # which is the same as
+#' 2*nlexpect(est, x1*sign(pt1) < 0)
 #'
 #' # Here's a multivalued, vectorized example
 #' nlexpect(est, rbind(a=x1*x2 < pt1, b=x1*x2 > 0), vectorized=TRUE)
 #' \donttest{
 #' 
 #' # Non-linear test:
+#'
+#' # A simple one, what's the probability that product x1*x2 is between 0 and |E(x1)|?
+#' nlexpect(est, x1*x2 > 0 & x1*x2 < abs(pt1), vectorized=TRUE)
+#' # Then a more complicated one with the expected value of a polynomal in the coefficients
 #' f <- function(x) c(poly=x[['x1']]*(6*x[['x1']]-x[['x2']]^2))
 #' # This is the linearized test:
 #' waldtest(est, f)['p.F']
@@ -201,12 +205,12 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
   ch <- chol(cv[coefs,coefs,drop=FALSE])
   tch <- t(ch)
   # Now, we need to integrate fun(x) > 0 over the joint distribution of the parameters
-  # We do this as follows. We integrate over a standard hypercube (-1,1) x (-1,1) x ...
+  # We do this as follows. We integrate over a standard hypercube (-pi/2,pi/2) x (-pi/2,pi/2) x ...
   # adaptIntegrate can't take infinite limits.
   # We first transform these to (-Inf, Inf) with
-  # z = x/(1-x^2)
+  # z = tan(x)
   # the Jacobian determinant becomes the product of 
-  # (1+z^2)/((1-z^2)^2)
+  # 1/cos(x)^2
   # We transform the integration variables with the covariance matrix to feed fun(),
   # then integrate fun(x) > 0 with the multivariate normal distribution.
   # we use the package cubature for the integration.
@@ -214,9 +218,8 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
   
   if(!vectorize) {
     integrand <- function(x, ...) {
-      x2 <- x^2L
-      jac <- prod((1+x2)/((1-x2)^2L))
-      z <- x/(1-x2)
+      jac <- prod(1/cos(x))^2
+      z <- tan(x)
       # z is the standard normal (t really) multivariate
       #    dens <- prod(dnorm(z))
       dens <- prod(dt(z,est$df))
@@ -229,9 +232,8 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
     sv <- fun(cf, .z=rep(0,K), ...)
   } else {
     integrand <- function(x, ...) {
-      x2 <- x^2L
-      jac <- apply(x2,2,function(xx) prod((1+xx)/((1-xx)^2L)))
-      z <- x/(1-x2)
+      z <- tan(x)
+      jac <- apply(x,2,function(x) prod(1/cos(x)))^2
       dens <- apply(z,2,function(zz) prod(dt(zz,est$df)))
       beta <- tch %*% z + cf
       lbeta <- vector('list',K)
@@ -253,8 +255,8 @@ nlexpect <- function(est, fun, coefs, ..., tol=getOption('lfe.etol'), lhs=NULL,
     reltol <- abstol <- tol
   }
 
-  eps <- 1e-9
-  ret <- adaptig(integrand,rep(-1+eps,K),rep(1-eps,K),...,tol=reltol,
+  eps <- 10*.Machine$double.eps
+  ret <- adaptig(integrand,rep(-pi/2-eps,K),rep(pi/2-eps,K),...,tol=reltol,
                  absError=abstol,fDim=fdim,maxEval=max.eval,vectorInterface=vectorize)
   names(ret$integral) <- names(sv)
   if(is.array(sv)) {

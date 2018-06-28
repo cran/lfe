@@ -1,13 +1,13 @@
 Package: lfe
-Version: 2.7-2383
-Date: 2018-06-18
+Version: 2.8
+Date: 2018-06-28
 Title: Linear Group Fixed Effects
-Author: Simen Gaure, Ragnar Frisch Centre for Economic Research
-Maintainer: Simen Gaure <Simen.Gaure@frisch.uio.no>
+Authors@R: person("Simen", "Gaure", email="Simen.Gaure@frisch.uio.no", role=c("aut","cre"))
 Copyright: 2011-2018, Simen Gaure
-Depends: R (>= 3.5.0), Matrix (>= 1.1.2)
+Depends: R (>= 2.15.2), Matrix (>= 1.1-2)
 Imports: Formula, xtable, compiler, utils, methods, sandwich, parallel
-Suggests: knitr, digest, igraph, plm, cubature, numDeriv, data.table
+Suggests: knitr, digest, igraph, plm, cubature(>= 1.3-1), numDeriv,
+        data.table
 VignetteBuilder: knitr
 ByteCompile: yes
 Description: Transforms away factors with many levels prior to doing an OLS. 
@@ -18,8 +18,12 @@ Description: Transforms away factors with many levels prior to doing an OLS.
 License: Artistic-2.0
 Classification/JEL: C13, C23, C60
 Classification/MSC: 62J05, 65F10, 65F50
+URL: https://github.com/sgaure/lfe
+BugReports: https://github.com/sgaure/lfe/issues
 RoxygenNote: 6.0.1
 NeedsCompilation: yes
-Packaged: 2018-06-18 09:04:44 UTC; sgaure
+Packaged: 2018-06-28 13:47:24 UTC; sgaure
+Author: Simen Gaure [aut, cre]
+Maintainer: Simen Gaure <Simen.Gaure@frisch.uio.no>
 Repository: CRAN
-Date/Publication: 2018-06-18 09:59:51 UTC
+Date/Publication: 2018-06-28 19:47:54 UTC

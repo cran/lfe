@@ -360,7 +360,7 @@ varbias <- function(index,est,tol=0.01,bvar, maxsamples=Inf,
       # return crude estimate of the trace
       if(trtol == 0) return(abs(nlev))
 #      on.exit({rm(list=ls()); gc()})
-      DtM1x <- Crowsum(ww*demeanlist(x,lmean,weights=w,scale=FALSE), f)
+      DtM1x <- Crowsum(ww*demeanlist(unnamed(x),lmean,weights=w,scale=FALSE), f)
       # we use absolute tolerance, mctrace wil give us a trtol.
       # we divide by the L2-norm of DtM1x, since we take the
       # inner product with this afterwards
@@ -531,7 +531,7 @@ covbias <- function(index,est,tol=0.01, maxsamples=Inf, resid, weights=NULL,
       # return crude estimate of the trace
       if(trtol == 0) return(-abs(nlev1-nlev2))
 #      on.exit({rm(list=ls()); gc()})
-      M1x <- ww*demeanlist(x,lmean,weights=w,scale=FALSE)
+      M1x <- ww*demeanlist(unnamed(x),lmean,weights=w,scale=FALSE)
       DtM1x <- Crowsum(M1x,f1)
       FtM1x <- Crowsum(M1x,f2)
       d1 <- colSums(DtM1x^2)
@@ -604,7 +604,7 @@ varvar <- function(index, fe, X, pointest, resvar, tol=0.01,
   trfun <- function(x,trtol) {
     v <- ww*demeanlist(cgsolve(invfun, Crowsum(ww2*demeanlist(x,lmean,weights=w),f),
                             eps=-mytol^2/resvar^2/2,name=name)[f,],lmean,weights=w)
-    colSums(v * v)
+    colSums(v * x)
   }
   attr(trfun,'IP') = TRUE
   trpart <- 2*resvar^2 * mctrace(trfun, N=length(f), trname=name, tol=-mytol/resvar/2)
