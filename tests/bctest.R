@@ -1,5 +1,6 @@
 library(lfe)
 options(lfe.threads=1,digits=4,warn=1)
+suppressWarnings(RNGversion("3.5.0"))
 set.seed(42)
 x <- rnorm(500)
 x2 <- rnorm(length(x))

@@ -6,6 +6,7 @@ AC_CONFIG_SRCDIR([src/lfe.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_AUX_DIR([build/autoconf])
 AC_CONFIG_FILES([src/Makevars])
+m4_include([tools/ax_pthread.m4]) 
 
 dnl AC_LANG(C)
 AC_ARG_ENABLE([threads],
@@ -14,7 +15,7 @@ AC_ARG_ENABLE([threads],
 
 AC_ARG_ENABLE([huge],
 	[AS_HELP_STRING([--enable-huge],[use 64 bit integers])],
-	[AC_DEFINE([HUGE_INT], [1])],
+	[AC_DEFINE([HUGE_INT], [1], [Define to enable 64-bit integers])],
 	[])
 
 dnl local debug 
@@ -25,6 +26,7 @@ AC_ARG_ENABLE([pedantry],,
 AC_SUBST(DFLAGS)
 # pick up R's compilers, we need to use that one
 CC=`${R_HOME}/bin/R CMD config CC`
+CFLAGS=`${R_HOME}/bin/R CMD config CFLAGS`
 
 # Checks for programs.
 AC_PROG_CC
@@ -34,7 +36,7 @@ AC_PROG_CC
 if test "$do_threads" = "yes"; then
   AX_PTHREAD([], [
   AC_MSG_WARN([No threads on this architecture])
-  AC_DEFINE([NOTHREADS], [1])
+  AC_DEFINE([NOTHREADS], [1], [Define if do not have threads])
   do_threads="no"])
 else
   AC_DEFINE([NOTHREADS], [1])
@@ -76,12 +78,12 @@ AC_TRY_RUN(dnl
   }
 ],
 AC_MSG_RESULT(yes)
-AC_DEFINE([HAVE_SEM], [1]),
+AC_DEFINE([HAVE_SEM], [1], [Define if have timed semaphore wait]),
 AC_MSG_RESULT(no)
 )
 
 # check for capability of setting thread name
-AC_SEARCH_LIBS([pthread_setname_np], [], AC_DEFINE([HAVE_THREADNAME]), [], [-pthread])
+AC_SEARCH_LIBS([pthread_setname_np], [], AC_DEFINE([HAVE_THREADNAME], [1], [Define if have pthread_setname_np]), [], [-pthread])
 AC_SUBST(HAVE_THREADNAME)
 fi
 

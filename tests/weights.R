@@ -1,5 +1,6 @@
 library(lfe)
 options(lfe.threads=1,digits=4)
+suppressWarnings(RNGversion("3.5.0"))
 set.seed(42)
 N <- 1000
 K <- 40

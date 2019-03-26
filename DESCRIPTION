@@ -1,5 +1,5 @@
 Package: lfe
-Version: 2.8-2
+Version: 2.8-2.1
 Date: 2018-08-22
 Title: Linear Group Fixed Effects
 Authors@R: person("Simen", "Gaure", email="Simen.Gaure@frisch.uio.no", role=c("aut","cre"))
@@ -23,8 +23,8 @@ BugReports: https://github.com/sgaure/lfe/issues
 Encoding: UTF-8
 RoxygenNote: 6.1.0
 NeedsCompilation: yes
-Packaged: 2018-08-22 12:57:08 UTC; sgaure
+Packaged: 2019-03-24 08:47:24 UTC; ripley
 Author: Simen Gaure [aut, cre]
 Maintainer: Simen Gaure <Simen.Gaure@frisch.uio.no>
 Repository: CRAN
-Date/Publication: 2018-08-22 13:50:03 UTC
+Date/Publication: 2019-03-26 06:18:04 UTC

@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2018-02-12 r74246) -- "Unsuffered Consequences"
-Copyright (C) 2018 The R Foundation for Statistical Computing
+R version 3.5.3 Patched (2019-03-11 r76262) -- "Great Truth"
+Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -18,6 +18,7 @@ Type 'q()' to quit R.
 > library(lfe)
 Loading required package: Matrix
 > # From http://diffuseprior.wordpress.com/2012/06/15/standard-robust-and-clustered-standard-errors-computed-in-r/
+> suppressWarnings(RNGversion("3.5.0"))
 > set.seed(123)
 > options(lfe.threads=2,digits=5,warn=1)
 > ols <- function(form, data, robust=FALSE, cluster=NULL,digits=getOption('digits')){
@@ -204,4 +205,4 @@ f1.8 1.56883   0.14396 0.14396
 > 
 > proc.time()
    user  system elapsed 
-  1.977   0.449   2.305 
+  2.567   0.247  10.804 

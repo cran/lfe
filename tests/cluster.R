@@ -1,5 +1,6 @@
 library(lfe)
 # From http://diffuseprior.wordpress.com/2012/06/15/standard-robust-and-clustered-standard-errors-computed-in-r/
+suppressWarnings(RNGversion("3.5.0"))
 set.seed(123)
 options(lfe.threads=2,digits=5,warn=1)
 ols <- function(form, data, robust=FALSE, cluster=NULL,digits=getOption('digits')){

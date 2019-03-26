@@ -1,5 +1,6 @@
 library(lfe)
 options(lfe.threads=1,digits=3,warn=1)
+suppressWarnings(RNGversion("3.5.0"))
 set.seed(6553)
 # single fixed effect, special case which we risk destroying when we optimize, so check it
 x <- rnorm(2000)
