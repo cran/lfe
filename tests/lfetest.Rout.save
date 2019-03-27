@@ -1,5 +1,5 @@
 
-R version 3.5.3 Patched (2019-03-11 r76262) -- "Great Truth"
+R Under development (unstable) (2019-03-09 r76219) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -19,7 +19,6 @@ Type 'q()' to quit R.
 Loading required package: Matrix
 > options(lfe.threads=2,digits=3,warn=1)
 > set.seed(655318)
-> suppressWarnings(RNGversion("3.5.0"))
 > x <- rnorm(500)
 > x2 <- rnorm(length(x))
 > 
@@ -38,52 +37,52 @@ Loading required package: Matrix
 > fr <- data.frame(y,x,x2,id,firm)
 > ## estimate and print result
 > print(est <- felm(y ~ x+x2|id+firm, data=fr))
-     x     x2 
-1.4201 0.0766 
+    x    x2 
+0.677 0.444 
 > 
 > ## extract the group fixed effects
 > tail(getfe(est))
          effect obs comp   fe idx
-firm.295 -0.635   2    1 firm 295
-firm.296 -7.560   1    1 firm 296
-firm.297 -0.559   1   46 firm 297
-firm.298 -0.716   1   18 firm 298
-firm.299 -3.697   1    1 firm 299
-firm.300 -2.667   1    2 firm 300
+firm.294 -2.057   1    6 firm 294
+firm.295 -1.347   4    1 firm 295
+firm.296 -0.227   1   51 firm 296
+firm.297 -2.447   2    4 firm 297
+firm.298  1.220   1   23 firm 298
+firm.300 -4.167   3    1 firm 300
 > 
 > head(round(model.matrix(est),7))
-  x x2
-1 0  0
-2 0  0
-3 0  0
-4 0  0
-5 0  0
-6 0  0
+      x    x2
+1 0.000 0.000
+2 0.000 0.000
+3 0.693 0.437
+4 0.000 0.000
+5 0.000 0.000
+6 0.000 0.000
 > head(model.matrix(est,centred=FALSE))
-        x     x2
-1  0.5433 -0.249
-2 -0.3787  1.375
-3 -2.9367 -0.578
-4  0.0413  0.863
-5  1.3670 -0.127
-6  0.6885  0.254
+       x      x2
+1 -1.251  1.0210
+2  0.795 -1.1390
+3  1.546  0.6954
+4 -1.099  1.1567
+5 -0.359 -0.5846
+6  0.368 -0.0823
 > head(round(model.matrix(felm(y ~ x+x2|id+firm, data=fr,keepCX=TRUE)),7))
-     x x2
-[1,] 0  0
-[2,] 0  0
-[3,] 0  0
-[4,] 0  0
-[5,] 0  0
-[6,] 0  0
+         x    x2
+[1,] 0.000 0.000
+[2,] 0.000 0.000
+[3,] 0.693 0.437
+[4,] 0.000 0.000
+[5,] 0.000 0.000
+[6,] 0.000 0.000
 > head(model.matrix(felm(y ~ x+x2|id+firm, data=fr,keepX=TRUE), centred=FALSE))
-           x     x2
-[1,]  0.5433 -0.249
-[2,] -0.3787  1.375
-[3,] -2.9367 -0.578
-[4,]  0.0413  0.863
-[5,]  1.3670 -0.127
-[6,]  0.6885  0.254
+          x      x2
+[1,] -1.251  1.0210
+[2,]  0.795 -1.1390
+[3,]  1.546  0.6954
+[4,] -1.099  1.1567
+[5,] -0.359 -0.5846
+[6,]  0.368 -0.0823
 > 
 > proc.time()
    user  system elapsed 
-  2.869   0.204  11.209 
+   1.93    0.51    1.75 

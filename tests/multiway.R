@@ -1,5 +1,4 @@
 library(lfe)
-suppressWarnings(RNGversion("3.5.0"))
 set.seed(43)
 options(lfe.threads=2,digits=5,warn=1)
 

@@ -1,6 +1,5 @@
 library(lfe)
 options(digits=3)
-suppressWarnings(RNGversion("3.5.0"))
 set.seed(42)
 B <- matrix(rnorm(40000),200)
 A <- band(crossprod(B), -30,30)

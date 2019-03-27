@@ -6,16 +6,16 @@
 /* Have PTHREAD_PRIO_INHERIT. */
 #undef HAVE_PTHREAD_PRIO_INHERIT
 
-/* Define if have timed semaphore wait */
+/* timed sem wait */
 #undef HAVE_SEM
 
-/* Define if have pthread_setname_np */
+/* chg thread name */
 #undef HAVE_THREADNAME
 
-/* Define to enable 64-bit integers */
+/* 64bit */
 #undef HUGE_INT
 
-/* Define if do not have threads */
+/* no threads */
 #undef NOTHREADS
 
 /* Define to the address where bug reports for this package should be sent. */
