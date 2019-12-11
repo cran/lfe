@@ -1,5 +1,17 @@
 \name{NEWS}
 \title{lfe news}
+\section{Changes in version 2.8-4}{
+  \itemize{
+    \item Support for nested clusters and reghdfe-option by Grant McDermott and Karl
+    Dunkle Werner.
+    \item Changed some extern declarations in the C-code to comply with
+    standards enforced by the upcoming gcc10.
+    \item Changed inner workings of the \code{unnamed()} and
+    \code{demeanlist()} functions so they
+    still conserve some memory with the new reference count machinery.
+  }
+}
+
 \section{Changes in version 2.8-3}{
   \itemize{
     \item Fixed a bug in Crowsum which prevented computation of clustered standard

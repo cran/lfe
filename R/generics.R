@@ -1,3 +1,40 @@
+#' @method logLik felm
+#' @export
+logLik.felm <- function(object, ...) {
+  res <- object$residuals
+  p <- object$rank
+  w <- object$weights
+
+  N <- length(res)
+
+  if (is.null(w)) {
+    w <- rep.int(1, N)
+  } else {
+    excl <- w == 0
+    if (any(excl)) {
+      res <- res[!excl]
+      N <- length(res)
+      w <- w[!excl]
+    }
+  }
+  N0 <- N
+
+  val <- 0.5 * (sum(log(w)) - N * (log(2 * pi) + 1 - log(N) + log(sum(w * res^2))))
+
+  attr(val, "nall") <- N0
+  attr(val, "nobs") <- N
+  attr(val, "df") <- p + 1
+  class(val) <- "logLik"
+
+  val
+}
+
+#' @method nobs felm
+#' @export
+nobs.felm <- function(object, ...) {
+  object$N
+}
+
 #' @method print felm
 #' @export
 print.felm <- function(x,digits=max(3,getOption('digits')-3),...) {
@@ -74,9 +111,9 @@ residuals.felm <- function(object, ..., lhs=NULL) {
 }
 #' @method vcov felm
 #' @export
-vcov.felm <- function(object,...,type, lhs=NULL) {
+vcov.felm <- function(object,..., type=NULL, lhs=NULL) {
 #  if(is.na(match(type[1], c('iid', 'robust', 'cluster'))))
-  if(missing(type)) type <- if(is.null(object$clustervar)) {
+  if(is.null(type)) type <- if(is.null(object$clustervar)) {
                               if(getOption('lfe.robust')) 'robust' else 'iid'
                             } else 'cluster'
   if(!(type[1] %in% c('iid', 'robust', 'cluster')))
@@ -99,6 +136,50 @@ vcov.felm <- function(object,...,type, lhs=NULL) {
   if(type[1] == 'iid') return(object$STATS[[lhs]]$vcv)
   if(type[1] == 'robust') return(object$STATS[[lhs]]$robustvcv)
   if(type[1] == 'cluster') return(object$STATS[[lhs]]$clustervcv)
+}
+
+
+#' @method confint felm
+#' @export
+confint.felm <- function (object, parm=NULL, level = 0.95, lhs=NULL, type=NULL, ...) {
+  is_multi <- length(object$lhs)>1
+  
+  if(is_multi & is.null(lhs)) {
+    lhs <- object$lhs
+    res_list <- lapply(object$lhs, function(x) confint_one(object, lhs=x, parm=parm, level = level, type = type, ...))
+    res <- do.call("rbind", res_list)
+    rownames(res) <-  paste(rep(lhs, each = object$Pp), rownames(res), sep=":")
+  } else {
+    res <- confint_one(object, parm=parm, level = level, lhs=lhs, type = type, ...)
+  }
+  res
+}
+
+## usecopy/paste stats:::format.perc as would be forbidden to import unexported one
+stats_format_perc <- function (probs, digits) paste(format(100 * probs, trim = TRUE, scientific = FALSE, digits = digits), "%")
+
+# low level function for confint, working for only one lhs
+confint_one <- function (object, parm=NULL, level = 0.95, lhs=NULL, type=NULL, ...) 
+{
+  
+  cf <- coef(object, lhs = lhs)
+  if(is.matrix(cf)) {
+    cf <- setNames(drop(cf), rownames(cf)) ## drop removes name if 1,1 matrix!
+  }
+  pnames <- names(cf)
+  if (is.null(parm)) 
+    parm <- pnames
+  else if (is.numeric(parm)) 
+    parm <- pnames[parm]
+  a <- (1 - level)/2
+  a <- c(a, 1 - a)
+  pct <- stats_format_perc(a, 3)
+  fac <- qt(a, object$df.residual)
+  ci <- array(NA, dim = c(length(parm), 2L), dimnames = list(parm, 
+                                                             pct))
+  ses <- sqrt(diag(vcov(object, lhs = lhs, type = type)))[parm]
+  ci[] <- cf[parm] + ses %o% fac
+  ci
 }
 
 #' @method update felm

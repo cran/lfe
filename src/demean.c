@@ -37,7 +37,7 @@ typedef struct {
 #endif
 } PTARG;
 
-
+extern SEXP df_string;
 /*
   Centre on all factors in succession.  Vector v. In place.
  */
@@ -166,10 +166,14 @@ static int demean(int N, double *vec, double *weights,int *scale,
       }
     }
 
-    delta = 0.0;
-    for(int i = 0; i < N; i++) delta += (prev2[i]-vec[i])*(prev2[i]-vec[i]);
+    delta = neps = 0.0;
+    for(int i = 0; i < N; i++) {
+      delta += (prev2[i]-vec[i])*(prev2[i]-vec[i]);
+      neps += vec[i]*vec[i];
+    }
     memcpy(prev2,vec,N*sizeof(double));
     delta = sqrt(delta);
+    neps = sqrt(1.0+neps)*eps;
     c = delta/prevdelta;
     /* c is the convergence rate per iteration, at infinity they add up to 1/(1-c).
        This is true for e==2, but also in the ballpark for e>2 we guess.
@@ -216,7 +220,7 @@ static int demean(int N, double *vec, double *weights,int *scale,
 #endif
       strftime(timbuf, sizeof(timbuf), "%c", &tmarriv);
       sprintf(buf,"...centering vec %d i:%d c:%.1e d:%.1e(t:%.1e) ETA:%s\n",
-	      vecnum,iter,1.0-c,delta,targ,timbuf);
+	      vecnum,iter,1.0-c,delta,target,timbuf);
       pushmsg(buf,lock);
       lastiter = iter;
       prevdp = delta;
@@ -302,7 +306,7 @@ static void *demeanlist_thr(void *varg) {
     (arg->done)++;
     if(arg->quiet > 0 && now > arg->last + arg->quiet && arg->K > 1) {
       char buf[256];
-      sprintf(buf,"...finished centering vector %d of %d in %d seconds\n",
+      sprintf(buf,"...finished centering %d of %d vectors in %d seconds\n",
 	     arg->done,arg->K,(int)(now-arg->start));
       arg->last = now;
       UNLOCK(arg->lock); 
@@ -483,6 +487,19 @@ static int demeanlist(double **vp, int N, int K, double **res, double *weights,i
 }
 
 
+SEXP inplace(SEXP x) {
+  setAttrib(x,install("LFE_inplace"),R_QuoteSymbol);  // Just set it to something non-NULL
+  return x;
+}
+SEXP outplace(SEXP x) {
+  setAttrib(x,install("LFE_inplace"),R_NilValue);  // Just set it to something non-NULL
+  return x;
+}
+
+int isinplace(SEXP x) {
+  return getAttrib(x,install("LFE_inplace")) != R_NilValue;
+}
+
 /*
  Now, for the R-interface.  We only export a demeanlist function
  It should be called from R with 
@@ -519,11 +536,11 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
   int protectcount=0;
   int scale[2];
   int wraplist = 0;
-
+  int inplacelist = 0;
+  
   // Find the length of the data
   // We are never called with length(flist) == 0
-  //  if(NAMED(vlist) == 0) Rprintf("inplace %p\n",vlist); else Rprintf("out of place %p\n",vlist);
-  PROTECT(flist = AS_LIST(flist));  protectcount++;
+  if(!isNewList(flist)) error("flist is not a list");
   if(LENGTH(flist) == 0) {
     warning("demeanlist called with length(fl)==0, internal error?");
     N = 0;
@@ -531,6 +548,10 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     N = LENGTH(VECTOR_ELT(flist,0));
   }
 
+  if(isinplace(vlist) || (!isNewList(vlist) && NO_REFERENCES(vlist))) {
+    inplacelist = 1;
+    outplace(vlist);
+  }
   if(LENGTH(Rscale) == 1) {
     scale[0] = LOGICAL(AS_LOGICAL(Rscale))[0];
     scale[1] = scale[0];
@@ -557,7 +578,6 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     weights = REAL(PROTECT(AS_NUMERIC(Rweights)));  protectcount++;
   }
 
-  //  numfac = LENGTH(flist);
   factors = makefactors(flist, 1, weights);
   numfac = 0;
   for(FACTOR **f = factors; *f != NULL; f++) numfac++;
@@ -568,7 +588,7 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     icpt = -1;
   }
 
-  if(IS_NUMERIC(vlist) || IS_LOGICAL(vlist) || IS_INTEGER(vlist)) {
+  if(!isNewList(vlist)) {
     // Just put it in a list to avoid tests further down.
     SEXP tmp = PROTECT(allocVector(VECSXP,1));
     protectcount++;
@@ -622,21 +642,28 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
 
   for(i = 0; i < listlen; i++) {
     SEXP elt = VECTOR_ELT(vlist,i);
+    int inplaceelt = 0;
+    if(isinplace(elt)) {
+      outplace(elt);
+      inplaceelt = 1;
+    }
     if(isNull(elt)) continue;
 
     if(!isReal(elt)) {
       PROTECT(elt = coerceVector(elt, REALSXP)); protectcount++;
+      inplaceelt = 1;
     }
 
     if(!isMatrix(elt)) {
       /* It's a vector */
       SEXP resvec;
       vectors[cnt] = REAL(elt);
-      if( NO_REFERENCES(elt) && NO_REFERENCES(vlist) && !domeans) {
+      if(!domeans && (inplacelist || inplaceelt) ) {
 	// in place centering
 	SET_VECTOR_ELT(reslist,i,elt);
 	target[cnt] = vectors[cnt];
       } else {
+	if(LENGTH(elt) != N) error("lengths of vectors (%d) != lengths of factors(%d)",LENGTH(elt),N);
 	PROTECT(resvec = allocVector(REALSXP,LENGTH(elt)));
 	SET_VECTOR_ELT(reslist,i,resvec);
 	UNPROTECT(1);
@@ -650,11 +677,12 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
       int rcols = cols;
       int j;
       SEXP mtx;
+      if(nrows(elt) != N) error("nrow(matrix) (%d) != lengths of factors(%d)",nrows(elt),N);
       /* Allocate a matrix */
       if(icptlen != 1) icpt = vicpt[i]-1;
       if(icpt >= 0 && icpt < cols) rcols--;
       
-      if(NO_REFERENCES(vlist) && NO_REFERENCES(elt) && rcols == cols && !domeans) {
+      if(!domeans && (inplacelist || inplaceelt) ) {
 	// in place centering
 	SET_VECTOR_ELT(reslist,i,elt);
 	for(int j=0; j < cols; j++) {
@@ -703,7 +731,9 @@ SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
     }
   }
   SEXP ret = reslist;
-  if(wraplist) ret = VECTOR_ELT(reslist,0);
+  if(wraplist) {
+    ret = VECTOR_ELT(reslist,0);
+  }
   if(INTEGER(badconv)[0] > 0) setAttrib(ret,install("badconv"),badconv);
   // Now, there may be more attributes to set
   if(!isNull(attrs) && LENGTH(attrs) > 0) {
