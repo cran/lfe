@@ -103,7 +103,7 @@ getfe(est,ef=ef,bN=1000,se=TRUE)
 summary(lm(y ~ x1 + f1 + f2 + f3))
 
 ## -----------------------------------------------------------------------------
-set.seed(128)
+set.seed(55)
 x1 <- rnorm(25)
 f1 <- sample(9,length(x1),replace=TRUE)
 f2 <- sample(8,length(x1),replace=TRUE)
@@ -193,8 +193,8 @@ lfe:::rankDefic(wwest$fe)
 nrow(wwalpha <- getfe(wwest))
 
 ## -----------------------------------------------------------------------------
-head(alpha)
 head(wwalpha)
+alpha[c(35,38,40:43),]
 
 ## -----------------------------------------------------------------------------
 table(wwalpha[,'fe'])

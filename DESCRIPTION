@@ -1,6 +1,6 @@
 Package: lfe
-Version: 2.8-4
-Date: 2019-12-11
+Version: 2.8-5
+Date: 2019-12-17
 Title: Linear Group Fixed Effects
 Authors@R: c(person("Simen", "Gaure", email="Simen.Gaure@frisch.uio.no", role=c("aut","cre"),
            comment=c(ORCID="https://orcid.org/0000-0001-7251-8747")),
@@ -8,7 +8,7 @@ Authors@R: c(person("Simen", "Gaure", email="Simen.Gaure@frisch.uio.no", role=c(
 	   person("Karl", "Dunkle Werner", role="ctb"),
 	   person("Matthieu","Stigler",role="ctb"),
 	   person("Daniel","Lüdecke",email="mail@danielluedecke.de",role="ctb"))
-Copyright: 2011-2018, Simen Gaure
+Copyright: 2011-2019, Simen Gaure
 Depends: R (>= 2.15.2), Matrix (>= 1.1-2)
 Imports: Formula, xtable, compiler, utils, methods, sandwich, parallel
 Suggests: knitr, digest, igraph, plm, cubature (>= 2.0.3), numDeriv,
@@ -28,7 +28,7 @@ BugReports: https://github.com/sgaure/lfe/issues
 Encoding: UTF-8
 RoxygenNote: 7.0.2
 NeedsCompilation: yes
-Packaged: 2019-12-11 09:08:41 UTC; sgaure
+Packaged: 2019-12-17 13:29:29 UTC; sgaure
 Author: Simen Gaure [aut, cre] (<https://orcid.org/0000-0001-7251-8747>),
   Grant McDermott [ctb],
   Karl Dunkle Werner [ctb],
@@ -36,4 +36,4 @@ Author: Simen Gaure [aut, cre] (<https://orcid.org/0000-0001-7251-8747>),
   Daniel Lüdecke [ctb]
 Maintainer: Simen Gaure <Simen.Gaure@frisch.uio.no>
 Repository: CRAN
-Date/Publication: 2019-12-11 14:40:02 UTC
+Date/Publication: 2019-12-17 17:30:10 UTC
