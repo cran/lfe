@@ -1,4 +1,4 @@
-d82e39644eb606d66788aea33e0d13b2 *DESCRIPTION
+17708e9ad8531e5c13072c6059a6d621 *DESCRIPTION
 08ee7a9ce3653ef6801eb3370ec44613 *NAMESPACE
 a2376b8138ac591ee5aa3d2b93d2ef88 *R/bccorr.R
 3a1416434a9dfbc6596c2dafbec9dbd2 *R/btrap.R
@@ -18,7 +18,7 @@ cf2e6f37ecd20aec8ed5827a4097c150 *R/fixedse.R
 a07de4fe62fcb3857661d26c8428ba2e *R/lfe-package.R
 971febed65a47966fb278c385ea60cdf *R/nlexpect.R
 eeca5c685198f246971214ee4ce5bb47 *R/oldfelm.R
-fc11e322a5baa4366ca9c9c59105a42f *R/startup.R
+d085af479d47c83c0238df93eb9fef37 *R/startup.R
 b2de1fd169bdcc0c852f019b932a5f05 *R/trace.R
 4a1fc1a1c98e674956d26bb3c4fe0fbe *R/utils.R
 5f61a1985898e0302d58a25781694acf *R/waldtest.R
