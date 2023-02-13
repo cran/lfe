@@ -1,6 +1,6 @@
 Package: lfe
-Version: 2.8-8
-Date: 2022-05-04
+Version: 2.9-0
+Date: 2023-02-13
 Title: Linear Group Fixed Effects
 Authors@R: c(person("Simen", "Gaure", email="Simen.Gaure@frisch.uio.no", role=c("aut"),
            comment=c(ORCID="https://orcid.org/0000-0001-7251-8747")),
@@ -33,9 +33,9 @@ Classification/MSC: 62J05, 65F10, 65F50
 URL: https://github.com/MatthieuStigler/lfe
 BugReports: https://github.com/MatthieuStigler/lfe/issues
 Encoding: UTF-8
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.2
 NeedsCompilation: yes
-Packaged: 2022-05-04 20:27:46 UTC; matifou
+Packaged: 2023-02-13 14:42:31 UTC; mstigler
 Author: Simen Gaure [aut] (<https://orcid.org/0000-0001-7251-8747>),
   Grant McDermott [ctb],
   Mauricio Vargas [ctb] (<https://orcid.org/0000-0003-1017-7574>),
@@ -44,4 +44,4 @@ Author: Simen Gaure [aut] (<https://orcid.org/0000-0001-7251-8747>),
   Daniel Lüdecke [ctb]
 Maintainer: Matthieu Stigler <Matthieu.Stigler@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-05-04 23:00:12 UTC
+Date/Publication: 2023-02-13 16:50:02 UTC

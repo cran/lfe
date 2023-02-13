@@ -1,6 +1,6 @@
 citHeader("The package 'lfe' and its methods have been documented in several papers.
           To cite 'lfe' in publications use one or some of:")
-citEntry(entry="article",
+bibentry(bibtype="article",
          title="{lfe}: Linear group fixed effects",
          author=as.person("Simen Gaure"),
          journal="The R Journal",
@@ -14,7 +14,7 @@ citEntry(entry="article",
 	 textVersion="S. Gaure. lfe: Linear group fixed effects. The R Journal, 5(2):104-117, Dec 2013"
 )
 
-citEntry(entry="article",
+bibentry(bibtype="article",
 	title = "{OLS} with multiple high dimensional category variables",
 	journal = "Computational Statistics & Data Analysis",
 	volume = "66",	
@@ -29,7 +29,7 @@ citEntry(entry="article",
            "Computational Statistics & Data Analysis, 66:8-18, 2013")
          )
 
-citEntry(entry="article",
+bibentry(bibtype="article",
 	title = "Correlation bias correction in two-way fixed effects linear regression",
 	journal = "Stat",
 	volume = "3",	
@@ -47,7 +47,7 @@ citEntry(entry="article",
 
 if(!exists("meta") || is.null(meta)) meta <- list(Date=date(), Version='current')
 year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date)
-citEntry(entry='manual',
+bibentry(bibtype='manual',
 	title = "{lfe}: Linear Group Fixed Effects",
 	author = as.person("Simen Gaure"),
 	year = year,
