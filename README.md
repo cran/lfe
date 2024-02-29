@@ -5,7 +5,7 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/MatthieuStigler/lfe/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/MatthieuStigler/lfe/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/pachadotdev/lfe/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pachadotdev/lfe/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 The goal of lfe is to speed up the estimation of linear models with
@@ -16,6 +16,12 @@ See Gaure (2013) <doi:10.1016/j.csda.2013.03.024> and Gaure 2014
 <doi:10.1002/sta4.68>.
 
 ## Installation
+
+You can install the released version of lfe from CRAN with:
+
+``` r
+install.packages("lfe")
+```
 
 You can install the development version of lfe like so:
 
@@ -33,23 +39,23 @@ library(lfe) # fixed effects estimation
 library(tradepolicy) # intl trade data
 library(dplyr) # data cleaning/transforming
 
-training_data <- agtpa_applications %>% 
+training_data <- agtpa_applications %>%
   mutate(
     log_trade = log(trade),
     log_dist = log(dist),
     exp_year = paste(exporter, year, sep = "_"),
     imp_year = paste(importer, year, sep = "_")
-  ) %>% 
-  filter(trade > 0, exporter != importer, year %in% seq(1986, 2006, 4)) %>% 
+  ) %>%
+  filter(trade > 0, exporter != importer, year %in% seq(1986, 2006, 4)) %>%
   select(year, log_trade, log_dist, cntg, lang, clny, rta, exp_year, imp_year)
 
 # note the difference with the | operator to indicate the FEs
 # this is just an example, here I am not estimating a PPML model or anything
 # in the state of the art
-fml1 <- 0 + log_trade ~ 
+fml1 <- 0 + log_trade ~
   log_dist + cntg + lang + clny + rta + exp_year + imp_year # base
 
-fml2 <- log_trade ~ 
+fml2 <- log_trade ~
   log_dist + cntg + lang + clny + rta | exp_year + imp_year # lfe
 
 lm(fml1, data = training_data)
@@ -59,9 +65,9 @@ felm(fml2, data = training_data)
 
 ## Testing
 
-For a complete test with `devtools::check()`, you need to run
-`sudo apt-get devtools` or similar before. The package is written in C,
-in the future I shall try to rewrite it in C++ to ease long term
+For a complete test with `devtools::check()`, you need to run `sudo
+apt-get install devtools` or similar before. The package is written in
+C, in the future I shall try to rewrite it in C++ to ease long term
 maintenance.
 
 The package also needs additional testing. At the present time,the tests

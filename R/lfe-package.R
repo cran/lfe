@@ -1,5 +1,3 @@
-
-
 #' Overview. Linear Group Fixed Effects
 #'
 #' The package uses the Method of Alternating Projections to estimate linear
@@ -108,7 +106,6 @@
 #'
 #' @name lfe-package
 #' @aliases lfe-package lfe
-#' @docType package
 #' @references Abowd, J.M., F. Kramarz and D.N. Margolis (1999) \cite{High Wage
 #' Workers and High Wage Firms}, Econometrica 67 (1999), no. 2, 251--333.
 #' \doi{10.1111/1468-0262.00020}
@@ -194,4 +191,4 @@
 #' @import Formula
 #' @importFrom Matrix t Diagonal rankMatrix Cholesky nnzero crossprod tcrossprod diag
 #' @importClassesFrom Matrix sparseMatrix
-NULL
+"_PACKAGE"

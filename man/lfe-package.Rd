@@ -189,5 +189,30 @@ linear IV models with multiple endogenous variables}, Journal of
 Econometrics, 2015.
 \url{https://www.sciencedirect.com/science/article/pii/S0304407615001736}
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/r-econometrics/lfe}
+  \item Report bugs at \url{https://github.com/r-econometrics/lfe/issues}
+}
+
+}
+\author{
+\strong{Maintainer}: Mauricio Vargas Sepulveda \email{m.sepulveda@mail.utoronto.ca} (\href{https://orcid.org/0000-0003-1017-7574}{ORCID}) [contributor]
+
+Authors:
+\itemize{
+  \item Simen Gaure (\href{https://orcid.org/0000-0001-7251-8747}{ORCID})
+}
+
+Other contributors:
+\itemize{
+  \item Grant McDermott [contributor]
+  \item Karl Dunkle Werner [contributor]
+  \item Matthieu Stigler (\href{https://orcid.org/0000-0002-6802-4290}{ORCID}) [contributor]
+  \item Daniel Lüdecke [contributor]
+}
+
+}
 \keyword{models}
 \keyword{regression}

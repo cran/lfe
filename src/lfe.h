@@ -16,8 +16,8 @@
 #define _GNU_SOURCE /* to find pthread_setname_np */
 #endif
 
-#include <semaphore.h>
 #include <pthread.h>
+#include <semaphore.h>
 #endif
 
 #endif
@@ -32,7 +32,8 @@ int pthread_setname_np(pthread_t thread, const char *name);
 int pthread_setname_np(const char *);
 #define STNAME(s) pthread_setname_np(s)
 #elif __FreeBSD__
-// FreeBSD & OpenBSD: function name is slightly different, and has no return value
+// FreeBSD & OpenBSD: function name is slightly different, and has no return
+// value
 void pthread_set_name_np(pthread_t tid, const char *name);
 #define STNAME(s) pthread_set_name_np(pthread_self(), s)
 #else
@@ -47,19 +48,19 @@ void pthread_set_name_np(pthread_t tid, const char *name);
 #define STNAME(s)
 #endif
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
-#include <math.h>
-#include <string.h>
 #include <R.h>
-#include <Rversion.h>
-#include <Rdefines.h>
+#include <R_ext/BLAS.h>
 #include <R_ext/Rdynload.h>
 #include <R_ext/Visibility.h>
-#include <R_ext/BLAS.h>
+#include <Rdefines.h>
+#include <Rversion.h>
+#include <errno.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #if defined(R_VERSION) && R_VERSION >= R_Version(3, 0, 0)
 typedef R_xlen_t mybigint_t;
@@ -96,8 +97,7 @@ typedef int mysize_t;
 #endif
 
 /* My internal definition of a factor */
-typedef struct
-{
+typedef struct {
   /* group[i] is the level of observation i */
   int *group;
   /* invgpsize[j] is the 1/(size of level j) */
@@ -121,9 +121,9 @@ void printmsg(LOCK_T lock);
 SEXP MY_kaczmarz(SEXP flist, SEXP vlist, SEXP Reps, SEXP initial, SEXP Rcores);
 SEXP MY_wwcomp(SEXP flist);
 SEXP MY_conncomp(SEXP flist);
-SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps,
-                   SEXP scores, SEXP quiet, SEXP gkacc, SEXP Rmeans,
-                   SEXP weights, SEXP Rscale, SEXP attrs);
+SEXP MY_demeanlist(SEXP vlist, SEXP flist, SEXP Ricpt, SEXP Reps, SEXP scores,
+                   SEXP quiet, SEXP gkacc, SEXP Rmeans, SEXP weights,
+                   SEXP Rscale, SEXP attrs);
 SEXP MY_scalecols(SEXP mat, SEXP vec);
 SEXP MY_pdaxpy(SEXP inX, SEXP inY, SEXP inbeta);
 SEXP MY_piproduct(SEXP inX, SEXP inY);

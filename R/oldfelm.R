@@ -635,6 +635,8 @@ project <- function(mf, fl, data, contrasts, clustervar = NULL, pf = parent.fram
   ret
 }
 
+#' Fit a linear model with multiple group fixed effects (old interface)
+#' @inheritParams felm
 #' @export
 ..oldfelm <- function(formula, data, exactDOF = FALSE, subset, na.action, contrasts = NULL, ...) {
   knownargs <- c("iv", "clustervar", "cmethod", "keepX", "nostats")
