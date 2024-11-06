@@ -263,7 +263,7 @@ paper and simulations. This is also the default method that \code{felm} uses
 (i.e. \code{cmethod = 'cgm'}). However, the latter approach has since been
 adopted by several other packages that allow for robust inference with
 multiway clustering. This includes the popular Stata package
-\href{http://scorreia.com/software/reghdfe/}{reghdfe}, as well as the
+\href{https://scorreia.com/software/reghdfe/}{reghdfe}, as well as the
 \href{https://github.com/matthieugomez/FixedEffectModels.jl}{FixedEffectModels.jl}
 implementation in Julia. To match results from these packages exactly, use
 \code{cmethod = 'cgm2'} (or its alias, \code{cmethod = 'reghdfe'}). It is

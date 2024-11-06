@@ -1,10 +1,12 @@
 #include "lfe.h"
+#include <Rinternals.h>
+
 static void invertfactor(FACTOR *f, int N) {
   int nlev = f->nlevels;
   int *curoff;
   int i;
-  f->ii = (int *)R_alloc(nlev + 1, sizeof(int));
-  f->gpl = (int *)R_alloc(N, sizeof(int));
+  f->ii = (int*)R_alloc(nlev + 1, sizeof(int));
+  f->gpl = (int*)R_alloc(N, sizeof(int));
 
   memset(f->ii, 0, sizeof(int) * (nlev + 1));
 
@@ -20,13 +22,13 @@ static void invertfactor(FACTOR *f, int N) {
     f->ii[i] += f->ii[i - 1];
   }
 
-  curoff = Calloc(nlev + 1, int);
+  curoff = R_Calloc(nlev + 1, int);
   for (i = 0; i < N; i++) {
     int gp = f->group[i] - 1;
     f->gpl[f->ii[gp] + curoff[gp]] = i;
     curoff[gp]++;
   }
-  Free(curoff);
+  R_Free(curoff);
 }
 
 FACTOR **makefactors(SEXP flist, int allowmissing, double *weights) {
@@ -135,7 +137,7 @@ FACTOR **makefactors(SEXP flist, int allowmissing, double *weights) {
       f->invgpsize[j] = 1.0 / f->gpsize[j];
     }
   }
-  return (factors);
+  return factors;
 }
 
 /*
@@ -157,7 +159,7 @@ static int Components(int **vertices, FACTOR **factors, int K) {
   for (i = 0; i < K; i++) numvert += factors[i]->nlevels;
 
   /* Never used in threads, so use R's Calloc */
-  stack = Calloc(numvert * 4, int);
+  stack = R_Calloc(numvert * 4, int);
 
 #define PUSH(x) stack[stacklevel++] = x
 #define POP(x) x = stack[--stacklevel]
@@ -231,7 +233,7 @@ static int Components(int **vertices, FACTOR **factors, int K) {
     curcomp++;
   } while (candvert < factors[0]->nlevels);
 
-  Free(stack);
+  R_Free(stack);
   return (curcomp - 1);
 #undef PUSH
 #undef POP
@@ -246,11 +248,11 @@ static int Components(int **vertices, FACTOR **factors, int K) {
 static void wwcomp(FACTOR *factors[], int numfac, int N, int *newlevels) {
   int level = 0;
   int chead = 0;
-  int *newlist = Calloc(N, int);
-  int *oldlist = Calloc(N, int);
+  int *newlist = R_Calloc(N, int);
+  int *oldlist = R_Calloc(N, int);
   int oldstart = 0;
   // For cache-efficiency, make a numfac x N matrix of the factors
-  int *facmat = Calloc(numfac * N, int);
+  int *facmat = R_Calloc(numfac * N, int);
 
   for (mysize_t i = 0; i < N; i++) {
     int *obsp = &facmat[i * numfac];
@@ -296,9 +298,9 @@ static void wwcomp(FACTOR *factors[], int numfac, int N, int *newlevels) {
       }
     }
   }
-  Free(facmat);
-  Free(newlist);
-  Free(oldlist);
+  R_Free(facmat);
+  R_Free(newlist);
+  R_Free(oldlist);
 }
 
 /*
@@ -336,14 +338,14 @@ SEXP MY_wwcomp(SEXP flist) {
   for (int i = 0; i < N; i++)
     if (fac[i] > levels) levels = fac[i];
   double *levsize = (double *)R_alloc(levels, sizeof(double));
-  int *index = (int *)R_alloc(levels, sizeof(int));
+  int *index = (int*)R_alloc(levels, sizeof(int));
   for (int i = 0; i < levels; i++) {
     levsize[i] = 0.0;
     index[i] = i;
   }
   for (int i = 0; i < N; i++) levsize[fac[i] - 1] = levsize[fac[i] - 1] + 1;
   revsort(levsize, index, levels);
-  int *rindex = (int *)R_alloc(levels, sizeof(int));
+  int *rindex = (int*)R_alloc(levels, sizeof(int));
   for (int i = 0; i < levels; i++) rindex[index[i]] = i;
   for (int i = 0; i < N; i++) {
     fac[i] = rindex[fac[i] - 1] + 1;
@@ -396,10 +398,10 @@ SEXP MY_conncomp(SEXP flist) {
   }
 
   /* Create vertices */
-  vertices = (int **)R_alloc(numfac, sizeof(int *));
+  vertices = (int **)R_alloc(numfac, sizeof(int*));
   /* Create arrays for them */
   for (i = 0; i < numfac; i++) {
-    vertices[i] = (int *)R_alloc(factors[i]->nlevels, sizeof(int));
+    vertices[i] = (int*)R_alloc(factors[i]->nlevels, sizeof(int));
     /* Assign no component to them*/
     memset(vertices[i], 0, sizeof(int) * factors[i]->nlevels);
   }
@@ -420,8 +422,8 @@ SEXP MY_conncomp(SEXP flist) {
      There must be an easier way, I'm clumsy today.
   */
 
-  gpsiz = Calloc(comps, double);
-  idx = Calloc(comps, int);
+  gpsiz = R_Calloc(comps, double);
+  idx = R_Calloc(comps, int);
 
   for (i = 0; i < comps; i++) idx[i] = i;
   for (i = 0; i < N; i++) {
@@ -429,15 +431,15 @@ SEXP MY_conncomp(SEXP flist) {
   }
 
   revsort(gpsiz, idx, comps);
-  Free(gpsiz);
-  levtrl = Calloc(comps, int);
+  R_Free(gpsiz);
+  levtrl = R_Calloc(comps, int);
   for (i = 0; i < comps; i++) levtrl[idx[i]] = i + 1;
-  Free(idx);
+  R_Free(idx);
 
   for (i = 0; i < N; i++) {
     resgroup[i] = levtrl[resgroup[i] - 1];
   }
-  Free(levtrl);
+  R_Free(levtrl);
 
   UNPROTECT(2);
   return (result);

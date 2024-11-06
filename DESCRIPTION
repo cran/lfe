@@ -1,5 +1,5 @@
 Package: lfe
-Version: 3.0-0
+Version: 3.1.0
 Title: Linear Group Fixed Effects
 Authors@R: c(
   person(given = "Simen",
@@ -42,9 +42,9 @@ Classification/MSC: 62J05, 65F10, 65F50
 URL: https://github.com/r-econometrics/lfe
 BugReports: https://github.com/r-econometrics/lfe/issues
 Encoding: UTF-8
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 NeedsCompilation: yes
-Packaged: 2024-02-29 07:38:48 UTC; pacha
+Packaged: 2024-11-06 15:43:11 UTC; pacha
 Author: Simen Gaure [aut] (<https://orcid.org/0000-0001-7251-8747>),
   Grant McDermott [ctb],
   Mauricio Vargas Sepulveda [ctb, cre]
@@ -54,4 +54,4 @@ Author: Simen Gaure [aut] (<https://orcid.org/0000-0001-7251-8747>),
   Daniel Lüdecke [ctb]
 Maintainer: Mauricio Vargas Sepulveda <m.sepulveda@mail.utoronto.ca>
 Repository: CRAN
-Date/Publication: 2024-02-29 11:20:03 UTC
+Date/Publication: 2024-11-06 16:20:07 UTC

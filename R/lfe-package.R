@@ -158,8 +158,7 @@
 #'
 #' Sanderson, E. and F. Windmeijer (2014) \cite{A weak instrument F-test in
 #' linear IV models with multiple endogenous variables}, Journal of
-#' Econometrics, 2015.
-#' <https://www.sciencedirect.com/science/article/pii/S0304407615001736>
+#' Econometrics, 2015. <doi:10.1016/j.jeconom.2015.06.004>
 #' @keywords regression models
 #' @examples
 #'

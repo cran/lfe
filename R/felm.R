@@ -958,7 +958,7 @@ newols <- function(mm, stage1 = NULL, pf = parent.frame(), nostats = FALSE, exac
 #' (i.e. `cmethod = 'cgm'`). However, the latter approach has since been
 #' adopted by several other packages that allow for robust inference with
 #' multiway clustering. This includes the popular Stata package
-#' [reghdfe](http://scorreia.com/software/reghdfe/), as well as the
+#' [reghdfe](https://scorreia.com/software/reghdfe/), as well as the
 #' [FixedEffectModels.jl](https://github.com/matthieugomez/FixedEffectModels.jl)
 #' implementation in Julia. To match results from these packages exactly, use
 #' `cmethod = 'cgm2'` (or its alias, `cmethod = 'reghdfe'`). It is

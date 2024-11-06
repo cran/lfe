@@ -1,5 +1,5 @@
 #include <inttypes.h>
-
+#include <Rinternals.h>
 #include "lfe.h"
 
 #define USE_FC_LEN_T
@@ -167,24 +167,28 @@ SEXP MY_dsyrk(SEXP inbeta, SEXP inC, SEXP inalpha, SEXP inA) {
 // debugging memory copy
 SEXP MY_address(SEXP x) {
   char chr[30];
-  snprintf(chr, sizeof(chr), "adr=%p, named=%d", (void *)x, NAMED(x));
+  snprintf(chr, sizeof(chr), "adr=%p", (void *)x);
   return (mkString(chr));
 }
 
 SEXP MY_named(SEXP x, SEXP n) {
   if (isNull(n)) {
-    // return NAMED status
-    SEXP res = allocVector(INTSXP, 1);
-    PROTECT(res);
-    INTEGER(res)
-    [0] = NAMED(x);
+    // Return whether the object is "shared"
+    SEXP res = PROTECT(allocVector(INTSXP, 1));
+    INTEGER(res)[0] = MAYBE_SHARED(x) ? 1 : 0;
     setAttrib(res, install("x"), x);
     UNPROTECT(1);
-    return (res);
+    return res;
   }
-  // set named status. Use this at your own peril. Seriously. Things may ...
-  SET_NAMED(x, INTEGER(n)[0]);
-  return (x);
+
+  // When setting, instead of SET_NAMED, create a duplicate if the object is
+  // shared
+  if (INTEGER(n)[0] == 0 && MAYBE_SHARED(x)) {
+    x = duplicate(x);
+  }
+
+  // Continue with the rest of your function logic
+  return x;
 }
 
 /* Trickery to check for interrupts when using threads */

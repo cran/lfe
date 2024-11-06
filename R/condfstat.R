@@ -150,11 +150,10 @@ ivbootstrap <- function(z, x, y, quantiles = 0.95, N = 100L, cluster = NULL) {
 #' used.
 #' @references Sanderson, E. and F. Windmeijer (2014) \cite{A weak instrument
 #' F-test in linear IV models with multiple endogenous variables}, Journal of
-#' Econometrics, 2015.
-#' <https://www.sciencedirect.com/science/article/pii/S0304407615001736>
+#' Econometrics, 2015. <doi:10.1016/j.jeconom.2015.06.004>
 #'
 #' Stock, J.H. and M. Yogo (2004) \cite{Testing for weak instruments in linear
-#' IV regression}, <https://www.ssrn.com/abstract=1734933> in
+#' IV regression}, <doi:10.3386/t0284 > in
 #' \cite{Identification and inference for econometric models: Essays in honor
 #' of Thomas Rothenberg}, 2005.
 #' @examples
