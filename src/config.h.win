@@ -1,0 +1,23 @@
+/* src/config.h.win.  Generated manually for Windows build. */
+
+/* Define if you have POSIX threads libraries and header files. */
+#define HAVE_PTHREAD 0
+
+/* Have PTHREAD_PRIO_INHERIT. */
+#define HAVE_PTHREAD_PRIO_INHERIT 0
+
+/* timed sem wait */
+#define HAVE_SEM 0
+
+/* chg thread name */
+#define HAVE_THREADNAME 0
+
+/* 64bit */
+#define HUGE_INT 1
+
+/* no threads */
+#define NOTHREADS 0
+
+/* Define to necessary symbol if this constant uses a non-standard name on
+   your system. */
+#define PTHREAD_CREATE_JOINABLE 0

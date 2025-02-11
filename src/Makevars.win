@@ -1,3 +1,9 @@
+$(SHLIB): config.h
+
+config.h: config.h.win
+	cp config.h.win config.h
+
 PKG_LIBS=$(BLAS_LIBS) $(FLIBS)
 PKG_CFLAGS=$(C_VISIBILITY)
 OBJECTS=lfe.o demean.o factor.o kaczmarz.o utils.o crowsum.o
+

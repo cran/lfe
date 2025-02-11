@@ -1,5 +1,5 @@
 Package: lfe
-Version: 3.1.0
+Version: 3.1.1
 Title: Linear Group Fixed Effects
 Authors@R: c(
   person(given = "Simen",
@@ -36,7 +36,7 @@ Description: Transforms away factors with many levels prior to doing an OLS.
   Includes support for instrumental variables, conditional F statistics for weak instruments,
   robust and multi-way clustered standard errors, as well as limited mobility bias correction (Gaure 2014 <doi:10.1002/sta4.68>).
   Since version 3.0, it provides dedicated functions to estimate Poisson models.
-License: MIT + file LICENSE
+License: Apache License (>= 2)
 Classification/JEL: C13, C23, C60
 Classification/MSC: 62J05, 65F10, 65F50
 URL: https://github.com/r-econometrics/lfe
@@ -44,7 +44,7 @@ BugReports: https://github.com/r-econometrics/lfe/issues
 Encoding: UTF-8
 RoxygenNote: 7.3.2
 NeedsCompilation: yes
-Packaged: 2024-11-06 15:43:11 UTC; pacha
+Packaged: 2025-02-11 06:31:07 UTC; pacha
 Author: Simen Gaure [aut] (<https://orcid.org/0000-0001-7251-8747>),
   Grant McDermott [ctb],
   Mauricio Vargas Sepulveda [ctb, cre]
@@ -54,4 +54,4 @@ Author: Simen Gaure [aut] (<https://orcid.org/0000-0001-7251-8747>),
   Daniel Lüdecke [ctb]
 Maintainer: Mauricio Vargas Sepulveda <m.sepulveda@mail.utoronto.ca>
 Repository: CRAN
-Date/Publication: 2024-11-06 16:20:07 UTC
+Date/Publication: 2025-02-11 07:30:01 UTC
